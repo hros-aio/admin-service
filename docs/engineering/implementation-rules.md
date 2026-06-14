@@ -566,3 +566,42 @@ A feature is done only when:
 7. It has structured logs.
 8. It passes lint and race tests.
 9. It can be reviewed by another AI or human without hidden assumptions.
+
+## 18. Git Rules
+
+## Commit Rules
+
+### Conventional Commit
+
+All commits must follow:
+
+<type>(<scope>): <summary>
+
+Allowed types:
+
+- feat
+- fix
+- refactor
+- test
+- docs
+- chore
+- ci
+
+Examples:
+
+feat(auth): add jwt validation
+fix(cache): prevent redis memory leak
+
+### Task Tracking
+
+Each commit must reference exactly one task.
+
+Example:
+
+feat(employee): EMP-001 create employee repository
+
+### Commit Size
+
+A commit should contain changes for only one task.
+
+Do not combine multiple tasks into a single commit.
