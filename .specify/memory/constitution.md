@@ -1,50 +1,66 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report:
+- Version change: N/A → 1.0.0
+- List of modified principles:
+  - Added I. Clean Architecture & Strict Boundaries
+  - Added II. Documentation-First & OpenAPI-Driven
+  - Added III. Unit-Test-Per-File (NON-NEGOTIABLE)
+  - Added IV. Task-Driven & Atomic Implementation
+  - Added V. Observability & Structured Logging
+- Added sections: Technical Stack Constraints, Development Workflow
+- Templates requiring updates:
+  - .specify/templates/plan-template.md (✅ aligned)
+  - .specify/templates/spec-template.md (✅ aligned)
+  - .specify/templates/tasks-template.md (✅ aligned)
+- Follow-up TODOs: None
+-->
+
+# HROS Admin Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Clean Architecture & Strict Boundaries
+Every component must adhere to strict dependency directions: adapter/infrastructure -> application -> domain. Business logic is strictly isolated from framework and infrastructure details (Echo, GORM, Redis, Kafka). Domain must not import any infrastructure packages. Application layer must not import Echo or GORM concrete models.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Documentation-First & OpenAPI-Driven
+OpenAPI is the primary source of truth for the API contract. Every public REST endpoint must be declared in OpenAPI before implementation. Every request and response must have a schema. Handlers and OpenAPI must be updated together in the same task. Standard error responses are mandatory for all endpoints.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Unit-Test-Per-File (NON-NEGOTIABLE)
+Every non-generated .go source file must have a corresponding _test.go file. Unit tests must be fast, deterministic, and free of external dependencies (PostgreSQL, Redis, Kafka, Network). Coverage targets are mandatory: Domain 90%, Application 85%, Adapter 75%, Repository 70%.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. Task-Driven & Atomic Implementation
+Features must be implemented via vertical slices, one task at a time as defined in SpecKit tasks.md. Implementation must follow the mandatory workflow: OpenAPI -> Domain -> Application -> Infrastructure -> Adapter. The agent must never implement an entire feature in one pass.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. Observability & Structured Logging
+Use standard `log/slog` for structured logging with explicit attributes. Never log secrets, tokens, or PII. Include trace_id, request_id, and tenant_id in all logs where available. Every external boundary (HTTP, Kafka, Redis) must log success and failures explicitly.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+## Technical Stack Constraints
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+The following technology stack is non-negotiable for the HROS Admin project:
+- **Language**: Go 1.23+
+- **Dependency Injection**: Uber Fx
+- **HTTP Framework**: Echo Framework
+- **Database**: PostgreSQL with GORM
+- **Cache**: Redis
+- **Messaging**: Kafka (Sarama)
+- **Observability**: Structured logging with `log/slog`
+- **Architecture**: Clean Architecture with strict layer isolation
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+## Development Workflow
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+Every task execution must follow this sequence:
+1. Read the current SpecKit artifacts (`spec.md`, `plan.md`, `tasks.md`).
+2. Identify and implement exactly one task ID.
+3. Update OpenAPI contract if the REST interface is modified.
+4. Implement or update unit tests for every changed production file.
+5. Verify correctness using `go test ./... -race -count=1` and `golangci-lint`.
+6. Justify any architectural complexity in the Implementation Plan.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+- This Constitution takes absolute precedence over general workflows and tool defaults.
+- Amendments require a version bump and an update to this document.
+- All code changes must be verified against these principles before finality.
+- Use `GEMINI.md` for team-shared conventions and repository-wide workflows.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: 2026-06-14 | **Last Amended**: 2026-06-14
