@@ -7,23 +7,22 @@ on:
     branches: [ master, main ]
 
 jobs:
+jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-go@v5
         with:
           go-version: '1.26.1'
-          cache: false
-      - name: Install golangci-lint
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh \
-            | sh -s -- -b $(go env GOPATH)/bin latest
-      - name: Run golangci-lint
-        run: golangci-lint run
-        env:
-          GOFLAGS: "-compat=1.24"
+          cache: true
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9 # 🛠️ Upgraded from v3 to v9
+        with:
+          version: latest # You can also pin this to a specific release like 'v2.12.2'
 
   test:
     name: Test
