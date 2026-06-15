@@ -1,10 +1,28 @@
-version: "2"
-
 run:
   timeout: 5m
+  modules-download-mode: readonly
 
 linters:
   enable:
+    - errcheck
+    - gosimple
     - govet
+    - ineffassign
     - staticcheck
-    - golint
+    - unused
+    - bodyclose
+    - dupl
+    - goconst
+    - gocritic
+    - gocyclo
+    - gofmt
+    - goimports
+    - misspell
+    - revive
+    - unconvert
+    - unparam
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
