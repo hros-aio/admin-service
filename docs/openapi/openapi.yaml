@@ -1,0 +1,63 @@
+openapi: 3.0.3
+info:
+  title: HROS Admin Service - Foundation
+  version: 0.1.0
+  description: Base foundation API for health and connectivity.
+
+paths:
+  /health:
+    get:
+      summary: Health Check
+      description: Returns the health status of the application and its dependencies.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+        '503':
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "OK"
+        version:
+          type: string
+          example: "0.1.0"
+        dependencies:
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            postgres: "UP"
+            redis: "UP"
+            kafka: "UP"
+
+    ErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "internal_error"
+        message:
+          type: string
+          example: "An unexpected error occurred"
+        details:
+          type: object
+          additionalProperties: true
+        trace_id:
+          type: string
+          example: "01HZX3QK0YS6M2Z1WD9S7VN9VJ"

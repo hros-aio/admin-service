@@ -12,6 +12,11 @@ Always read these files before planning or coding:
 - @docs/engineering/repository-structure.md
 - @docs/engineering/testing-strategy.md
 - @docs/engineering/implementation-rules.md
+- @docs/engineering/foundation.md
+
+<!-- SPECKIT START -->
+Active Plan: [specs/001-backend-foundation-bootstrap/plan.md](specs/001-backend-foundation-bootstrap/plan.md)
+<!-- SPECKIT END -->
 
 ## Architecture Rules
 
