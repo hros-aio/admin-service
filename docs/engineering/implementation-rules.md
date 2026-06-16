@@ -569,8 +569,6 @@ A feature is done only when:
 
 ## 18. Git Rules
 
-## Commit Rules
-
 ### Conventional Commit
 
 All commits must follow:
