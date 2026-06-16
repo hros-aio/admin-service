@@ -24,7 +24,7 @@
 
 ## Phase 2: Domain Layer
 
-- [ ] **TSK-AUTH-003**: Define Auth domain entities (`AdminUser`, `Role`, `SessionToken`) and repository interfaces in `internal/domain/auth/`.
+- [X] **TSK-AUTH-003**: Define Auth domain entities (`AdminUser`, `Role`, `SessionToken`) and repository interfaces in `internal/domain/auth/`.
 - [ ] **TSK-AUTH-004**: Implement password hashing and verification utility in `internal/domain/auth/password.go`.
 
 ---
