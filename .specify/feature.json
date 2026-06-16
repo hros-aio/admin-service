@@ -1,3 +1,3 @@
 {
-  "feature_directory": "specs/002-authentication-service"
+  "feature_directory": "specs/003-auth-dtos-openapi"
 }

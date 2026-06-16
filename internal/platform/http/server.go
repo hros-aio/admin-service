@@ -25,7 +25,7 @@ func NewServer(cfg *config.Config, log *slog.Logger, lc fx.Lifecycle, health *He
 	e.GET("/health", health.Check)
 
 	// Swagger UI
-	e.Static("/openapi", "docs/openapi")
+	e.Static("/openapi", "api")
 	e.File("/docs", "docs/openapi/index.html")
 
 	// Lifecycle hooks
