@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/hros/admin-service/internal/config"
+	authRepo "github.com/hros/admin-service/internal/infrastructure/repository/auth"
 	"github.com/hros/admin-service/internal/platform/database"
 	"github.com/hros/admin-service/internal/platform/http"
 	"github.com/hros/admin-service/internal/platform/kafka"
@@ -28,6 +29,7 @@ var Module = fx.Options(
 	// Infrastructure
 	fx.Provide(database.NewDatabase),
 	fx.Provide(database.NewTxManager),
+	fx.Provide(authRepo.NewGormAdminUserRepository),
 	fx.Provide(redis.NewRedisClient),
 	fx.Provide(kafka.NewKafkaProducer),
 	fx.Provide(kafka.NewKafkaConsumerGroup),

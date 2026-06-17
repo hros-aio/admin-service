@@ -15,7 +15,7 @@ Always read these files before planning or coding:
 - @docs/engineering/foundation.md
 
 <!-- SPECKIT START -->
-Active Plan: [specs/003-auth-dtos-openapi/plan.md](specs/003-auth-dtos-openapi/plan.md)
+Active Plan: [specs/004-admin-user-repository/plan.md](specs/004-admin-user-repository/plan.md)
 <!-- SPECKIT END -->
 
 ## Architecture Rules
