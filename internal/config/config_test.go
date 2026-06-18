@@ -16,6 +16,8 @@ func TestLoad(t *testing.T) {
 		_ = os.Setenv("DB_URL", "postgres://localhost:5432")
 		_ = os.Setenv("REDIS_URL", "redis://localhost:6379")
 		_ = os.Setenv("KAFKA_BROKERS", "localhost:9092")
+		_ = os.Setenv("JWT_PRIVATE_KEY", "dummy-key")
+		_ = os.Setenv("LOG_LEVEL", "info")
 	}
 
 	// Helper to clear env vars
@@ -26,6 +28,8 @@ func TestLoad(t *testing.T) {
 		_ = os.Unsetenv("DB_URL")
 		_ = os.Unsetenv("REDIS_URL")
 		_ = os.Unsetenv("KAFKA_BROKERS")
+		_ = os.Unsetenv("JWT_PRIVATE_KEY")
+		_ = os.Unsetenv("LOG_LEVEL")
 	}
 
 	t.Run("success", func(t *testing.T) {

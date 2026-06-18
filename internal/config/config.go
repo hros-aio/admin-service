@@ -16,6 +16,7 @@ type Config struct {
 	RedisURL     string   `env:"REDIS_URL,required"`
 	KafkaBrokers []string `env:"KAFKA_BROKERS,required"`
 	LogLevel     string   `env:"LOG_LEVEL" envDefault:"info"`
+	JWTPrivateKey string   `env:"JWT_PRIVATE_KEY,required"`
 }
 
 // Load loads the configuration from environment variables.

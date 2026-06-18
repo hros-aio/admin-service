@@ -1,6 +1,10 @@
 package app
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"os"
 	"testing"
 
@@ -9,6 +13,17 @@ import (
 )
 
 func TestAppValidate(t *testing.T) {
+	// Generate a real RSA private key for testing
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+	
+	keyBytes := x509.MarshalPKCS1PrivateKey(key)
+	pemBlock := &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: keyBytes,
+	}
+	pemString := string(pem.EncodeToMemory(pemBlock))
+
 	// Set mandatory env vars for config.Load
 	_ = os.Setenv("APP_NAME", "test-app")
 	_ = os.Setenv("ENV", "test")
@@ -16,6 +31,7 @@ func TestAppValidate(t *testing.T) {
 	_ = os.Setenv("DB_URL", "postgres://localhost")
 	_ = os.Setenv("REDIS_URL", "redis://localhost")
 	_ = os.Setenv("KAFKA_BROKERS", "localhost")
+	_ = os.Setenv("JWT_PRIVATE_KEY", pemString)
 	defer func() {
 		_ = os.Unsetenv("APP_NAME")
 		_ = os.Unsetenv("ENV")
@@ -23,8 +39,9 @@ func TestAppValidate(t *testing.T) {
 		_ = os.Unsetenv("DB_URL")
 		_ = os.Unsetenv("REDIS_URL")
 		_ = os.Unsetenv("KAFKA_BROKERS")
+		_ = os.Unsetenv("JWT_PRIVATE_KEY")
 	}()
 
-	err := fx.ValidateApp(Module)
+	err = fx.ValidateApp(Module)
 	require.NoError(t, err)
 }
