@@ -1,3 +1,4 @@
+// Package auth implements the authentication repository using GORM.
 package auth
 
 import (
@@ -41,5 +42,37 @@ func fromDomain(u *domain.AdminUser) *adminUserModel {
 		InvitedBy:    u.InvitedBy,
 		CreatedAt:    u.CreatedAt,
 		UpdatedAt:    u.UpdatedAt,
+	}
+}
+
+// toSessionTokenDomain converts the GORM model to a domain entity.
+func (m sessionTokenModel) toDomain() *domain.SessionToken {
+	return &domain.SessionToken{
+		ID:           m.ID,
+		AdminID:      m.AdminID,
+		RefreshToken: m.RefreshToken,
+		ExpiresAt:    m.ExpiresAt,
+		IsPersistent: m.IsPersistent,
+		IPAddress:    m.IPAddress,
+		UserAgent:    m.UserAgent,
+		CreatedAt:    m.CreatedAt,
+		RevokedAt:    m.RevokedAt,
+		RevokeReason: m.RevokeReason,
+	}
+}
+
+// fromSessionTokenDomain converts a domain entity to a GORM model.
+func fromSessionTokenDomain(t *domain.SessionToken) *sessionTokenModel {
+	return &sessionTokenModel{
+		ID:           t.ID,
+		AdminID:      t.AdminID,
+		RefreshToken: t.RefreshToken,
+		ExpiresAt:    t.ExpiresAt,
+		IsPersistent: t.IsPersistent,
+		IPAddress:    t.IPAddress,
+		UserAgent:    t.UserAgent,
+		CreatedAt:    t.CreatedAt,
+		RevokedAt:    t.RevokedAt,
+		RevokeReason: t.RevokeReason,
 	}
 }

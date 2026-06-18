@@ -30,6 +30,7 @@ var Module = fx.Options(
 	fx.Provide(database.NewDatabase),
 	fx.Provide(database.NewTxManager),
 	fx.Provide(authRepo.NewGormAdminUserRepository),
+	fx.Provide(authRepo.NewGormSessionTokenRepository),
 	fx.Provide(redis.NewRedisClient),
 	fx.Provide(kafka.NewKafkaProducer),
 	fx.Provide(kafka.NewKafkaConsumerGroup),

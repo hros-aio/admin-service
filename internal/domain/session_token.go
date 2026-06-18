@@ -33,6 +33,7 @@ func (t *SessionToken) IsRevoked() bool {
 type SessionTokenRepository interface {
 	Save(ctx context.Context, token *SessionToken) error
 	FindByToken(ctx context.Context, token string) (*SessionToken, error)
+	DeleteByToken(ctx context.Context, token string) error
 	DeleteByAdminID(ctx context.Context, adminID string) error
 	Revoke(ctx context.Context, token string, reason string) error
 }
