@@ -4,7 +4,9 @@ package app
 import (
 	"log/slog"
 
+	"github.com/hros/admin-service/internal/application"
 	"github.com/hros/admin-service/internal/config"
+	authInfra "github.com/hros/admin-service/internal/infrastructure/auth"
 	authRepo "github.com/hros/admin-service/internal/infrastructure/repository/auth"
 	"github.com/hros/admin-service/internal/platform/database"
 	"github.com/hros/admin-service/internal/platform/http"
@@ -13,7 +15,6 @@ import (
 	"github.com/hros/admin-service/internal/platform/redis"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/fx"
-	"go.uber.org/fx/fxevent"
 )
 
 // Module is the root Fx module for the application.
@@ -34,6 +35,10 @@ var Module = fx.Options(
 	fx.Provide(redis.NewRedisClient),
 	fx.Provide(kafka.NewKafkaProducer),
 	fx.Provide(kafka.NewKafkaConsumerGroup),
+	authInfra.Module,
+
+	// Application
+	application.Module,
 
 	// Adapters/Handlers
 	fx.Provide(http.NewHealthHandler),
@@ -41,11 +46,6 @@ var Module = fx.Options(
 
 	// Invokes
 	fx.Invoke(func(_ *echo.Echo) {}),
-
-	// Configure Fx logging to use our structured logger
-	fx.WithLogger(func(log *slog.Logger) fxevent.Logger {
-		return &fxevent.SlogLogger{Logger: log}
-	}),
 )
 
 // New initializes the Fx application.

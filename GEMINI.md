@@ -15,7 +15,7 @@ Always read these files before planning or coding:
 - @docs/engineering/foundation.md
 
 <!-- SPECKIT START -->
-Active Plan: [specs/005-session-token-repository/plan.md](specs/005-session-token-repository/plan.md)
+Active Plan: [specs/006-admin-login-usecase/plan.md](specs/006-admin-login-usecase/plan.md)
 <!-- SPECKIT END -->
 
 ## Architecture Rules
