@@ -21,6 +21,9 @@ func NewGormSessionTokenRepository(db *gorm.DB) domain.SessionTokenRepository {
 
 // Save persists a new session token.
 func (r *GormSessionTokenRepository) Save(ctx context.Context, token *domain.SessionToken) error {
+	if token == nil {
+		return gorm.ErrInvalidData
+	}
 	db := platformDB.GetTx(ctx, r.db)
 	model := fromSessionTokenDomain(token)
 	return db.Create(model).Error
@@ -54,6 +57,8 @@ func (r *GormSessionTokenRepository) Revoke(ctx context.Context, token string, r
 	// Implementation for Revoke if needed, otherwise this is enough for TSK-AUTH-005 scope
 	return db.Model(&sessionTokenModel{}).
 		Where("refresh_token = ?", token).
-		Update("revoked_at", gorm.Expr("NOW()")).
-		Update("revoke_reason", reason).Error
+		Updates(map[string]interface{}{
+			"revoked_at":    gorm.Expr("NOW()"),
+			"revoke_reason": reason,
+		}).Error
 }

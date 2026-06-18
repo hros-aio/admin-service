@@ -57,12 +57,18 @@ func TestGormSessionTokenRepository_Save(t *testing.T) {
 
 	t.Run("database error", func(t *testing.T) {
 		mock.ExpectBegin()
-		mock.ExpectExec(regexp.QuoteMeta(`INSERT INTO "session_tokens"`)).
+		mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "session_tokens"`)).
 			WillReturnError(gorm.ErrInvalidDB)
 		mock.ExpectRollback()
 
 		err := repo.Save(context.Background(), token)
 		assert.Error(t, err)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("nil token", func(t *testing.T) {
+		err := repo.Save(context.Background(), nil)
+		assert.ErrorIs(t, err, gorm.ErrInvalidData)
 	})
 }
 
@@ -91,6 +97,25 @@ func TestGormSessionTokenRepository_DeleteByToken(t *testing.T) {
 		mock.ExpectCommit()
 
 		err := repo.DeleteByToken(context.Background(), tokenValue)
+		assert.NoError(t, err)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+}
+
+func TestGormSessionTokenRepository_Revoke(t *testing.T) {
+	gormDB, mock := setupSessionTokenTestDB(t)
+	repo := NewGormSessionTokenRepository(gormDB)
+	tokenValue := "test-token"
+	reason := "security violation"
+
+	t.Run("success", func(t *testing.T) {
+		mock.ExpectBegin()
+		mock.ExpectExec(regexp.QuoteMeta(`UPDATE "session_tokens" SET "revoke_reason"=$1,"revoked_at"=NOW() WHERE refresh_token = $2`)).
+			WithArgs(reason, tokenValue).
+			WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectCommit()
+
+		err := repo.Revoke(context.Background(), tokenValue, reason)
 		assert.NoError(t, err)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
