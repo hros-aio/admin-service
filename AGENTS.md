@@ -25,5 +25,5 @@ Do not implement new features during review unless explicitly requested.
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-[specs/008-admin-auth-handler/plan.md](file:///home/ren0503/new-hros/admin-service/specs/008-admin-auth-handler/plan.md)
+[specs/009-auth-integration-test/plan.md](file:///home/ren0503/new-hros/admin-service/specs/009-auth-integration-test/plan.md)
 <!-- SPECKIT END -->
