@@ -31,9 +31,9 @@ func (m *mockUserRepo) Delete(ctx context.Context, id string) error { return m.C
 type mockSessionRepo struct{ mock.Mock }
 func (m *mockSessionRepo) Save(ctx context.Context, t *domain.SessionToken) error { return m.Called(ctx, t).Error(0) }
 func (m *mockSessionRepo) FindByToken(ctx context.Context, t string) (*domain.SessionToken, error) { return nil, nil }
-func (m *mockSessionRepo) DeleteByToken(ctx context.Context, t string) error { return nil }
-func (m *mockSessionRepo) DeleteByAdminID(ctx context.Context, id string) error { return nil }
-func (m *mockSessionRepo) Revoke(ctx context.Context, t string, r string) error { return nil }
+func (m *mockSessionRepo) DeleteByToken(ctx context.Context, t string) error { return m.Called(ctx, t).Error(0) }
+func (m *mockSessionRepo) DeleteByAdminID(ctx context.Context, id string) error { return m.Called(ctx, id).Error(0) }
+func (m *mockSessionRepo) Revoke(ctx context.Context, t string, r string) error { return m.Called(ctx, t, r).Error(0) }
 
 type mockPasswordHelper struct{ mock.Mock }
 func (m *mockPasswordHelper) Hash(p string) (string, error) { return "", nil }
@@ -53,6 +53,7 @@ func (m *mockTokenProvider) GenerateRefreshToken(ctx context.Context) (string, e
 type mockAuditLogger struct{ mock.Mock }
 func (m *mockAuditLogger) LogLoginSuccess(ctx context.Context, id, email string) { m.Called(ctx, id, email) }
 func (m *mockAuditLogger) LogLoginFailed(ctx context.Context, email, reason string) { m.Called(ctx, email, reason) }
+func (m *mockAuditLogger) LogLogoutSuccess(ctx context.Context, token string) { m.Called(ctx, token) }
 
 func TestLoginUseCase_Execute(t *testing.T) {
 	ctx := context.Background()
