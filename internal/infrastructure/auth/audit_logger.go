@@ -1,3 +1,4 @@
+// Package auth implements security and authentication infrastructure adapters.
 package auth
 
 import (
@@ -32,5 +33,18 @@ func (l *SlogAuditLogger) LogLoginFailed(ctx context.Context, email string, reas
 		slog.String("event", "login.failed"),
 		slog.String("email", email),
 		slog.String("reason", reason),
+	)
+}
+
+// LogLogoutSuccess logs a successful logout event.
+func (l *SlogAuditLogger) LogLogoutSuccess(ctx context.Context, token string) {
+	// Mask the token or use a hash for safety. We never log full raw secrets.
+	maskedToken := "unknown"
+	if len(token) > 8 {
+		maskedToken = token[:8] + "..."
+	}
+	l.logger.InfoContext(ctx, "logout success",
+		slog.String("event", "logout.success"),
+		slog.String("token_prefix", maskedToken),
 	)
 }

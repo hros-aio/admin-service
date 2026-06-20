@@ -1,3 +1,4 @@
+// Package auth defines the domain objects and interfaces for authentication.
 package auth
 
 import "context"
@@ -6,4 +7,5 @@ import "context"
 type AuditLogger interface {
 	LogLoginSuccess(ctx context.Context, userID string, email string)
 	LogLoginFailed(ctx context.Context, email string, reason string)
+	LogLogoutSuccess(ctx context.Context, token string)
 }

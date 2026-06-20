@@ -14,33 +14,51 @@ import (
 
 // Mocks
 type mockUserRepo struct{ mock.Mock }
-func (m *mockUserRepo) Save(ctx context.Context, u *domain.AdminUser) error { return m.Called(ctx, u).Error(0) }
-func (m *mockUserRepo) Update(ctx context.Context, u *domain.AdminUser) error { return m.Called(ctx, u).Error(0) }
-func (m *mockUserRepo) FindByID(ctx context.Context, id string) (*domain.AdminUser, error) { 
+
+func (m *mockUserRepo) Save(ctx context.Context, u *domain.AdminUser) error {
+	return m.Called(ctx, u).Error(0)
+}
+func (m *mockUserRepo) Update(ctx context.Context, u *domain.AdminUser) error {
+	return m.Called(ctx, u).Error(0)
+}
+func (m *mockUserRepo) FindByID(ctx context.Context, id string) (*domain.AdminUser, error) {
 	args := m.Called(ctx, id)
-	if args.Get(0) == nil { return nil, args.Error(1) }
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
 	return args.Get(0).(*domain.AdminUser), args.Error(1)
 }
 func (m *mockUserRepo) FindByEmail(ctx context.Context, email string) (*domain.AdminUser, error) {
 	args := m.Called(ctx, email)
-	if args.Get(0) == nil { return nil, args.Error(1) }
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
 	return args.Get(0).(*domain.AdminUser), args.Error(1)
 }
-func (m *mockUserRepo) Delete(ctx context.Context, id string) error { return m.Called(ctx, id).Error(0) }
+func (m *mockUserRepo) Delete(ctx context.Context, id string) error {
+	return m.Called(ctx, id).Error(0)
+}
 
 type mockSessionRepo struct{ mock.Mock }
-func (m *mockSessionRepo) Save(ctx context.Context, t *domain.SessionToken) error { return m.Called(ctx, t).Error(0) }
-func (m *mockSessionRepo) FindByToken(ctx context.Context, t string) (*domain.SessionToken, error) { return nil, nil }
-func (m *mockSessionRepo) DeleteByToken(ctx context.Context, t string) error { return nil }
+
+func (m *mockSessionRepo) Save(ctx context.Context, t *domain.SessionToken) error {
+	return m.Called(ctx, t).Error(0)
+}
+func (m *mockSessionRepo) FindByToken(ctx context.Context, t string) (*domain.SessionToken, error) {
+	return nil, nil
+}
+func (m *mockSessionRepo) DeleteByToken(ctx context.Context, t string) error    { return nil }
 func (m *mockSessionRepo) DeleteByAdminID(ctx context.Context, id string) error { return nil }
 func (m *mockSessionRepo) Revoke(ctx context.Context, t string, r string) error { return nil }
 
 type mockPasswordHelper struct{ mock.Mock }
+
 func (m *mockPasswordHelper) Hash(p string) (string, error) { return "", nil }
-func (m *mockPasswordHelper) Compare(h, p string) error { return m.Called(h, p).Error(0) }
-func (m *mockPasswordHelper) CompareDummy(p string) { m.Called(p) }
+func (m *mockPasswordHelper) Compare(h, p string) error     { return m.Called(h, p).Error(0) }
+func (m *mockPasswordHelper) CompareDummy(p string)         { m.Called(p) }
 
 type mockTokenProvider struct{ mock.Mock }
+
 func (m *mockTokenProvider) GenerateAccessToken(ctx context.Context, u *domain.AdminUser, e time.Duration) (string, error) {
 	args := m.Called(ctx, u, e)
 	return args.String(0), args.Error(1)
@@ -51,8 +69,14 @@ func (m *mockTokenProvider) GenerateRefreshToken(ctx context.Context) (string, e
 }
 
 type mockAuditLogger struct{ mock.Mock }
-func (m *mockAuditLogger) LogLoginSuccess(ctx context.Context, id, email string) { m.Called(ctx, id, email) }
-func (m *mockAuditLogger) LogLoginFailed(ctx context.Context, email, reason string) { m.Called(ctx, email, reason) }
+
+func (m *mockAuditLogger) LogLoginSuccess(ctx context.Context, id, email string) {
+	m.Called(ctx, id, email)
+}
+func (m *mockAuditLogger) LogLoginFailed(ctx context.Context, email, reason string) {
+	m.Called(ctx, email, reason)
+}
+func (m *mockAuditLogger) LogLogoutSuccess(ctx context.Context, token string) { m.Called(ctx, token) }
 
 func TestLoginUseCase_Execute(t *testing.T) {
 	ctx := context.Background()
@@ -65,18 +89,18 @@ func TestLoginUseCase_Execute(t *testing.T) {
 	uc := NewLoginUseCase(userRepo, sessionRepo, password, tokens, audit)
 
 	input := LoginInput{
-		Email: "admin@example.com",
-		Password: "password123",
+		Email:     "admin@example.com",
+		Password:  "password123",
 		IPAddress: "127.0.0.1",
 		UserAgent: "test-agent",
 	}
 
 	t.Run("Success", func(t *testing.T) {
 		user := &domain.AdminUser{
-			ID: "user-id",
-			Email: input.Email,
+			ID:           "user-id",
+			Email:        input.Email,
 			PasswordHash: "hashed",
-			Status: domain.AdminUserStatusActive,
+			Status:       domain.AdminUserStatusActive,
 		}
 
 		userRepo.On("FindByEmail", ctx, input.Email).Return(user, nil).Once()
@@ -115,10 +139,10 @@ func TestLoginUseCase_Execute(t *testing.T) {
 
 	t.Run("InvalidPassword", func(t *testing.T) {
 		user := &domain.AdminUser{
-			ID: "user-id",
-			Email: input.Email,
+			ID:           "user-id",
+			Email:        input.Email,
 			PasswordHash: "hashed",
-			Status: domain.AdminUserStatusActive,
+			Status:       domain.AdminUserStatusActive,
 		}
 
 		userRepo.On("FindByEmail", ctx, input.Email).Return(user, nil).Once()
@@ -137,9 +161,9 @@ func TestLoginUseCase_Execute(t *testing.T) {
 	t.Run("UserLocked", func(t *testing.T) {
 		lockedUntil := time.Now().Add(1 * time.Hour)
 		user := &domain.AdminUser{
-			ID: "user-id",
-			Email: input.Email,
-			Status: domain.AdminUserStatusActive,
+			ID:          "user-id",
+			Email:       input.Email,
+			Status:      domain.AdminUserStatusActive,
 			LockedUntil: &lockedUntil,
 		}
 

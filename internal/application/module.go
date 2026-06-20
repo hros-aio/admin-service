@@ -9,5 +9,6 @@ import (
 var Module = fx.Module("application",
 	fx.Provide(
 		usecase.NewLoginUseCase,
+		usecase.NewLogoutUseCase,
 	),
 )
