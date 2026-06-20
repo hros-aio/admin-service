@@ -14,11 +14,11 @@ import (
 
 // LoginUseCase handles the admin login process.
 type LoginUseCase struct {
-	userRepo     domain.AdminUserRepository
-	sessionRepo  domain.SessionTokenRepository
-	password     auth.PasswordHelper
-	tokens       auth.TokenProvider
-	audit        authDomain.AuditLogger
+	userRepo    domain.AdminUserRepository
+	sessionRepo domain.SessionTokenRepository
+	password    auth.PasswordHelper
+	tokens      auth.TokenProvider
+	audit       authDomain.AuditLogger
 }
 
 // NewLoginUseCase creates a new LoginUseCase.

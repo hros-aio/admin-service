@@ -16,7 +16,7 @@ func TestAppValidate(t *testing.T) {
 	// Generate a real RSA private key for testing
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
-	
+
 	keyBytes := x509.MarshalPKCS1PrivateKey(key)
 	pemBlock := &pem.Block{
 		Type:  "RSA PRIVATE KEY",

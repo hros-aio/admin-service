@@ -23,8 +23,8 @@ func TestJWTTokenProvider(t *testing.T) {
 
 	t.Run("GenerateAccessToken", func(t *testing.T) {
 		user := &domain.AdminUser{
-			ID:    "user-123",
-			Email: "admin@example.com",
+			ID:     "user-123",
+			Email:  "admin@example.com",
 			RoleID: "role-admin",
 		}
 		expiry := 15 * time.Minute

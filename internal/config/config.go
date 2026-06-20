@@ -9,13 +9,13 @@ import (
 
 // Config represents the global application configuration.
 type Config struct {
-	AppName      string   `env:"APP_NAME,required"`
-	Env          string   `env:"ENV,required"`
-	Port         int      `env:"PORT,required"`
-	DBURL        string   `env:"DB_URL,required"`
-	RedisURL     string   `env:"REDIS_URL,required"`
-	KafkaBrokers []string `env:"KAFKA_BROKERS,required"`
-	LogLevel     string   `env:"LOG_LEVEL" envDefault:"info"`
+	AppName       string   `env:"APP_NAME,required"`
+	Env           string   `env:"ENV,required"`
+	Port          int      `env:"PORT,required"`
+	DBURL         string   `env:"DB_URL,required"`
+	RedisURL      string   `env:"REDIS_URL,required"`
+	KafkaBrokers  []string `env:"KAFKA_BROKERS,required"`
+	LogLevel      string   `env:"LOG_LEVEL" envDefault:"info"`
 	JWTPrivateKey string   `env:"JWT_PRIVATE_KEY,required"`
 }
 

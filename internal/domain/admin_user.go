@@ -55,23 +55,23 @@ type RolePermission struct {
 	CanApprove bool
 	CanExport  bool
 	CreatedAt  time.Time
-	UpdatedAt    time.Time
-	}
+	UpdatedAt  time.Time
+}
 
-	// IsActive checks if the admin user account is active.
-	func (u *AdminUser) IsActive() bool {
+// IsActive checks if the admin user account is active.
+func (u *AdminUser) IsActive() bool {
 	return u.Status == AdminUserStatusActive
-	}
+}
 
-	// IsLocked checks if the admin user account is currently locked.
-	func (u *AdminUser) IsLocked() bool {
+// IsLocked checks if the admin user account is currently locked.
+func (u *AdminUser) IsLocked() bool {
 	if u.LockedUntil == nil {
 		return false
 	}
 	return u.LockedUntil.After(time.Now())
-	}
+}
 
-	// AdminUserRepository defines the interface for persisting and retrieving admin users.
+// AdminUserRepository defines the interface for persisting and retrieving admin users.
 type AdminUserRepository interface {
 	Save(ctx context.Context, user *AdminUser) error
 	Update(ctx context.Context, user *AdminUser) error

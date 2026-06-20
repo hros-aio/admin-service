@@ -2,8 +2,8 @@ package usecase
 
 // LoginInput represents the input for the login use case.
 type LoginInput struct {
-	Email    string
-	Password string
+	Email     string
+	Password  string
 	IPAddress string
 	UserAgent string
 }

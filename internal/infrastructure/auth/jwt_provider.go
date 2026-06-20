@@ -2,8 +2,8 @@ package auth
 
 import (
 	"context"
-	"crypto/rsa"
 	"crypto/rand"
+	"crypto/rsa"
 	"encoding/hex"
 	"fmt"
 	"time"
@@ -30,12 +30,12 @@ func NewJWTTokenProvider(privateKey *rsa.PrivateKey, issuer string) *JWTTokenPro
 func (p *JWTTokenProvider) GenerateAccessToken(ctx context.Context, user *domain.AdminUser, expiry time.Duration) (string, error) {
 	now := time.Now()
 	claims := jwt.MapClaims{
-		"iss": p.issuer,
-		"sub": user.ID,
-		"exp": now.Add(expiry).Unix(),
-		"iat": now.Unix(),
+		"iss":   p.issuer,
+		"sub":   user.ID,
+		"exp":   now.Add(expiry).Unix(),
+		"iat":   now.Unix(),
 		"email": user.Email,
-		"role": user.RoleID,
+		"role":  user.RoleID,
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
