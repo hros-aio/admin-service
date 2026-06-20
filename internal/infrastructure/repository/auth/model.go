@@ -39,7 +39,7 @@ type sessionTokenModel struct {
 	UserAgent    string     `gorm:"type:text"`
 	CreatedAt    time.Time  `gorm:"not null"`
 	RevokedAt    *time.Time `gorm:"default:null"`
-	RevokeReason string     `gorm:"type:varchar(255)"`
+	RevokeReason *string    `gorm:"type:varchar(100)"`
 }
 
 // TableName returns the table name for the sessionTokenModel.

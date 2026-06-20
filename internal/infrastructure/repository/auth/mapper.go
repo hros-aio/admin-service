@@ -47,6 +47,10 @@ func fromDomain(u *domain.AdminUser) *adminUserModel {
 
 // toSessionTokenDomain converts the GORM model to a domain entity.
 func (m sessionTokenModel) toDomain() *domain.SessionToken {
+	var reason string
+	if m.RevokeReason != nil {
+		reason = *m.RevokeReason
+	}
 	return &domain.SessionToken{
 		ID:           m.ID,
 		AdminID:      m.AdminID,
@@ -57,12 +61,16 @@ func (m sessionTokenModel) toDomain() *domain.SessionToken {
 		UserAgent:    m.UserAgent,
 		CreatedAt:    m.CreatedAt,
 		RevokedAt:    m.RevokedAt,
-		RevokeReason: m.RevokeReason,
+		RevokeReason: reason,
 	}
 }
 
 // fromSessionTokenDomain converts a domain entity to a GORM model.
 func fromSessionTokenDomain(t *domain.SessionToken) *sessionTokenModel {
+	var reason *string
+	if t.RevokeReason != "" {
+		reason = &t.RevokeReason
+	}
 	return &sessionTokenModel{
 		ID:           t.ID,
 		AdminID:      t.AdminID,
@@ -73,6 +81,6 @@ func fromSessionTokenDomain(t *domain.SessionToken) *sessionTokenModel {
 		UserAgent:    t.UserAgent,
 		CreatedAt:    t.CreatedAt,
 		RevokedAt:    t.RevokedAt,
-		RevokeReason: t.RevokeReason,
+		RevokeReason: reason,
 	}
 }
