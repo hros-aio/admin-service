@@ -14,10 +14,6 @@ Always read these files before planning or coding:
 - @docs/engineering/implementation-rules.md
 - @docs/engineering/foundation.md
 
-<!-- SPECKIT START -->
-Active Plan: [specs/006-admin-login-usecase/plan.md](specs/006-admin-login-usecase/plan.md)
-<!-- SPECKIT END -->
-
 ## Architecture Rules
 
 This project uses:
