@@ -4,6 +4,7 @@ package app
 import (
 	"log/slog"
 
+	adapterHttp "github.com/hros/admin-service/internal/adapter/http"
 	"github.com/hros/admin-service/internal/application"
 	"github.com/hros/admin-service/internal/config"
 	authInfra "github.com/hros/admin-service/internal/infrastructure/auth"
@@ -43,6 +44,7 @@ var Module = fx.Options(
 	// Adapters/Handlers
 	fx.Provide(http.NewHealthHandler),
 	fx.Provide(http.NewServer),
+	adapterHttp.Module,
 
 	// Invokes
 	fx.Invoke(func(_ *echo.Echo) {}),
