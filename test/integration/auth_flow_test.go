@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -110,6 +111,17 @@ func runSQLFile(t *testing.T, db *gorm.DB, filepath string) {
 	}
 }
 
+// getFreePort allocates a free TCP port dynamically from the OS.
+func getFreePort(t *testing.T) int {
+	t.Helper()
+	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
+	require.NoError(t, err)
+	l, err := net.ListenTCP("tcp", addr)
+	require.NoError(t, err)
+	defer func() { _ = l.Close() }()
+	return l.Addr().(*net.TCPAddr).Port
+}
+
 func TestAuthFlow(t *testing.T) {
 	ctx := context.Background()
 
@@ -142,12 +154,6 @@ func TestAuthFlow(t *testing.T) {
 	runSQLFile(t, db, filepath.Join(migDir, "000001_init.up.sql"))
 	runSQLFile(t, db, filepath.Join(migDir, "000002_create_auth_tables.up.sql"))
 
-	// Adjust the check constraint on revoke_reason to allow empty string (due to GORM mapper default)
-	err = db.Exec("ALTER TABLE session_tokens DROP CONSTRAINT session_tokens_revoke_reason_check").Error
-	require.NoError(t, err)
-	err = db.Exec("ALTER TABLE session_tokens ADD CONSTRAINT session_tokens_revoke_reason_check CHECK (revoke_reason IN ('logout', 'password_change', 'role_change', 'deactivation', 'expiry', 'admin_revoke', ''))").Error
-	require.NoError(t, err)
-
 	// 3. Seed active Super Admin user
 	roleID := domain.NewUUID()
 	err = db.Exec("INSERT INTO roles (id, name, description, is_system_role) VALUES (?, ?, ?, ?)",
@@ -168,7 +174,7 @@ func TestAuthFlow(t *testing.T) {
 	defer mr.Close()
 
 	// 5. Bootstrap the Fx Echo application with custom overridden config
-	testPort := 4005
+	testPort := getFreePort(t)
 	opts := fx.Options(
 		fx.NopLogger,
 		fx.Provide(func() (*config.Config, error) {
@@ -228,11 +234,23 @@ func TestAuthFlow(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	// Brief wait to ensure server starts listening
-	time.Sleep(100 * time.Millisecond)
-
 	baseURL := fmt.Sprintf("http://localhost:%d", testPort)
-	client := &http.Client{Timeout: 5 * time.Second}
+	client := &http.Client{Timeout: 1 * time.Second}
+
+	// Poll the readiness endpoint (/health) to ensure the server has fully started.
+	var ready bool
+	for i := 0; i < 50; i++ {
+		resp, err := client.Get(baseURL + "/health")
+		if err == nil {
+			_ = resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				ready = true
+				break
+			}
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	require.True(t, ready, "server failed to become ready in time")
 
 	// 6. Execute POST /v1/auth/login with valid credentials
 	loginReq := dto.LoginRequest{

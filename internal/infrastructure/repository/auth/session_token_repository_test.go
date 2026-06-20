@@ -46,7 +46,7 @@ func TestGormSessionTokenRepository_Save(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		mock.ExpectBegin()
 		mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "session_tokens" ("id","admin_id","refresh_token","expires_at","is_persistent","ip_address","user_agent","created_at","revoke_reason") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING "revoked_at"`)).
-			WithArgs(token.ID, token.AdminID, token.RefreshToken, token.ExpiresAt, token.IsPersistent, token.IPAddress, token.UserAgent, token.CreatedAt, token.RevokeReason).
+			WithArgs(token.ID, token.AdminID, token.RefreshToken, token.ExpiresAt, token.IsPersistent, token.IPAddress, token.UserAgent, token.CreatedAt, nil).
 			WillReturnRows(sqlmock.NewRows([]string{"revoked_at"}).AddRow(nil))
 		mock.ExpectCommit()
 
