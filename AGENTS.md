@@ -21,3 +21,8 @@ Reject or flag if:
 - behavior differs from acceptance criteria
 
 Do not implement new features during review unless explicitly requested.
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->
