@@ -52,6 +52,22 @@ As a system auditor, I want every login to be tracked so that we have a record o
 
 1. **Given** any login attempt, **When** processed by the use case, **Then** the audit log interface is invoked before returning the response to the caller.
 
+---
+
+### User Story 4 - Secure Logout (Priority: P1)
+
+As an Admin User, I want to securely log out of the HROS admin portal so that my active session is terminated.
+
+**Why this priority**: Crucial security feature to prevent unauthorized access on shared or public devices.
+
+**Independent Test**: Can be tested by providing a valid session token, calling LogoutUseCase, and verifying that the session token is removed from persistence and a `logout.success` audit event is emitted.
+
+**Acceptance Scenarios**:
+
+1. **Given** a valid session token, **When** the logout service is called, **Then** the session token record is deleted from the database.
+2. **Given** a successful logout, **When** the system processes the request, **Then** a "logout.success" event is emitted to the audit log with the user's ID and token.
+3. **Given** a non-existent or empty session token, **When** the logout service is called, **Then** the system returns a "session token not found" error.
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
@@ -64,6 +80,8 @@ As a system auditor, I want every login to be tracked so that we have a record o
 - **FR-006**: The system MUST emit a "login.success" event to the audit log interface on successful login, including the user's ID and timestamp.
 - **FR-007**: The system MUST emit a "login.failed" event to the audit log interface on failed login, including the attempted email and timestamp.
 - **FR-008**: The system MUST return a domain-specific "Unauthenticated" error on any credential failure, which maps to a 401 Unauthorized status.
+- **FR-009**: The system MUST delete the session token from the `SessionTokenRepository` when the logout service is called with a valid token.
+- **FR-010**: The system MUST emit a "logout.success" event to the audit log interface on successful logout, including the admin user's ID and token.
 
 ### Key Entities *(include if feature involves data)*
 

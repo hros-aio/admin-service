@@ -100,6 +100,14 @@
 
 ---
 
+## Phase 7: Logout Use Case (TSK-AUTH-007)
+
+**Goal**: Terminate active session and record the event.
+
+- [x] TSK-AUTH-007 [US4] Implement `LogoutUseCase` in `internal/application/usecase/logout_usecase.go` and unit tests in `internal/application/usecase/logout_usecase_test.go`
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

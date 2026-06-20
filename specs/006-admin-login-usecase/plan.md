@@ -73,7 +73,9 @@ internal/
 ├── application/
 │   ├── usecase/
 │   │   ├── login_usecase.go    # TO BE CREATED
-│   │   └── login_usecase_test.go # TO BE CREATED
+│   │   ├── login_usecase_test.go # TO BE CREATED
+│   │   ├── logout_usecase.go   # TO BE CREATED (TSK-AUTH-007)
+│   │   └── logout_usecase_test.go # TO BE CREATED (TSK-AUTH-007)
 │   └── auth/
 │       ├── token_provider.go   # JWT interface
 │       └── password_helper.go  # Bcrypt interface

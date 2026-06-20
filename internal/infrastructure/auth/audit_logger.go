@@ -34,3 +34,12 @@ func (l *SlogAuditLogger) LogLoginFailed(ctx context.Context, email string, reas
 		slog.String("reason", reason),
 	)
 }
+
+// LogLogoutSuccess logs a successful logout event.
+func (l *SlogAuditLogger) LogLogoutSuccess(ctx context.Context, userID string, token string) {
+	l.logger.InfoContext(ctx, "logout success",
+		slog.String("event", "logout.success"),
+		slog.String("user_id", userID),
+		slog.String("token", token),
+	)
+}
