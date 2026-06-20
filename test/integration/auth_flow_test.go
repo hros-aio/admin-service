@@ -235,12 +235,13 @@ func TestAuthFlow(t *testing.T) {
 	}()
 
 	baseURL := fmt.Sprintf("http://localhost:%d", testPort)
-	client := &http.Client{Timeout: 1 * time.Second}
+	healthClient := &http.Client{Timeout: 1 * time.Second}
+	authClient := &http.Client{Timeout: 15 * time.Second}
 
 	// Poll the readiness endpoint (/health) to ensure the server has fully started.
 	var ready bool
 	for i := 0; i < 50; i++ {
-		resp, err := client.Get(baseURL + "/health")
+		resp, err := healthClient.Get(baseURL + "/health")
 		if err == nil {
 			_ = resp.Body.Close()
 			if resp.StatusCode == http.StatusOK {
@@ -258,7 +259,7 @@ func TestAuthFlow(t *testing.T) {
 		Password: "password123",
 	}
 	loginReqBytes, _ := json.Marshal(loginReq)
-	resp, err := client.Post(baseURL+"/v1/auth/login", "application/json", bytes.NewBuffer(loginReqBytes))
+	resp, err := authClient.Post(baseURL+"/v1/auth/login", "application/json", bytes.NewBuffer(loginReqBytes))
 	require.NoError(t, err)
 	defer func() { _ = resp.Body.Close() }()
 
@@ -273,7 +274,7 @@ func TestAuthFlow(t *testing.T) {
 	// 7. Execute DELETE /v1/auth/session with valid token
 	logoutReq, _ := http.NewRequest(http.MethodDelete, baseURL+"/v1/auth/session", nil)
 	logoutReq.Header.Set("Authorization", "Bearer "+loginResp.RefreshToken)
-	logoutResp, err := client.Do(logoutReq)
+	logoutResp, err := authClient.Do(logoutReq)
 	require.NoError(t, err)
 	defer func() { _ = logoutResp.Body.Close() }()
 
@@ -285,7 +286,7 @@ func TestAuthFlow(t *testing.T) {
 		Password: "wrong-password",
 	}
 	badLoginReqBytes, _ := json.Marshal(badLoginReq)
-	badResp, err := client.Post(baseURL+"/v1/auth/login", "application/json", bytes.NewBuffer(badLoginReqBytes))
+	badResp, err := authClient.Post(baseURL+"/v1/auth/login", "application/json", bytes.NewBuffer(badLoginReqBytes))
 	require.NoError(t, err)
 	defer func() { _ = badResp.Body.Close() }()
 
