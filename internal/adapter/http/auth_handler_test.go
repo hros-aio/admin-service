@@ -378,4 +378,46 @@ func TestAuthHandler_Logout(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "unauthorized", errorResp.Code)
 	})
+
+	t.Run("UseCase Error Returns 500", func(t *testing.T) {
+		mockSessionRepo := new(mockSessionRepo)
+		mockAuditLogger := new(mockAuditLogger)
+
+		logoutUC := usecase.NewLogoutUseCase(mockSessionRepo, mockAuditLogger)
+		handler := NewAuthHandler(nil, logoutUC)
+
+		req := httptest.NewRequest(http.MethodDelete, "/v1/auth/session", nil)
+		req.Header.Set("Authorization", "Bearer valid-refresh-token")
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		mockSessionRepo.On("DeleteByToken", mock.Anything, "valid-refresh-token").Return(errors.New("db error"))
+
+		err := handler.Logout(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+
+		var errorResp sharedErrors.ErrorResponse
+		err = json.Unmarshal(rec.Body.Bytes(), &errorResp)
+		assert.NoError(t, err)
+		assert.Equal(t, "internal_error", errorResp.Code)
+	})
+
+	t.Run("Empty Token After Bearer Prefix", func(t *testing.T) {
+		handler := NewAuthHandler(nil, nil)
+
+		req := httptest.NewRequest(http.MethodDelete, "/v1/auth/session", nil)
+		req.Header.Set("Authorization", "Bearer ")
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		err := handler.Logout(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+
+		var errorResp sharedErrors.ErrorResponse
+		err = json.Unmarshal(rec.Body.Bytes(), &errorResp)
+		assert.NoError(t, err)
+		assert.Equal(t, "unauthorized", errorResp.Code)
+	})
 }
