@@ -1,3 +1,4 @@
+// Package errors defines domain-level error types for authentication and authorization.
 package errors
 
 import "errors"
@@ -26,6 +27,9 @@ var (
 
 	// ErrTokenRevoked is returned when a session token has been revoked.
 	ErrTokenRevoked = errors.New("session token has been revoked")
+
+	// ErrInvalidRefreshToken is returned when a refresh token is invalid.
+	ErrInvalidRefreshToken = errors.New("invalid refresh token")
 
 	// ErrUnauthorized is returned when a request lacks valid authentication.
 	ErrUnauthorized = errors.New("unauthorized")
