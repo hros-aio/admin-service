@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	adapterHttp "github.com/hros/admin-service/internal/adapter/http"
+	kafkaProducer "github.com/hros/admin-service/internal/adapter/kafka/producer"
 	"github.com/hros/admin-service/internal/application"
 	"github.com/hros/admin-service/internal/config"
 	authInfra "github.com/hros/admin-service/internal/infrastructure/auth"
@@ -36,6 +37,7 @@ var Module = fx.Options(
 	fx.Provide(authRepo.NewGormSessionTokenRepository),
 	fx.Provide(redis.NewRedisClient),
 	fx.Provide(cache.NewRedisTokenBlacklist),
+	fx.Provide(cache.NewRedisBruteForceCache),
 	fx.Provide(kafka.NewKafkaProducer),
 	fx.Provide(kafka.NewKafkaConsumerGroup),
 	authInfra.Module,
@@ -47,6 +49,7 @@ var Module = fx.Options(
 	fx.Provide(http.NewHealthHandler),
 	fx.Provide(http.NewServer),
 	adapterHttp.Module,
+	kafkaProducer.Module,
 
 	// Invokes
 	fx.Invoke(func(_ *echo.Echo) {}),
