@@ -78,6 +78,10 @@ func (m *mockSessionRepo) Revoke(ctx context.Context, t string, r string) error 
 	return m.Called(ctx, t, r).Error(0)
 }
 
+func (m *mockSessionRepo) UpdateToken(ctx context.Context, session *domain.SessionToken) error {
+	return m.Called(ctx, session).Error(0)
+}
+
 type mockPasswordHelper struct{ mock.Mock }
 
 func (m *mockPasswordHelper) Hash(_ string) (string, error) {

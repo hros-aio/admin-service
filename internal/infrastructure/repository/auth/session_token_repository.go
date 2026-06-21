@@ -62,3 +62,13 @@ func (r *GormSessionTokenRepository) Revoke(ctx context.Context, token string, r
 			"revoke_reason": reason,
 		}).Error
 }
+
+// UpdateToken updates an existing session token in the database.
+func (r *GormSessionTokenRepository) UpdateToken(ctx context.Context, session *domain.SessionToken) error {
+	if session == nil {
+		return gorm.ErrInvalidData
+	}
+	db := platformDB.GetTx(ctx, r.db)
+	model := fromSessionTokenDomain(session)
+	return db.Save(model).Error
+}
