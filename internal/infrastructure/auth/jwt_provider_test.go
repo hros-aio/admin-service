@@ -46,6 +46,8 @@ func TestJWTTokenProvider(t *testing.T) {
 		assert.Equal(t, user.ID, claims["sub"])
 		assert.Equal(t, user.Email, claims["email"])
 		assert.Equal(t, user.RoleID, claims["role"])
+		assert.NotEmpty(t, claims["jti"])
+		assert.IsType(t, "", claims["jti"])
 	})
 
 	t.Run("GenerateRefreshToken", func(t *testing.T) {

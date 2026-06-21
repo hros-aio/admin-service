@@ -111,7 +111,7 @@ func TestLoginUseCase_Execute(t *testing.T) {
 		UserAgent: "test-agent",
 	}
 
-	t.Run("Success", func(t *testing.T) {
+	t.Run("Success_NoRememberMe", func(t *testing.T) {
 		user := &domain.AdminUser{
 			ID:           "user-id",
 			Email:        input.Email,
@@ -119,14 +119,54 @@ func TestLoginUseCase_Execute(t *testing.T) {
 			Status:       domain.AdminUserStatusActive,
 		}
 
-		userRepo.On("FindByEmail", ctx, input.Email).Return(user, nil).Once()
-		password.On("Compare", "hashed", input.Password).Return(nil).Once()
+		inputNoRemember := input
+		inputNoRemember.RememberMe = false
+
+		userRepo.On("FindByEmail", ctx, inputNoRemember.Email).Return(user, nil).Once()
+		password.On("Compare", "hashed", inputNoRemember.Password).Return(nil).Once()
 		tokens.On("GenerateAccessToken", ctx, user, 15*time.Minute).Return("access-token", nil).Once()
 		tokens.On("GenerateRefreshToken", ctx).Return("refresh-token", nil).Once()
-		sessionRepo.On("Save", ctx, mock.AnythingOfType("*domain.SessionToken")).Return(nil).Once()
+		sessionRepo.On("Save", ctx, mock.MatchedBy(func(s *domain.SessionToken) bool {
+			diff := time.Until(s.ExpiresAt)
+			return !s.IsPersistent && diff > 23*time.Hour && diff < 25*time.Hour
+		})).Return(nil).Once()
 		audit.On("LogLoginSuccess", ctx, user.ID, user.Email).Return().Once()
 
-		output, err := uc.Execute(ctx, input)
+		output, err := uc.Execute(ctx, inputNoRemember)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, output)
+		assert.Equal(t, "access-token", output.AccessToken)
+		assert.Equal(t, "refresh-token", output.RefreshToken)
+		userRepo.AssertExpectations(t)
+		password.AssertExpectations(t)
+		tokens.AssertExpectations(t)
+		sessionRepo.AssertExpectations(t)
+		audit.AssertExpectations(t)
+	})
+
+	t.Run("Success_RememberMe", func(t *testing.T) {
+		user := &domain.AdminUser{
+			ID:           "user-id",
+			Email:        input.Email,
+			PasswordHash: "hashed",
+			Status:       domain.AdminUserStatusActive,
+		}
+
+		inputRemember := input
+		inputRemember.RememberMe = true
+
+		userRepo.On("FindByEmail", ctx, inputRemember.Email).Return(user, nil).Once()
+		password.On("Compare", "hashed", inputRemember.Password).Return(nil).Once()
+		tokens.On("GenerateAccessToken", ctx, user, 15*time.Minute).Return("access-token", nil).Once()
+		tokens.On("GenerateRefreshToken", ctx).Return("refresh-token", nil).Once()
+		sessionRepo.On("Save", ctx, mock.MatchedBy(func(s *domain.SessionToken) bool {
+			diff := time.Until(s.ExpiresAt)
+			return s.IsPersistent && diff > 29*24*time.Hour && diff < 31*24*time.Hour
+		})).Return(nil).Once()
+		audit.On("LogLoginSuccess", ctx, user.ID, user.Email).Return().Once()
+
+		output, err := uc.Execute(ctx, inputRemember)
 
 		assert.NoError(t, err)
 		assert.NotNil(t, output)

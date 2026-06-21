@@ -30,6 +30,7 @@ func NewJWTTokenProvider(privateKey *rsa.PrivateKey, issuer string) *JWTTokenPro
 func (p *JWTTokenProvider) GenerateAccessToken(ctx context.Context, user *domain.AdminUser, expiry time.Duration) (string, error) {
 	now := time.Now()
 	claims := jwt.MapClaims{
+		"jti":   domain.NewUUID(),
 		"iss":   p.issuer,
 		"sub":   user.ID,
 		"exp":   now.Add(expiry).Unix(),

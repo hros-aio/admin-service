@@ -25,5 +25,5 @@ Do not implement new features during review unless explicitly requested.
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-[specs/014-refresh-session-usecase/plan.md](file:///home/ren0503/new-hros/admin-service/specs/014-refresh-session-usecase/plan.md)
+[specs/015-remember-me-and-logout-blacklist/plan.md](file:///home/ren0503/new-hros/admin-service/specs/015-remember-me-and-logout-blacklist/plan.md)
 <!-- SPECKIT END -->

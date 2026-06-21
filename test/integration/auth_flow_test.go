@@ -29,6 +29,7 @@ import (
 	"github.com/hros/admin-service/internal/config"
 	"github.com/hros/admin-service/internal/domain"
 	authInfra "github.com/hros/admin-service/internal/infrastructure/auth"
+	authCache "github.com/hros/admin-service/internal/infrastructure/cache"
 	authRepo "github.com/hros/admin-service/internal/infrastructure/repository/auth"
 	"github.com/hros/admin-service/internal/platform/database"
 	httpPlatform "github.com/hros/admin-service/internal/platform/http"
@@ -208,6 +209,7 @@ func TestAuthFlow(t *testing.T) {
 		fx.Provide(authRepo.NewGormAdminUserRepository),
 		fx.Provide(authRepo.NewGormSessionTokenRepository),
 		fx.Provide(redis.NewRedisClient),
+		fx.Provide(authCache.NewRedisTokenBlacklist),
 		fx.Provide(func() (sarama.SyncProducer, error) {
 			return mocks.NewSyncProducer(t, nil), nil
 		}),
