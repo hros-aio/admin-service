@@ -8,6 +8,11 @@ type LoginRequest struct {
 	RememberMe bool   `json:"remember_me"`
 }
 
+// RefreshRequest represents the payload for rotating the access token.
+type RefreshRequest struct {
+	RefreshToken string `json:"refresh_token" validate:"required"`
+}
+
 // LoginResponse represents the successful login response containing tokens.
 type LoginResponse struct {
 	AccessToken  string `json:"access_token"`
