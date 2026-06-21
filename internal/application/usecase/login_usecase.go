@@ -85,12 +85,17 @@ func (uc *LoginUseCase) Execute(ctx context.Context, input LoginInput) (*LoginOu
 	}
 
 	// 6. Save session token to DB
+	expiryDuration := 24 * time.Hour
+	if input.RememberMe {
+		expiryDuration = 30 * 24 * time.Hour
+	}
+
 	session := &domain.SessionToken{
 		ID:           domain.NewUUID(), // Assuming a helper exists or we'll generate it
 		AdminID:      user.ID,
 		RefreshToken: refreshToken,
-		ExpiresAt:    time.Now().Add(30 * 24 * time.Hour), // 30 days expiry for refresh token
-		IsPersistent: true,
+		ExpiresAt:    time.Now().Add(expiryDuration),
+		IsPersistent: input.RememberMe,
 		IPAddress:    input.IPAddress,
 		UserAgent:    input.UserAgent,
 		CreatedAt:    time.Now(),

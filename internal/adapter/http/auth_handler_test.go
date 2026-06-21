@@ -126,6 +126,17 @@ func (m *mockAuditLogger) LogSessionRefreshed(ctx context.Context, userID string
 	m.Called(ctx, userID)
 }
 
+type mockTokenBlacklist struct{ mock.Mock }
+
+func (m *mockTokenBlacklist) Add(ctx context.Context, token string, ttl time.Duration) error {
+	return m.Called(ctx, token, ttl).Error(0)
+}
+
+func (m *mockTokenBlacklist) Exists(ctx context.Context, token string) (bool, error) {
+	args := m.Called(ctx, token)
+	return args.Bool(0), args.Error(1)
+}
+
 func TestAuthHandler_Login(t *testing.T) {
 	e := echo.New()
 
@@ -137,7 +148,8 @@ func TestAuthHandler_Login(t *testing.T) {
 		mockAuditLogger := new(mockAuditLogger)
 
 		loginUC := usecase.NewLoginUseCase(mockUserRepo, mockSessionRepo, mockPasswordHelper, mockTokenProvider, mockAuditLogger)
-		logoutUC := usecase.NewLogoutUseCase(mockSessionRepo, mockAuditLogger)
+		mockTokenBlacklist := new(mockTokenBlacklist)
+		logoutUC := usecase.NewLogoutUseCase(mockSessionRepo, mockTokenBlacklist, mockAuditLogger)
 		handler := NewAuthHandler(loginUC, logoutUC)
 
 		reqBody := dto.LoginRequest{
@@ -183,7 +195,8 @@ func TestAuthHandler_Login(t *testing.T) {
 		mockAuditLogger := new(mockAuditLogger)
 
 		loginUC := usecase.NewLoginUseCase(mockUserRepo, mockSessionRepo, mockPasswordHelper, mockTokenProvider, mockAuditLogger)
-		logoutUC := usecase.NewLogoutUseCase(mockSessionRepo, mockAuditLogger)
+		mockTokenBlacklist := new(mockTokenBlacklist)
+		logoutUC := usecase.NewLogoutUseCase(mockSessionRepo, mockTokenBlacklist, mockAuditLogger)
 		handler := NewAuthHandler(loginUC, logoutUC)
 
 		reqBody := dto.LoginRequest{
@@ -226,7 +239,8 @@ func TestAuthHandler_Login(t *testing.T) {
 		mockAuditLogger := new(mockAuditLogger)
 
 		loginUC := usecase.NewLoginUseCase(mockUserRepo, mockSessionRepo, mockPasswordHelper, mockTokenProvider, mockAuditLogger)
-		logoutUC := usecase.NewLogoutUseCase(mockSessionRepo, mockAuditLogger)
+		mockTokenBlacklist := new(mockTokenBlacklist)
+		logoutUC := usecase.NewLogoutUseCase(mockSessionRepo, mockTokenBlacklist, mockAuditLogger)
 		handler := NewAuthHandler(loginUC, logoutUC)
 
 		reqBody := dto.LoginRequest{
@@ -269,7 +283,8 @@ func TestAuthHandler_Login(t *testing.T) {
 		mockAuditLogger := new(mockAuditLogger)
 
 		loginUC := usecase.NewLoginUseCase(mockUserRepo, mockSessionRepo, mockPasswordHelper, mockTokenProvider, mockAuditLogger)
-		logoutUC := usecase.NewLogoutUseCase(mockSessionRepo, mockAuditLogger)
+		mockTokenBlacklist := new(mockTokenBlacklist)
+		logoutUC := usecase.NewLogoutUseCase(mockSessionRepo, mockTokenBlacklist, mockAuditLogger)
 		handler := NewAuthHandler(loginUC, logoutUC)
 
 		reqBody := dto.LoginRequest{
@@ -334,9 +349,10 @@ func TestAuthHandler_Logout(t *testing.T) {
 
 	t.Run("Successful Logout", func(t *testing.T) {
 		mockSessionRepo := new(mockSessionRepo)
+		mockTokenBlacklist := new(mockTokenBlacklist)
 		mockAuditLogger := new(mockAuditLogger)
 
-		logoutUC := usecase.NewLogoutUseCase(mockSessionRepo, mockAuditLogger)
+		logoutUC := usecase.NewLogoutUseCase(mockSessionRepo, mockTokenBlacklist, mockAuditLogger)
 		handler := NewAuthHandler(nil, logoutUC)
 
 		req := httptest.NewRequest(http.MethodDelete, "/v1/auth/session", nil)
@@ -389,9 +405,10 @@ func TestAuthHandler_Logout(t *testing.T) {
 
 	t.Run("UseCase Error Returns 500", func(t *testing.T) {
 		mockSessionRepo := new(mockSessionRepo)
+		mockTokenBlacklist := new(mockTokenBlacklist)
 		mockAuditLogger := new(mockAuditLogger)
 
-		logoutUC := usecase.NewLogoutUseCase(mockSessionRepo, mockAuditLogger)
+		logoutUC := usecase.NewLogoutUseCase(mockSessionRepo, mockTokenBlacklist, mockAuditLogger)
 		handler := NewAuthHandler(nil, logoutUC)
 
 		req := httptest.NewRequest(http.MethodDelete, "/v1/auth/session", nil)

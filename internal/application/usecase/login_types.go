@@ -2,10 +2,11 @@ package usecase
 
 // LoginInput represents the input for the login use case.
 type LoginInput struct {
-	Email     string
-	Password  string
-	IPAddress string
-	UserAgent string
+	Email      string
+	Password   string
+	RememberMe bool
+	IPAddress  string
+	UserAgent  string
 }
 
 // LoginOutput represents the output of the login use case.
