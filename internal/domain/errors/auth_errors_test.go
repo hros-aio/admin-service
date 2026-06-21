@@ -11,6 +11,7 @@ func TestAuthErrors(t *testing.T) {
 	assert.Equal(t, "admin user not found", ErrUserNotFound.Error())
 	assert.Equal(t, "admin user account is not active", ErrUserInactive.Error())
 	assert.Equal(t, "admin user account is locked", ErrUserLocked.Error())
+	assert.Equal(t, "account is temporarily locked", ErrAccountLocked.Error())
 	assert.Equal(t, "email already exists", ErrEmailAlreadyExists.Error())
 	assert.Equal(t, "session token not found", ErrTokenNotFound.Error())
 	assert.Equal(t, "session token has expired", ErrTokenExpired.Error())

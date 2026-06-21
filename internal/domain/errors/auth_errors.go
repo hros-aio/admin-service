@@ -16,6 +16,9 @@ var (
 	// ErrUserLocked is returned when a user account is locked due to too many failed attempts.
 	ErrUserLocked = errors.New("admin user account is locked")
 
+	// ErrAccountLocked is returned when a user account is temporarily locked due to brute-force protection.
+	ErrAccountLocked = errors.New("account is temporarily locked")
+
 	// ErrEmailAlreadyExists is returned when trying to create a user with an existing email.
 	ErrEmailAlreadyExists = errors.New("email already exists")
 

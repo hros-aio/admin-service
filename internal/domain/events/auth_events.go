@@ -1,0 +1,24 @@
+// Package events defines domain-level event structures.
+package events
+
+import (
+	"time"
+)
+
+// AccountLockedEvent defines the payload structure for the 'account.locked' audit event.
+type AccountLockedEvent struct {
+	Email          string    `json:"email"`
+	LockedAt       time.Time `json:"locked_at"`
+	UnlockAt       time.Time `json:"unlock_at"`
+	FailedAttempts int       `json:"failed_attempts"`
+	IPAddress      string    `json:"ip_address"`
+	UserAgent      string    `json:"user_agent"`
+}
+
+// EmailSendEvent defines the payload structure for the 'email.send' Kafka notification event.
+type EmailSendEvent struct {
+	To           string                 `json:"to"`
+	Subject      string                 `json:"subject"`
+	Template     string                 `json:"template"`
+	TemplateData map[string]interface{} `json:"template_data"`
+}
