@@ -68,7 +68,7 @@ func TestRedisBruteForceCache_IncrementFailedAttempts(t *testing.T) {
 
 	t.Run("graceful degradation on error", func(t *testing.T) {
 		badClient := redis.NewClient(&redis.Options{
-			Addr:        "localhost:9999",
+			Addr:        "192.0.2.1:6379",
 			MaxRetries:  -1,
 			DialTimeout: 10 * time.Millisecond,
 		})
@@ -115,7 +115,7 @@ func TestRedisBruteForceCache_GetFailedAttempts(t *testing.T) {
 
 	t.Run("graceful degradation on error", func(t *testing.T) {
 		badClient := redis.NewClient(&redis.Options{
-			Addr:        "localhost:9999",
+			Addr:        "192.0.2.1:6379",
 			MaxRetries:  -1,
 			DialTimeout: 10 * time.Millisecond,
 		})
@@ -163,7 +163,7 @@ func TestRedisBruteForceCache_SetLockout(t *testing.T) {
 
 	t.Run("graceful degradation on error", func(t *testing.T) {
 		badClient := redis.NewClient(&redis.Options{
-			Addr:        "localhost:9999",
+			Addr:        "192.0.2.1:6379",
 			MaxRetries:  -1,
 			DialTimeout: 10 * time.Millisecond,
 		})
@@ -213,6 +213,16 @@ func TestRedisBruteForceCache_IsLocked(t *testing.T) {
 		assert.True(t, expiry.After(time.Now().Add(24*time.Minute)))
 	})
 
+	t.Run("is locked with malformed value and no TTL - fails open", func(t *testing.T) {
+		mr.FlushAll()
+		err := mr.Set(key, "invalid-time")
+		require.NoError(t, err)
+
+		locked, _, err := cache.IsLocked(ctx, email)
+		require.NoError(t, err)
+		assert.False(t, locked)
+	})
+
 	t.Run("is not locked", func(t *testing.T) {
 		mr.FlushAll()
 
@@ -223,7 +233,7 @@ func TestRedisBruteForceCache_IsLocked(t *testing.T) {
 
 	t.Run("graceful degradation on error", func(t *testing.T) {
 		badClient := redis.NewClient(&redis.Options{
-			Addr:        "localhost:9999",
+			Addr:        "192.0.2.1:6379",
 			MaxRetries:  -1,
 			DialTimeout: 10 * time.Millisecond,
 		})
@@ -268,7 +278,7 @@ func TestRedisBruteForceCache_Reset(t *testing.T) {
 
 	t.Run("graceful degradation on error", func(t *testing.T) {
 		badClient := redis.NewClient(&redis.Options{
-			Addr:        "localhost:9999",
+			Addr:        "192.0.2.1:6379",
 			MaxRetries:  -1,
 			DialTimeout: 10 * time.Millisecond,
 		})

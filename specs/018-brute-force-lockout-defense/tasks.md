@@ -43,7 +43,7 @@
 **Purpose**: Implement the `BruteForceCache` interface using Redis.
 
 - [x] T008 [P] [US1] Implement the `BruteForceCache` interface using Redis in `internal/infrastructure/cache/brute_force_redis.go` using `auth:failed_attempts:{email}` (15-min TTL) and `auth:lockout:{email}` (30-min TTL).
-- [x] T009 [P] [US1] Implement unit tests verifying Redis caching logic and graceful degradation in `internal/infrastructure/cache/brute_force_redis_test.go` using a mocked Redis client.
+- [x] T009 [P] [US1] Implement unit tests verifying Redis caching logic and graceful degradation in `internal/infrastructure/cache/brute_force_redis_test.go` using an in-memory Redis server (miniredis).
 
 **Checkpoint**: Redis cache safely tracks attempts and lockout states with exact TTLs, and tests pass with graceful degradation.
 
