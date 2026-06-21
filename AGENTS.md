@@ -25,5 +25,5 @@ Do not implement new features during review unless explicitly requested.
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-[specs/012-redis-token-blacklist/plan.md](file:///home/ren0503/new-hros/admin-service/specs/012-redis-token-blacklist/plan.md)
+[specs/013-session-token-repository/plan.md](file:///home/ren0503/new-hros/admin-service/specs/013-session-token-repository/plan.md)
 <!-- SPECKIT END -->
