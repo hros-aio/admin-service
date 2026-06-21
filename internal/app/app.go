@@ -8,6 +8,7 @@ import (
 	"github.com/hros/admin-service/internal/application"
 	"github.com/hros/admin-service/internal/config"
 	authInfra "github.com/hros/admin-service/internal/infrastructure/auth"
+	"github.com/hros/admin-service/internal/infrastructure/cache"
 	authRepo "github.com/hros/admin-service/internal/infrastructure/repository/auth"
 	"github.com/hros/admin-service/internal/platform/database"
 	"github.com/hros/admin-service/internal/platform/http"
@@ -34,6 +35,7 @@ var Module = fx.Options(
 	fx.Provide(authRepo.NewGormAdminUserRepository),
 	fx.Provide(authRepo.NewGormSessionTokenRepository),
 	fx.Provide(redis.NewRedisClient),
+	fx.Provide(cache.NewRedisTokenBlacklist),
 	fx.Provide(kafka.NewKafkaProducer),
 	fx.Provide(kafka.NewKafkaConsumerGroup),
 	authInfra.Module,
