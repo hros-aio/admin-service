@@ -38,6 +38,17 @@
 
 ---
 
+## Phase 2.5: Infrastructure Cache Implementation (TSK-AUTH-019)
+
+**Purpose**: Implement the `BruteForceCache` interface using Redis.
+
+- [x] T008 [P] [US1] Implement the `BruteForceCache` interface using Redis in `internal/infrastructure/cache/brute_force_redis.go` using `auth:failed_attempts:{email}` (15-min TTL) and `auth:lockout:{email}` (30-min TTL).
+- [x] T009 [P] [US1] Implement unit tests verifying Redis caching logic and graceful degradation in `internal/infrastructure/cache/brute_force_redis_test.go` using a mocked Redis client.
+
+**Checkpoint**: Redis cache safely tracks attempts and lockout states with exact TTLs, and tests pass with graceful degradation.
+
+---
+
 ## Phase 3: Polish
 
 - [x] T006 Run formatting (`go fmt ./...`) and linting (`golangci-lint run`) on modified files.
