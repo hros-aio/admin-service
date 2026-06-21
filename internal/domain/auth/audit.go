@@ -7,4 +7,5 @@ type AuditLogger interface {
 	LogLoginSuccess(ctx context.Context, userID string, email string)
 	LogLoginFailed(ctx context.Context, email string, reason string)
 	LogLogoutSuccess(ctx context.Context, token string)
+	LogSessionRefreshed(ctx context.Context, userID string)
 }

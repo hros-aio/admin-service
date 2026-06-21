@@ -59,4 +59,17 @@ func TestSlogAuditLogger(t *testing.T) {
 			assert.NotEqual(t, "some-refresh-token", v)
 		}
 	})
+
+	t.Run("LogSessionRefreshed", func(t *testing.T) {
+		buf.Reset()
+		auditLogger.LogSessionRefreshed(ctx, "user-123")
+
+		var logMap map[string]interface{}
+		err := json.Unmarshal(buf.Bytes(), &logMap)
+		assert.NoError(t, err)
+
+		assert.Equal(t, "session refreshed", logMap["msg"])
+		assert.Equal(t, "session.refreshed", logMap["event"])
+		assert.Equal(t, "user-123", logMap["user_id"])
+	})
 }

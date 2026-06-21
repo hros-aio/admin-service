@@ -122,6 +122,10 @@ func (m *mockAuditLogger) LogLogoutSuccess(ctx context.Context, token string) {
 	m.Called(ctx, token)
 }
 
+func (m *mockAuditLogger) LogSessionRefreshed(ctx context.Context, userID string) {
+	m.Called(ctx, userID)
+}
+
 func TestAuthHandler_Login(t *testing.T) {
 	e := echo.New()
 
