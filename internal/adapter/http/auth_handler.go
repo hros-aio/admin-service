@@ -16,17 +16,23 @@ import (
 
 // AuthHandler handles authentication HTTP requests.
 type AuthHandler struct {
-	loginUC  *usecase.LoginUseCase
-	logoutUC *usecase.LogoutUseCase
-	validate *validator.Validate
+	loginUC   *usecase.LoginUseCase
+	logoutUC  *usecase.LogoutUseCase
+	refreshUC *usecase.RefreshSessionUseCase
+	validate  *validator.Validate
 }
 
 // NewAuthHandler creates a new AuthHandler.
-func NewAuthHandler(loginUC *usecase.LoginUseCase, logoutUC *usecase.LogoutUseCase) *AuthHandler {
+func NewAuthHandler(
+	loginUC *usecase.LoginUseCase,
+	logoutUC *usecase.LogoutUseCase,
+	refreshUC *usecase.RefreshSessionUseCase,
+) *AuthHandler {
 	return &AuthHandler{
-		loginUC:  loginUC,
-		logoutUC: logoutUC,
-		validate: validator.New(),
+		loginUC:   loginUC,
+		logoutUC:  logoutUC,
+		refreshUC: refreshUC,
+		validate:  validator.New(),
 	}
 }
 
@@ -34,6 +40,7 @@ func NewAuthHandler(loginUC *usecase.LoginUseCase, logoutUC *usecase.LogoutUseCa
 func RegisterRoutes(e *echo.Echo, h *AuthHandler) {
 	e.POST("/v1/auth/login", h.Login)
 	e.DELETE("/v1/auth/session", h.Logout)
+	e.POST("/v1/auth/refresh", h.Refresh)
 }
 
 // Login handles the admin login request.
@@ -52,10 +59,11 @@ func (h *AuthHandler) Login(c echo.Context) error {
 	}
 
 	input := usecase.LoginInput{
-		Email:     req.Email,
-		Password:  req.Password,
-		IPAddress: c.RealIP(),
-		UserAgent: c.Request().UserAgent(),
+		Email:      req.Email,
+		Password:   req.Password,
+		RememberMe: req.RememberMe,
+		IPAddress:  c.RealIP(),
+		UserAgent:  c.Request().UserAgent(),
 	}
 
 	output, err := h.loginUC.Execute(c.Request().Context(), input)
@@ -114,4 +122,51 @@ func (h *AuthHandler) Logout(c echo.Context) error {
 	}
 
 	return c.NoContent(http.StatusNoContent)
+}
+
+// Refresh handles the admin session token refresh request.
+func (h *AuthHandler) Refresh(c echo.Context) error {
+	var req dto.RefreshRequest
+	if err := c.Bind(&req); err != nil {
+		traceID := c.Response().Header().Get(echo.HeaderXRequestID)
+		resp := sharedErrors.NewErrorResponse("bad_request", "Invalid request body", err.Error(), traceID)
+		return c.JSON(http.StatusBadRequest, resp)
+	}
+
+	if err := h.validate.Struct(&req); err != nil {
+		traceID := c.Response().Header().Get(echo.HeaderXRequestID)
+		resp := sharedErrors.NewErrorResponse("validation_error", "Request validation failed", err.Error(), traceID)
+		return c.JSON(http.StatusBadRequest, resp)
+	}
+
+	input := usecase.RefreshInput{
+		RefreshToken: req.RefreshToken,
+	}
+
+	output, err := h.refreshUC.Execute(c.Request().Context(), input)
+	if err != nil {
+		traceID := c.Response().Header().Get(echo.HeaderXRequestID)
+
+		if errors.Is(err, domainErrors.ErrInvalidRefreshToken) || errors.Is(err, domainErrors.ErrTokenExpired) {
+			resp := sharedErrors.NewErrorResponse("unauthorized", "Invalid or expired refresh token", nil, traceID)
+			return c.JSON(http.StatusUnauthorized, resp)
+		}
+		if errors.Is(err, domainErrors.ErrUserInactive) {
+			resp := sharedErrors.NewErrorResponse("forbidden", "Account is deactivated", nil, traceID)
+			return c.JSON(http.StatusForbidden, resp)
+		}
+		if errors.Is(err, domainErrors.ErrUserLocked) {
+			resp := sharedErrors.NewErrorResponse("forbidden", "Account is locked", nil, traceID)
+			return c.JSON(http.StatusForbidden, resp)
+		}
+
+		resp := sharedErrors.NewErrorResponse("internal_error", "Internal server error", nil, traceID)
+		return c.JSON(http.StatusInternalServerError, resp)
+	}
+
+	resp := dto.LoginResponse{
+		AccessToken:  output.AccessToken,
+		RefreshToken: output.RefreshToken,
+	}
+	return c.JSON(http.StatusOK, resp)
 }

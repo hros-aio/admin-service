@@ -25,5 +25,5 @@ Do not implement new features during review unless explicitly requested.
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-[specs/015-remember-me-and-logout-blacklist/plan.md](file:///home/ren0503/new-hros/admin-service/specs/015-remember-me-and-logout-blacklist/plan.md)
+[specs/016-auth-refresh-handler/plan.md](file:///home/ren0503/new-hros/admin-service/specs/016-auth-refresh-handler/plan.md)
 <!-- SPECKIT END -->
