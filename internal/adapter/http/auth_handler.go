@@ -110,8 +110,25 @@ func (h *AuthHandler) Logout(c echo.Context) error {
 		return c.JSON(http.StatusUnauthorized, resp)
 	}
 
+	var refreshToken string
+	var accessToken string
+
+	if _, hasHeader := c.Request().Header["X-Refresh-Token"]; hasHeader {
+		xRefreshToken := strings.TrimSpace(c.Request().Header.Get("X-Refresh-Token"))
+		if xRefreshToken == "" {
+			traceID := c.Response().Header().Get(echo.HeaderXRequestID)
+			resp := sharedErrors.NewErrorResponse("bad_request", "X-Refresh-Token header is empty or malformed", nil, traceID)
+			return c.JSON(http.StatusBadRequest, resp)
+		}
+		refreshToken = xRefreshToken
+		accessToken = token
+	} else {
+		refreshToken = token
+	}
+
 	input := usecase.LogoutInput{
-		RefreshToken: token,
+		RefreshToken: refreshToken,
+		AccessToken:  accessToken,
 	}
 
 	err := h.logoutUC.Execute(c.Request().Context(), input)

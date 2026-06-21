@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/hros/admin-service/internal/adapter/http/auth/dto"
 	"github.com/hros/admin-service/internal/application/usecase"
 	"github.com/hros/admin-service/internal/domain"
@@ -370,6 +371,58 @@ func TestAuthHandler_Logout(t *testing.T) {
 		err := handler.Logout(c)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusNoContent, rec.Code)
+	})
+
+	t.Run("Successful Logout with Access Token Blacklisting", func(t *testing.T) {
+		mockSessionRepo := new(mockSessionRepo)
+		mockTokenBlacklist := new(mockTokenBlacklist)
+		mockAuditLogger := new(mockAuditLogger)
+
+		logoutUC := usecase.NewLogoutUseCase(mockSessionRepo, mockTokenBlacklist, mockAuditLogger)
+		handler := NewAuthHandler(nil, logoutUC, nil)
+
+		req := httptest.NewRequest(http.MethodDelete, "/v1/auth/session", nil)
+		xToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+			"jti": "test-jti-uuid",
+			"exp": float64(time.Now().Add(10 * time.Minute).Unix()),
+		})
+		accessTokenStr, err := xToken.SignedString([]byte("secret"))
+		assert.NoError(t, err)
+
+		req.Header.Set("Authorization", "Bearer "+accessTokenStr)
+		req.Header.Set("X-Refresh-Token", "valid-refresh-token")
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		mockSessionRepo.On("DeleteByToken", mock.Anything, "valid-refresh-token").Return(nil)
+		mockAuditLogger.On("LogLogoutSuccess", mock.Anything, "valid-refresh-token").Return()
+		mockTokenBlacklist.On("Add", mock.Anything, "test-jti-uuid", mock.Anything).Return(nil)
+
+		err = handler.Logout(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusNoContent, rec.Code)
+	})
+
+	t.Run("Malformed X-Refresh-Token Returns 400", func(t *testing.T) {
+		handler := NewAuthHandler(nil, nil, nil)
+
+		invalidTokens := []string{"", "   ", "\t", "\n"}
+		for _, token := range invalidTokens {
+			req := httptest.NewRequest(http.MethodDelete, "/v1/auth/session", nil)
+			req.Header.Set("Authorization", "Bearer valid-access-token")
+			req.Header.Set("X-Refresh-Token", token)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			err := handler.Logout(c)
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusBadRequest, rec.Code, "Expected BadRequest for token %q", token)
+
+			var errorResp sharedErrors.ErrorResponse
+			err = json.Unmarshal(rec.Body.Bytes(), &errorResp)
+			assert.NoError(t, err)
+			assert.Equal(t, "bad_request", errorResp.Code)
+		}
 	})
 
 	t.Run("Missing Authorization Header", func(t *testing.T) {
