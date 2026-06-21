@@ -110,8 +110,20 @@ func (h *AuthHandler) Logout(c echo.Context) error {
 		return c.JSON(http.StatusUnauthorized, resp)
 	}
 
+	var refreshToken string
+	var accessToken string
+
+	xRefreshToken := c.Request().Header.Get("X-Refresh-Token")
+	if xRefreshToken != "" {
+		refreshToken = xRefreshToken
+		accessToken = token
+	} else {
+		refreshToken = token
+	}
+
 	input := usecase.LogoutInput{
-		RefreshToken: token,
+		RefreshToken: refreshToken,
+		AccessToken:  accessToken,
 	}
 
 	err := h.logoutUC.Execute(c.Request().Context(), input)
