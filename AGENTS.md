@@ -25,5 +25,5 @@ Do not implement new features during review unless explicitly requested.
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-[specs/010-auth-token-rotation/plan.md](file:///home/ren0503/new-hros/admin-service/specs/010-auth-token-rotation/plan.md)
+[specs/011-auth-refresh-dtos/plan.md](file:///home/ren0503/new-hros/admin-service/specs/011-auth-refresh-dtos/plan.md)
 <!-- SPECKIT END -->

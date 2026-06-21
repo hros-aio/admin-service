@@ -45,6 +45,58 @@ func TestLoginRequest_Validation(t *testing.T) {
 			},
 			isValid: false,
 		},
+		{
+			name: "Valid request with remember_me true",
+			request: LoginRequest{
+				Email:      "admin@hros.com",
+				Password:   "password123",
+				RememberMe: true,
+			},
+			isValid: true,
+		},
+		{
+			name: "Valid request with remember_me false",
+			request: LoginRequest{
+				Email:      "admin@hros.com",
+				Password:   "password123",
+				RememberMe: false,
+			},
+			isValid: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validate.Struct(tt.request)
+			if tt.isValid {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+			}
+		})
+	}
+}
+
+func TestRefreshRequest_Validation(t *testing.T) {
+	validate := validator.New()
+
+	tests := []struct {
+		name    string
+		request RefreshRequest
+		isValid bool
+	}{
+		{
+			name: "Valid request",
+			request: RefreshRequest{
+				RefreshToken: "def456_valid_token",
+			},
+			isValid: true,
+		},
+		{
+			name:    "Missing refresh token",
+			request: RefreshRequest{},
+			isValid: false,
+		},
 	}
 
 	for _, tt := range tests {
