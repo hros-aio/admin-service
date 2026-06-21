@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"io"
 	"time"
 )
 
@@ -25,7 +26,7 @@ type SessionToken struct {
 // and sets a new expiration time, returning the new token value.
 func (t *SessionToken) Rotate(newExpiry time.Time) (string, error) {
 	bytes := make([]byte, 32)
-	if _, err := rand.Reader.Read(bytes); err != nil {
+	if _, err := io.ReadFull(rand.Reader, bytes); err != nil {
 		return "", err
 	}
 	newToken := hex.EncodeToString(bytes)

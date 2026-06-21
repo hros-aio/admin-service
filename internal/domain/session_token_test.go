@@ -85,12 +85,14 @@ func TestSessionToken_Rotate_RandFailure(t *testing.T) {
 	defer func() { rand.Reader = oldReader }()
 	rand.Reader = errorReader{}
 
+	expiry := time.Now()
 	token := &SessionToken{
 		RefreshToken: "old-token",
-		ExpiresAt:    time.Now(),
+		ExpiresAt:    expiry,
 	}
 
-	_, err := token.Rotate(time.Now().Add(time.Hour))
+	_, err := token.Rotate(expiry.Add(time.Hour))
 	assert.Error(t, err)
 	assert.Equal(t, "old-token", token.RefreshToken) // Should not mutate state on failure
+	assert.Equal(t, expiry, token.ExpiresAt)         // Should not mutate expiration on failure
 }
