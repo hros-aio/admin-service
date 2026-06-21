@@ -102,7 +102,11 @@ func (uc *RefreshSessionUseCase) Execute(ctx context.Context, input RefreshInput
 	}
 
 	// 8. Rotate session model state in-place and save to database
-	newExpiry := time.Now().Add(30 * 24 * time.Hour)
+	expiryDuration := 24 * time.Hour
+	if session.IsPersistent {
+		expiryDuration = 30 * 24 * time.Hour
+	}
+	newExpiry := time.Now().Add(expiryDuration)
 	if _, err := session.Rotate(newExpiry); err != nil {
 		return nil, fmt.Errorf("rotate session token: %w", err)
 	}

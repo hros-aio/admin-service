@@ -15,7 +15,7 @@ import (
 func TestRefreshSessionUseCase_Execute(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("Success", func(t *testing.T) {
+	t.Run("Success_NoRememberMe", func(t *testing.T) {
 		userRepo := new(mockUserRepo)
 		sessionRepo := new(mockSessionRepo)
 		tokens := new(mockTokenProvider)
@@ -29,6 +29,7 @@ func TestRefreshSessionUseCase_Execute(t *testing.T) {
 			AdminID:      "user-123",
 			RefreshToken: tokenVal,
 			ExpiresAt:    time.Now().Add(24 * time.Hour),
+			IsPersistent: false,
 		}
 
 		user := &domain.AdminUser{
@@ -43,7 +44,58 @@ func TestRefreshSessionUseCase_Execute(t *testing.T) {
 		userRepo.On("FindByID", ctx, "user-123").Return(user, nil).Once()
 		tokens.On("GenerateAccessToken", ctx, user, 15*time.Minute).Return(newAccessToken, nil).Once()
 		tokens.On("GenerateRefreshToken", ctx).Return(newRefreshToken, nil).Once()
-		sessionRepo.On("UpdateToken", ctx, mock.Anything).Return(nil).Once()
+		sessionRepo.On("UpdateToken", ctx, mock.MatchedBy(func(s *domain.SessionToken) bool {
+			diff := time.Until(s.ExpiresAt)
+			return !s.IsPersistent && diff > 23*time.Hour && diff < 25*time.Hour
+		})).Return(nil).Once()
+		audit.On("LogSessionRefreshed", ctx, "user-123").Return().Once()
+
+		output, err := uc.Execute(ctx, RefreshInput{RefreshToken: tokenVal})
+		assert.NoError(t, err)
+		assert.NotNil(t, output)
+		assert.Equal(t, newAccessToken, output.AccessToken)
+		assert.Equal(t, newRefreshToken, output.RefreshToken)
+
+		// Assert mocks met
+		sessionRepo.AssertExpectations(t)
+		userRepo.AssertExpectations(t)
+		tokens.AssertExpectations(t)
+		audit.AssertExpectations(t)
+	})
+
+	t.Run("Success_RememberMe", func(t *testing.T) {
+		userRepo := new(mockUserRepo)
+		sessionRepo := new(mockSessionRepo)
+		tokens := new(mockTokenProvider)
+		audit := new(mockAuditLogger)
+
+		uc := NewRefreshSessionUseCase(userRepo, sessionRepo, tokens, audit)
+
+		tokenVal := "valid-refresh-token"
+		session := &domain.SessionToken{
+			ID:           "session-id",
+			AdminID:      "user-123",
+			RefreshToken: tokenVal,
+			ExpiresAt:    time.Now().Add(24 * time.Hour),
+			IsPersistent: true,
+		}
+
+		user := &domain.AdminUser{
+			ID:     "user-123",
+			Status: domain.AdminUserStatusActive,
+		}
+
+		newAccessToken := "new-access-token"
+		newRefreshToken := "new-refresh-token"
+
+		sessionRepo.On("FindByToken", ctx, tokenVal).Return(session, nil).Once()
+		userRepo.On("FindByID", ctx, "user-123").Return(user, nil).Once()
+		tokens.On("GenerateAccessToken", ctx, user, 15*time.Minute).Return(newAccessToken, nil).Once()
+		tokens.On("GenerateRefreshToken", ctx).Return(newRefreshToken, nil).Once()
+		sessionRepo.On("UpdateToken", ctx, mock.MatchedBy(func(s *domain.SessionToken) bool {
+			diff := time.Until(s.ExpiresAt)
+			return s.IsPersistent && diff > 29*24*time.Hour && diff < 31*24*time.Hour
+		})).Return(nil).Once()
 		audit.On("LogSessionRefreshed", ctx, "user-123").Return().Once()
 
 		output, err := uc.Execute(ctx, RefreshInput{RefreshToken: tokenVal})
