@@ -588,6 +588,80 @@ func TestAuthHandler_Refresh(t *testing.T) {
 		assert.Equal(t, "forbidden", errorResp.Code)
 	})
 
+	t.Run("Locked User Returns 403", func(t *testing.T) {
+		mockUserRepo := new(mockUserRepo)
+		mockSessionRepo := new(mockSessionRepo)
+		refreshUC := usecase.NewRefreshSessionUseCase(mockUserRepo, mockSessionRepo, nil, nil)
+		handler := NewAuthHandler(nil, nil, refreshUC)
+
+		reqBody := dto.RefreshRequest{
+			RefreshToken: "valid-token-locked-user",
+		}
+		bodyBytes, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPost, "/v1/auth/refresh", bytes.NewBuffer(bodyBytes))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		session := &domain.SessionToken{
+			ID:           "session-id",
+			AdminID:      "user-123",
+			RefreshToken: "valid-token-locked-user",
+			ExpiresAt:    time.Now().Add(24 * time.Hour),
+		}
+		lockedTime := time.Now().Add(1 * time.Hour)
+		user := &domain.AdminUser{
+			ID:          "user-123",
+			Status:      domain.AdminUserStatusActive,
+			LockedUntil: &lockedTime,
+		}
+
+		mockSessionRepo.On("FindByToken", mock.Anything, "valid-token-locked-user").Return(session, nil).Once()
+		mockUserRepo.On("FindByID", mock.Anything, "user-123").Return(user, nil).Once()
+
+		err := handler.Refresh(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusForbidden, rec.Code)
+
+		var errorResp sharedErrors.ErrorResponse
+		err = json.Unmarshal(rec.Body.Bytes(), &errorResp)
+		assert.NoError(t, err)
+		assert.Equal(t, "forbidden", errorResp.Code)
+	})
+
+	t.Run("Expired Token Returns 401", func(t *testing.T) {
+		mockSessionRepo := new(mockSessionRepo)
+		refreshUC := usecase.NewRefreshSessionUseCase(nil, mockSessionRepo, nil, nil)
+		handler := NewAuthHandler(nil, nil, refreshUC)
+
+		reqBody := dto.RefreshRequest{
+			RefreshToken: "expired-token",
+		}
+		bodyBytes, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPost, "/v1/auth/refresh", bytes.NewBuffer(bodyBytes))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		session := &domain.SessionToken{
+			ID:           "session-id",
+			AdminID:      "user-123",
+			RefreshToken: "expired-token",
+			ExpiresAt:    time.Now().Add(-1 * time.Hour),
+		}
+
+		mockSessionRepo.On("FindByToken", mock.Anything, "expired-token").Return(session, nil).Once()
+
+		err := handler.Refresh(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+
+		var errorResp sharedErrors.ErrorResponse
+		err = json.Unmarshal(rec.Body.Bytes(), &errorResp)
+		assert.NoError(t, err)
+		assert.Equal(t, "unauthorized", errorResp.Code)
+	})
+
 	t.Run("Internal Error Returns 500", func(t *testing.T) {
 		mockUserRepo := new(mockUserRepo)
 		mockSessionRepo := new(mockSessionRepo)

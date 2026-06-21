@@ -54,7 +54,7 @@ As an administrator logging in, I want my choice of "remember me" to be passed f
 - **FR-AUTH-016-003**: The handler MUST validate the bound struct using the validator framework, returning HTTP 400 on failure.
 - **FR-AUTH-016-004**: The handler MUST invoke `RefreshSessionUseCase.Execute` with the bound `RefreshToken`.
 - **FR-AUTH-016-005**: If the use case returns `ErrInvalidRefreshToken` or `ErrTokenExpired`, the handler MUST return HTTP 401 Unauthorized using the standard `sharedErrors.ErrorResponse` envelope.
-- **FR-AUTH-016-006**: If the use case returns any other error (such as `ErrUserInactive` or `ErrUserLocked`), the handler MUST return HTTP 403 Forbidden. Other unexpected errors MUST return HTTP 500.
+- **FR-AUTH-016-006**: The system MUST return HTTP 403 Forbidden for specific known domain errors `ErrUserInactive` and `ErrUserLocked`. All other unexpected or unknown errors (system failures) MUST return HTTP 500 Internal Server Error.
 - **FR-AUTH-016-007**: Upon successful usecase completion, the handler MUST respond with HTTP 200 containing the `access_token` and `refresh_token` mapped to `dto.LoginResponse`.
 - **FR-AUTH-016-008**: The `AuthHandler.Login` method MUST map the `RememberMe` boolean from `LoginRequest` into the `LoginInput` struct passed to `LoginUseCase.Execute`.
 
