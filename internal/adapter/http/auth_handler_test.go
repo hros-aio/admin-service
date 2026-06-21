@@ -403,6 +403,28 @@ func TestAuthHandler_Logout(t *testing.T) {
 		assert.Equal(t, http.StatusNoContent, rec.Code)
 	})
 
+	t.Run("Malformed X-Refresh-Token Returns 400", func(t *testing.T) {
+		handler := NewAuthHandler(nil, nil, nil)
+
+		invalidTokens := []string{"", "   ", "\t", "\n"}
+		for _, token := range invalidTokens {
+			req := httptest.NewRequest(http.MethodDelete, "/v1/auth/session", nil)
+			req.Header.Set("Authorization", "Bearer valid-access-token")
+			req.Header.Set("X-Refresh-Token", token)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			err := handler.Logout(c)
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusBadRequest, rec.Code, "Expected BadRequest for token %q", token)
+
+			var errorResp sharedErrors.ErrorResponse
+			err = json.Unmarshal(rec.Body.Bytes(), &errorResp)
+			assert.NoError(t, err)
+			assert.Equal(t, "bad_request", errorResp.Code)
+		}
+	})
+
 	t.Run("Missing Authorization Header", func(t *testing.T) {
 		handler := NewAuthHandler(nil, nil, nil)
 

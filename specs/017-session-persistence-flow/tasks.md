@@ -63,6 +63,8 @@
 - [x] T006 [US2] Update `test/integration/session_persistence_flow_test.go` to boot a containerized Redis instance using generic `testcontainers-go` container options.
 - [x] T007 [US2] Implement token rotation integration test verifying `POST /v1/auth/refresh` rotates the session token and updates the database record.
 - [x] T008 [US2] Implement logout integration test verifying `DELETE /v1/auth/session` deletes the session token in PostgreSQL and writes the access token JTI to the Redis blacklist cache, checking keys directly via the Redis container client.
+- [x] T009 [US2] Implement integration test case verifying old access token rejection after token rotation flow in `test/integration/session_persistence_flow_test.go`.
+- [x] T010 [US2] Implement integration test cases verifying refresh endpoint edge cases (invalid, expired, and empty tokens) in `test/integration/session_persistence_flow_test.go`.
 
 **Checkpoint**: User Stories 1 and 2 are fully functional and verified end-to-end.
 
@@ -72,8 +74,8 @@
 
 **Purpose**: Format checking, linting, and final validation.
 
-- [x] T009 [P] Run formatting via `go fmt ./...` and linting via `golangci-lint run` on modified files.
-- [x] T010 Run all integration tests using `go test -v ./test/integration/...` to ensure all tests pass cleanly.
+- [x] T011 [P] Run formatting via `go fmt ./...` and linting via `golangci-lint run` on modified files.
+- [x] T012 Run all integration tests using `go test -v ./test/integration/...` to ensure all tests pass cleanly.
 
 ---
 

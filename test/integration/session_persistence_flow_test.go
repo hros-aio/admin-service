@@ -61,11 +61,13 @@ func runRedisContainer(ctx context.Context) (testcontainers.Container, string, e
 
 	host, err := redisContainer.Host(ctx)
 	if err != nil {
+		_ = redisContainer.Terminate(ctx)
 		return nil, "", err
 	}
 
 	port, err := redisContainer.MappedPort(ctx, "6379")
 	if err != nil {
+		_ = redisContainer.Terminate(ctx)
 		return nil, "", err
 	}
 
@@ -228,7 +230,8 @@ func TestSessionPersistenceFlow(t *testing.T) {
 		Password:   "password123",
 		RememberMe: true,
 	}
-	loginReqBytes, _ := json.Marshal(loginReq)
+	loginReqBytes, err := json.Marshal(loginReq)
+	require.NoError(t, err)
 	resp, err := authClient.Post(baseURL+"/v1/auth/login", "application/json", bytes.NewBuffer(loginReqBytes))
 	require.NoError(t, err)
 	defer func() { _ = resp.Body.Close() }()
@@ -257,7 +260,8 @@ func TestSessionPersistenceFlow(t *testing.T) {
 	refreshReq := dto.RefreshRequest{
 		RefreshToken: loginResp.RefreshToken,
 	}
-	refreshReqBytes, _ := json.Marshal(refreshReq)
+	refreshReqBytes, err := json.Marshal(refreshReq)
+	require.NoError(t, err)
 	refreshResp, err := authClient.Post(baseURL+"/v1/auth/refresh", "application/json", bytes.NewBuffer(refreshReqBytes))
 	require.NoError(t, err)
 	defer func() { _ = refreshResp.Body.Close() }()
@@ -294,7 +298,8 @@ func TestSessionPersistenceFlow(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, jti)
 
-	logoutReq, _ := http.NewRequest(http.MethodDelete, baseURL+"/v1/auth/session", nil)
+	logoutReq, err := http.NewRequest(http.MethodDelete, baseURL+"/v1/auth/session", nil)
+	require.NoError(t, err)
 	logoutReq.Header.Set("Authorization", "Bearer "+refreshResult.AccessToken)
 	logoutReq.Header.Set("X-Refresh-Token", refreshResult.RefreshToken)
 
@@ -324,4 +329,54 @@ func TestSessionPersistenceFlow(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, ttl > 0)
 	assert.True(t, ttl <= 15*time.Minute)
+
+	// 13. Rejection of rotated refresh token (Double Refresh Attempt)
+	doubleRefreshReq := dto.RefreshRequest{
+		RefreshToken: loginResp.RefreshToken,
+	}
+	doubleRefreshReqBytes, err := json.Marshal(doubleRefreshReq)
+	require.NoError(t, err)
+	doubleRefreshResp, err := authClient.Post(baseURL+"/v1/auth/refresh", "application/json", bytes.NewBuffer(doubleRefreshReqBytes))
+	require.NoError(t, err)
+	defer func() { _ = doubleRefreshResp.Body.Close() }()
+	assert.Equal(t, http.StatusUnauthorized, doubleRefreshResp.StatusCode)
+
+	// 14. Rejection of expired refresh token
+	// Insert an expired session into DB
+	expiredToken := "expired-refresh-token-uuid"
+	err = db.Exec("INSERT INTO session_tokens (id, admin_id, refresh_token, expires_at, is_persistent) VALUES (?, ?, ?, ?, ?)",
+		domain.NewUUID(), adminUserID, expiredToken, time.Now().Add(-1*time.Hour), true).Error
+	require.NoError(t, err)
+
+	expiredRefreshReq := dto.RefreshRequest{
+		RefreshToken: expiredToken,
+	}
+	expiredRefreshReqBytes, err := json.Marshal(expiredRefreshReq)
+	require.NoError(t, err)
+	expiredRefreshResp, err := authClient.Post(baseURL+"/v1/auth/refresh", "application/json", bytes.NewBuffer(expiredRefreshReqBytes))
+	require.NoError(t, err)
+	defer func() { _ = expiredRefreshResp.Body.Close() }()
+	assert.Equal(t, http.StatusUnauthorized, expiredRefreshResp.StatusCode)
+
+	// 15. Empty/Invalid refresh token
+	emptyRefreshReq := dto.RefreshRequest{
+		RefreshToken: "",
+	}
+	emptyRefreshReqBytes, err := json.Marshal(emptyRefreshReq)
+	require.NoError(t, err)
+	emptyRefreshResp, err := authClient.Post(baseURL+"/v1/auth/refresh", "application/json", bytes.NewBuffer(emptyRefreshReqBytes))
+	require.NoError(t, err)
+	defer func() { _ = emptyRefreshResp.Body.Close() }()
+	assert.Equal(t, http.StatusBadRequest, emptyRefreshResp.StatusCode)
+
+	// 16. Malformed JSON Body
+	malformedResp, err := authClient.Post(baseURL+"/v1/auth/refresh", "application/json", bytes.NewBuffer([]byte("{invalid-json}")))
+	require.NoError(t, err)
+	defer func() { _ = malformedResp.Body.Close() }()
+	assert.Equal(t, http.StatusBadRequest, malformedResp.StatusCode)
+
+	// 17. Rejection of blacklisted access token JTI validation
+	isJtiBlacklisted, err := redisClient.Exists(ctx, "blacklist:jti:"+jti).Result()
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), isJtiBlacklisted)
 }

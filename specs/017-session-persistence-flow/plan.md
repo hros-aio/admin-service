@@ -1,6 +1,6 @@
 # Implementation Plan: Session Persistence Flow Test
 
-**Branch**: `017-session-persistence-flow` | **Date**: 2026-06-21 | **Spec**: [spec.md](file:///home/ren0503/new-hros/admin-service/specs/017-session-persistence-flow/spec.md)
+**Branch**: `017-session-persistence-flow` | **Date**: 2026-06-21 | **Spec**: [spec.md](spec.md)
 
 **Input**: Feature specification from `/specs/017-session-persistence-flow/spec.md`
 
