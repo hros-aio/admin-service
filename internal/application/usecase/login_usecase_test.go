@@ -45,7 +45,11 @@ func (m *mockSessionRepo) Save(ctx context.Context, t *domain.SessionToken) erro
 	return m.Called(ctx, t).Error(0)
 }
 func (m *mockSessionRepo) FindByToken(ctx context.Context, t string) (*domain.SessionToken, error) {
-	return nil, nil
+	args := m.Called(ctx, t)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.SessionToken), args.Error(1)
 }
 func (m *mockSessionRepo) DeleteByToken(ctx context.Context, t string) error {
 	return m.Called(ctx, t).Error(0)
@@ -86,6 +90,9 @@ func (m *mockAuditLogger) LogLoginFailed(ctx context.Context, email, reason stri
 	m.Called(ctx, email, reason)
 }
 func (m *mockAuditLogger) LogLogoutSuccess(ctx context.Context, token string) { m.Called(ctx, token) }
+func (m *mockAuditLogger) LogSessionRefreshed(ctx context.Context, userID string) {
+	m.Called(ctx, userID)
+}
 
 func TestLoginUseCase_Execute(t *testing.T) {
 	ctx := context.Background()

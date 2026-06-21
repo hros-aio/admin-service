@@ -43,3 +43,11 @@ func (l *SlogAuditLogger) LogLogoutSuccess(ctx context.Context, _ string) {
 		slog.String("event", "logout.success"),
 	)
 }
+
+// LogSessionRefreshed logs a session token refresh event.
+func (l *SlogAuditLogger) LogSessionRefreshed(ctx context.Context, userID string) {
+	l.logger.InfoContext(ctx, "session refreshed",
+		slog.String("event", "session.refreshed"),
+		slog.String("user_id", userID),
+	)
+}
