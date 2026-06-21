@@ -2,6 +2,8 @@ package domain
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"time"
 )
 
@@ -17,6 +19,19 @@ type SessionToken struct {
 	CreatedAt    time.Time
 	RevokedAt    *time.Time
 	RevokeReason string
+}
+
+// Rotate updates the refresh token value with a cryptographically secure random string
+// and sets a new expiration time, returning the new token value.
+func (t *SessionToken) Rotate(newExpiry time.Time) (string, error) {
+	bytes := make([]byte, 32)
+	if _, err := rand.Reader.Read(bytes); err != nil {
+		return "", err
+	}
+	newToken := hex.EncodeToString(bytes)
+	t.RefreshToken = newToken
+	t.ExpiresAt = newExpiry
+	return newToken, nil
 }
 
 // IsExpired checks if the session token has expired.

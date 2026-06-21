@@ -15,6 +15,7 @@ func TestAuthErrors(t *testing.T) {
 	assert.Equal(t, "session token not found", ErrTokenNotFound.Error())
 	assert.Equal(t, "session token has expired", ErrTokenExpired.Error())
 	assert.Equal(t, "session token has been revoked", ErrTokenRevoked.Error())
+	assert.Equal(t, "invalid refresh token", ErrInvalidRefreshToken.Error())
 	assert.Equal(t, "unauthorized", ErrUnauthorized.Error())
 	assert.Equal(t, "forbidden", ErrForbidden.Error())
 }
