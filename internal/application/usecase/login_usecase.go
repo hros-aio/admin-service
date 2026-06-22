@@ -4,47 +4,93 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/hros/admin-service/internal/application/auth"
+	"github.com/hros/admin-service/internal/application/interfaces"
 	"github.com/hros/admin-service/internal/domain"
 	authDomain "github.com/hros/admin-service/internal/domain/auth"
 	domainErrors "github.com/hros/admin-service/internal/domain/errors"
+	"github.com/hros/admin-service/internal/domain/events"
 )
 
-// LoginUseCase handles the admin login process.
+const (
+	// maxFailedAttempts is the number of consecutive failures that triggers a lockout.
+	maxFailedAttempts = 5
+
+	// failureWindow is the sliding window for counting consecutive failed attempts.
+	failureWindow = 15 * time.Minute
+
+	// lockoutDuration is the duration an account is locked after reaching maxFailedAttempts.
+	lockoutDuration = 30 * time.Minute
+)
+
+// LoginUseCase handles the admin login process, including brute-force lockout defense.
 type LoginUseCase struct {
-	userRepo    domain.AdminUserRepository
-	sessionRepo domain.SessionTokenRepository
-	password    auth.PasswordHelper
-	tokens      auth.TokenProvider
-	audit       authDomain.AuditLogger
+	userRepo      domain.AdminUserRepository
+	sessionRepo   domain.SessionTokenRepository
+	password      auth.PasswordHelper
+	tokens        auth.TokenProvider
+	audit         authDomain.AuditLogger
+	bruteForce    interfaces.BruteForceCache
+	lockoutNotify interfaces.LockoutNotifier
+	logger        *slog.Logger
 }
 
-// NewLoginUseCase creates a new LoginUseCase.
+// NewLoginUseCase creates a new LoginUseCase with all required dependencies.
 func NewLoginUseCase(
 	userRepo domain.AdminUserRepository,
 	sessionRepo domain.SessionTokenRepository,
 	password auth.PasswordHelper,
 	tokens auth.TokenProvider,
 	audit authDomain.AuditLogger,
+	bruteForce interfaces.BruteForceCache,
+	lockoutNotify interfaces.LockoutNotifier,
+	logger *slog.Logger,
 ) *LoginUseCase {
 	return &LoginUseCase{
-		userRepo:    userRepo,
-		sessionRepo: sessionRepo,
-		password:    password,
-		tokens:      tokens,
-		audit:       audit,
+		userRepo:      userRepo,
+		sessionRepo:   sessionRepo,
+		password:      password,
+		tokens:        tokens,
+		audit:         audit,
+		bruteForce:    bruteForce,
+		lockoutNotify: lockoutNotify,
+		logger:        logger,
 	}
 }
 
-// Execute performs the login flow.
+// Execute performs the login flow with brute-force lockout defense.
+//
+// Step 1: Check the brute-force cache. If the account is already locked,
+// return ErrAccountLocked immediately — no password verification performed.
+//
+// Step 2: On invalid password, increment the failure counter. If the counter
+// reaches maxFailedAttempts, apply SetLockout, emit an account.locked audit
+// event, and publish a best-effort email notification. Still return
+// ErrInvalidCredentials (the lockout takes effect on the next call via Step 1).
+//
+// Step 3: On successful password verification, reset the failure counter.
 func (uc *LoginUseCase) Execute(ctx context.Context, input LoginInput) (*LoginOutput, error) {
-	// 1. Fetch user by email
+	// ── Step 1: Brute-force pre-check ─────────────────────────────────────────
+	// Check lockout state BEFORE any expensive operation (bcrypt, DB lookup).
+	// Fail-open: if the cache is unavailable, allow the request to proceed.
+	locked, _, cacheErr := uc.bruteForce.IsLocked(ctx, input.Email)
+	if cacheErr != nil {
+		uc.logger.WarnContext(ctx, "brute force cache unavailable during IsLocked; failing open",
+			slog.String("error", cacheErr.Error()),
+		)
+	}
+	if locked {
+		return nil, domainErrors.ErrAccountLocked
+	}
+
+	// 1b. Fetch user by email
 	user, err := uc.userRepo.FindByEmail(ctx, input.Email)
 	if err != nil {
 		if errors.Is(err, domainErrors.ErrUserNotFound) {
-			// 2a. User not found: Perform dummy comparison to prevent timing attacks
+			// Perform dummy comparison to prevent timing attacks.
 			uc.password.CompareDummy(input.Password)
 			uc.audit.LogLoginFailed(ctx, input.Email, "user not found")
 			return nil, domainErrors.ErrInvalidCredentials
@@ -52,46 +98,54 @@ func (uc *LoginUseCase) Execute(ctx context.Context, input LoginInput) (*LoginOu
 		return nil, fmt.Errorf("find user by email: %w", err)
 	}
 
-	// 2b. Check if user is active
+	// 1c. Check if user is active
 	if !user.IsActive() {
 		uc.password.CompareDummy(input.Password) // Keep timing consistent
 		uc.audit.LogLoginFailed(ctx, input.Email, "user inactive")
 		return nil, domainErrors.ErrUserInactive
 	}
 
-	// 2c. Check if user is locked
+	// 1d. Check if user is locked at the domain level (LockedUntil field)
 	if user.IsLocked() {
 		uc.password.CompareDummy(input.Password) // Keep timing consistent
 		uc.audit.LogLoginFailed(ctx, input.Email, "user locked")
 		return nil, domainErrors.ErrUserLocked
 	}
 
-	// 3. Verify password
+	// ── Step 2: Password verification ─────────────────────────────────────────
 	if err := uc.password.Compare(user.PasswordHash, input.Password); err != nil {
 		uc.audit.LogLoginFailed(ctx, input.Email, "invalid password")
+		uc.handleFailedAttempt(ctx, input, user)
 		return nil, domainErrors.ErrInvalidCredentials
 	}
 
-	// 4. Issue RS256 JWT access token (15-min expiry)
+	// ── Step 3: Successful login — reset the failure counter ──────────────────
+	if resetErr := uc.bruteForce.Reset(ctx, input.Email); resetErr != nil {
+		uc.logger.WarnContext(ctx, "brute force cache unavailable during Reset; proceeding",
+			slog.String("error", resetErr.Error()),
+		)
+	}
+
+	// Issue RS256 JWT access token (15-min expiry)
 	accessToken, err := uc.tokens.GenerateAccessToken(ctx, user, 15*time.Minute)
 	if err != nil {
 		return nil, fmt.Errorf("generate access token: %w", err)
 	}
 
-	// 5. Generate session token (refresh token)
+	// Generate session token (refresh token)
 	refreshToken, err := uc.tokens.GenerateRefreshToken(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("generate refresh token: %w", err)
 	}
 
-	// 6. Save session token to DB
+	// Save session token to DB
 	expiryDuration := 24 * time.Hour
 	if input.RememberMe {
 		expiryDuration = 30 * 24 * time.Hour
 	}
 
 	session := &domain.SessionToken{
-		ID:           domain.NewUUID(), // Assuming a helper exists or we'll generate it
+		ID:           domain.NewUUID(),
 		AdminID:      user.ID,
 		RefreshToken: refreshToken,
 		ExpiresAt:    time.Now().Add(expiryDuration),
@@ -105,7 +159,7 @@ func (uc *LoginUseCase) Execute(ctx context.Context, input LoginInput) (*LoginOu
 		return nil, fmt.Errorf("save session token: %w", err)
 	}
 
-	// 7. Emit login.success
+	// Emit login.success
 	uc.audit.LogLoginSuccess(ctx, user.ID, user.Email)
 
 	return &LoginOutput{
@@ -117,4 +171,49 @@ func (uc *LoginUseCase) Execute(ctx context.Context, input LoginInput) (*LoginOu
 			Name:  user.Name,
 		},
 	}, nil
+}
+
+// handleFailedAttempt increments the failure counter and, if the threshold is reached,
+// applies a cache lockout, emits the account.locked audit event, and publishes a
+// best-effort email notification. All cache errors are logged and treated as fail-open.
+func (uc *LoginUseCase) handleFailedAttempt(ctx context.Context, input LoginInput, user *domain.AdminUser) {
+	count, incrErr := uc.bruteForce.IncrementFailedAttempts(ctx, input.Email, failureWindow)
+	if incrErr != nil {
+		uc.logger.WarnContext(ctx, "brute force cache unavailable during IncrementFailedAttempts; failing open",
+			slog.String("error", incrErr.Error()),
+		)
+		return
+	}
+
+	if count < maxFailedAttempts {
+		return
+	}
+
+	// Threshold reached — apply lockout.
+	if lockErr := uc.bruteForce.SetLockout(ctx, input.Email, lockoutDuration); lockErr != nil {
+		uc.logger.WarnContext(ctx, "brute force cache unavailable during SetLockout",
+			slog.String("error", lockErr.Error()),
+		)
+	}
+
+	// Emit account.locked audit event.
+	uc.audit.LogAccountLocked(ctx, input.Email)
+
+	// Publish best-effort email notification (errors logged, never propagated).
+	unlockAt := time.Now().UTC().Add(lockoutDuration)
+	emailEvent := events.EmailSendEvent{
+		To:       user.Email,
+		Subject:  "Your account has been temporarily locked",
+		Template: "account_locked_notification",
+		TemplateData: map[string]interface{}{
+			"email":     user.Email,
+			"unlock_at": unlockAt.Format(time.RFC3339),
+		},
+	}
+
+	if pubErr := uc.lockoutNotify.PublishLockoutEmail(ctx, emailEvent); pubErr != nil {
+		uc.logger.ErrorContext(ctx, "failed to publish lockout email notification",
+			slog.String("error", pubErr.Error()),
+		)
+	}
 }

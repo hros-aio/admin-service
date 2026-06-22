@@ -8,4 +8,6 @@ type AuditLogger interface {
 	LogLoginFailed(ctx context.Context, email string, reason string)
 	LogLogoutSuccess(ctx context.Context, token string)
 	LogSessionRefreshed(ctx context.Context, userID string)
+	// LogAccountLocked records that an account was temporarily locked due to brute-force protection.
+	LogAccountLocked(ctx context.Context, email string)
 }

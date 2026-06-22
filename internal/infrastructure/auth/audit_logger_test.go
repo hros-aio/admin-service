@@ -72,4 +72,17 @@ func TestSlogAuditLogger(t *testing.T) {
 		assert.Equal(t, "session.refreshed", logMap["event"])
 		assert.Equal(t, "user-123", logMap["user_id"])
 	})
+
+	t.Run("LogAccountLocked", func(t *testing.T) {
+		buf.Reset()
+		auditLogger.LogAccountLocked(ctx, "locked@example.com")
+
+		var logMap map[string]interface{}
+		err := json.Unmarshal(buf.Bytes(), &logMap)
+		assert.NoError(t, err)
+
+		assert.Equal(t, "account locked", logMap["msg"])
+		assert.Equal(t, "account.locked", logMap["event"])
+		assert.Equal(t, "locked@example.com", logMap["email"])
+	})
 }
