@@ -191,20 +191,22 @@ func TestBruteForceFlow(t *testing.T) {
 	// 7. Verify that successful login prior to 5 fails clears the counter.
 	// First, simulate 3 failed login attempts.
 	for i := 1; i <= 3; i++ {
-		badLoginReq := dto.LoginRequest{
-			Email:    adminEmail,
-			Password: "wrong-password",
-		}
-		badLoginReqBytes, _ := json.Marshal(badLoginReq)
-		badResp, err := authClient.Post(baseURL+"/v1/auth/login", "application/json", bytes.NewBuffer(badLoginReqBytes))
-		require.NoError(t, err)
-		defer func() { _ = badResp.Body.Close() }()
+		func() {
+			badLoginReq := dto.LoginRequest{
+				Email:    adminEmail,
+				Password: "wrong-password",
+			}
+			badLoginReqBytes, _ := json.Marshal(badLoginReq)
+			badResp, err := authClient.Post(baseURL+"/v1/auth/login", "application/json", bytes.NewBuffer(badLoginReqBytes))
+			require.NoError(t, err)
+			defer func() { _ = badResp.Body.Close() }()
 
-		assert.Equal(t, http.StatusUnauthorized, badResp.StatusCode)
-		var errResp sharedErrors.ErrorResponse
-		err = json.NewDecoder(badResp.Body).Decode(&errResp)
-		require.NoError(t, err)
-		assert.Equal(t, "unauthorized", errResp.Code)
+			assert.Equal(t, http.StatusUnauthorized, badResp.StatusCode)
+			var errResp sharedErrors.ErrorResponse
+			err = json.NewDecoder(badResp.Body).Decode(&errResp)
+			require.NoError(t, err)
+			assert.Equal(t, "unauthorized", errResp.Code)
+		}()
 	}
 
 	// Next, perform a successful login with valid credentials.
@@ -230,20 +232,22 @@ func TestBruteForceFlow(t *testing.T) {
 	// 8. Simulate 5 failed logins to lock out the account.
 	// 1st to 4th failed attempts should return HTTP 401 "unauthorized".
 	for i := 1; i <= 4; i++ {
-		badLoginReq := dto.LoginRequest{
-			Email:    adminEmail,
-			Password: "wrong-password",
-		}
-		badLoginReqBytes, _ := json.Marshal(badLoginReq)
-		badResp, err := authClient.Post(baseURL+"/v1/auth/login", "application/json", bytes.NewBuffer(badLoginReqBytes))
-		require.NoError(t, err)
-		defer func() { _ = badResp.Body.Close() }()
+		func() {
+			badLoginReq := dto.LoginRequest{
+				Email:    adminEmail,
+				Password: "wrong-password",
+			}
+			badLoginReqBytes, _ := json.Marshal(badLoginReq)
+			badResp, err := authClient.Post(baseURL+"/v1/auth/login", "application/json", bytes.NewBuffer(badLoginReqBytes))
+			require.NoError(t, err)
+			defer func() { _ = badResp.Body.Close() }()
 
-		assert.Equal(t, http.StatusUnauthorized, badResp.StatusCode)
-		var errResp sharedErrors.ErrorResponse
-		err = json.NewDecoder(badResp.Body).Decode(&errResp)
-		require.NoError(t, err)
-		assert.Equal(t, "unauthorized", errResp.Code)
+			assert.Equal(t, http.StatusUnauthorized, badResp.StatusCode)
+			var errResp sharedErrors.ErrorResponse
+			err = json.NewDecoder(badResp.Body).Decode(&errResp)
+			require.NoError(t, err)
+			assert.Equal(t, "unauthorized", errResp.Code)
+		}()
 	}
 
 	// The 5th failed attempt should also return 401 "unauthorized",
