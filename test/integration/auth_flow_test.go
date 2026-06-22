@@ -25,7 +25,9 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	adapterHttp "github.com/hros/admin-service/internal/adapter/http"
 	"github.com/hros/admin-service/internal/adapter/http/auth/dto"
+	kafkaProducer "github.com/hros/admin-service/internal/adapter/kafka/producer"
 	"github.com/hros/admin-service/internal/application"
+	"github.com/hros/admin-service/internal/application/interfaces"
 	"github.com/hros/admin-service/internal/config"
 	"github.com/hros/admin-service/internal/domain"
 	authInfra "github.com/hros/admin-service/internal/infrastructure/auth"
@@ -210,6 +212,7 @@ func TestAuthFlow(t *testing.T) {
 		fx.Provide(authRepo.NewGormSessionTokenRepository),
 		fx.Provide(redis.NewRedisClient),
 		fx.Provide(authCache.NewRedisTokenBlacklist),
+		fx.Provide(authCache.NewRedisBruteForceCache),
 		fx.Provide(func() (sarama.SyncProducer, error) {
 			return mocks.NewSyncProducer(t, nil), nil
 		}),
@@ -218,6 +221,8 @@ func TestAuthFlow(t *testing.T) {
 		}),
 		authInfra.Module,
 		application.Module,
+		kafkaProducer.Module,
+		fx.Provide(func(p *kafkaProducer.EmailKafkaProducer) interfaces.LockoutNotifier { return p }),
 		fx.Provide(httpPlatform.NewHealthHandler),
 		fx.Provide(httpPlatform.NewServer),
 		adapterHttp.Module,
