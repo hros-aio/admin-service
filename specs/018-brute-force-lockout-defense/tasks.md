@@ -226,8 +226,8 @@ Phases 1–4 (TSK-AUTH-018 domain primitives, TSK-AUTH-019 Redis cache, TSK-AUTH
 
 **Purpose**: Format verification and regression guard after Phase 5 completes.
 
-- [ ] T016 Run `go fmt ./internal/application/usecase/... ./internal/app/...` and `golangci-lint run` on all modified files. Fix any lint warnings.
-- [ ] T017 Run the full unit test suite `go test -race -count=1 ./...` to verify zero regressions across all packages.
+- [x] T016 Run `go fmt ./internal/application/usecase/... ./internal/app/...` and `golangci-lint run` on all modified files. Fix any lint warnings.
+- [x] T017 Run the full unit test suite `go test -race -count=1 ./...` to verify zero regressions across all packages.
 
 ---
 
