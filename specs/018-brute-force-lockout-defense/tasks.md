@@ -165,12 +165,14 @@ Phases 1–4 (TSK-AUTH-018 domain primitives, TSK-AUTH-019 Redis cache, TSK-AUTH
   **Constructor signature change** (inject new dependencies):
   ```go
   func NewLoginUseCase(
-      adminRepo    interfaces.AdminUserRepository,
-      sessionRepo  interfaces.SessionTokenRepository,
-      bruteForce   interfaces.BruteForceCache,
-      emailPub     *kafkaProducer.EmailKafkaProducer,
-      auditLog     interfaces.AuditLogger,    // existing or new thin interface
-      logger       *slog.Logger,
+      userRepo      domain.AdminUserRepository,
+      sessionRepo   domain.SessionTokenRepository,
+      password      auth.PasswordHelper,
+      tokens        auth.TokenProvider,
+      audit         authDomain.AuditLogger,
+      bruteForce    interfaces.BruteForceCache,
+      lockoutNotify interfaces.LockoutNotifier,
+      logger        *slog.Logger,
   ) *LoginUseCase
   ```
 
@@ -178,7 +180,7 @@ Phases 1–4 (TSK-AUTH-018 domain primitives, TSK-AUTH-019 Redis cache, TSK-AUTH
   1. `if locked, _ := bruteForce.IsLocked(ctx, req.Email); locked { return ErrAccountLocked }`
   2. Verify password via bcrypt; if invalid:
      - `count, _ := bruteForce.IncrementFailedAttempts(ctx, req.Email)`
-     - `if count >= 5 { bruteForce.SetLockout(ctx, req.Email); auditLog.Append(ctx, "account.locked", ...); go emailPub.PublishLockoutEmail(ctx, events.EmailSendEvent{...}) }`
+     - `if count >= 5 { bruteForce.SetLockout(ctx, req.Email); auditLog.Append(ctx, "account.locked", ...); emailPub.PublishLockoutEmail(ctx, events.EmailSendEvent{...}) }`
      - Return `ErrInvalidCredentials`
   3. Password valid:
      - `bruteForce.ClearFailures(ctx, req.Email)`
@@ -239,7 +241,7 @@ Phases 1–4 (TSK-AUTH-018 domain primitives, TSK-AUTH-019 Redis cache, TSK-AUTH
 
 ### Within Phase 5
 
-```
+```bash
 T014 (login_usecase.go)
        ├──► T016 ──► T017
 T015 (login_usecase_test.go)

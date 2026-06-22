@@ -85,7 +85,7 @@ The `LoginUseCase` orchestrates all brute-force checks in a strict sequence: it 
 1. **Given** an account is already locked, **When** any login attempt is made (correct or incorrect password), **Then** `ErrAccountLocked` is returned immediately without checking the password.
 2. **Given** an account has fewer than 5 consecutive failed attempts, **When** another invalid password attempt is made, **Then** the failure counter is incremented and a credential-error is returned (no lockout applied).
 3. **Given** an account has exactly 4 prior consecutive failed attempts, **When** a 5th invalid password attempt is made, **Then** the account is locked, `account.locked` is appended to the audit log, a `email.send` event is published to Kafka (best-effort), and `ErrAccountLocked` is returned.
-4. **Given** an account is not locked and the correct password is provided, **When** login succeeds, **Then** the failure counter is reset to 0 and a valid session is returned.
+4. **When** an account is not locked and the correct password is provided, **Then** login succeeds, the failure counter is reset to 0, and a valid session is returned.
 
 ---
 
