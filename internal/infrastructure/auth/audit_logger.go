@@ -51,3 +51,12 @@ func (l *SlogAuditLogger) LogSessionRefreshed(ctx context.Context, userID string
 		slog.String("user_id", userID),
 	)
 }
+
+// LogAccountLocked logs an account.locked audit event emitted when brute-force
+// protection temporarily locks an email address.
+func (l *SlogAuditLogger) LogAccountLocked(ctx context.Context, email string) {
+	l.logger.WarnContext(ctx, "account locked",
+		slog.String("event", "account.locked"),
+		slog.String("email", email),
+	)
+}

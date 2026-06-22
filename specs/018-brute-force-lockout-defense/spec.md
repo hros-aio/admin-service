@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-21
 
-**Updated**: 2026-06-21 (TSK-AUTH-020 — Kafka producer adapter layer)
+**Updated**: 2026-06-22 (TSK-AUTH-021 — LoginUseCase lockout orchestration)
 
 **Status**: In Progress
 
@@ -72,6 +72,23 @@ If a administrator gets locked out, a Super Admin can manually unlock the accoun
 
 ---
 
+### User Story 5 - LoginUseCase Lockout State Machine (Priority: P1)
+
+The `LoginUseCase` orchestrates all brute-force checks in a strict sequence: it first checks whether the account is already locked, then verifies credentials, then either increments the failure counter (locking on the 5th consecutive failure and notifying by email) or resets it on success.
+
+**Why this priority**: Without this orchestration, the domain primitives, Redis cache, and Kafka adapter remain inert — they only become effective when wired into the login flow.
+
+**Independent Test**: Can be tested in isolation by mocking `BruteForceCache`, the Kafka publisher, and the audit log, then asserting the correct sequence of calls for each branch: already-locked, <5 failures, exactly 5 failures, and successful login.
+
+**Acceptance Scenarios**:
+
+1. **Given** an account is already locked, **When** any login attempt is made (correct or incorrect password), **Then** `ErrAccountLocked` is returned immediately without checking the password.
+2. **Given** an account has fewer than 5 consecutive failed attempts, **When** another invalid password attempt is made, **Then** the failure counter is incremented and a credential-error is returned (no lockout applied).
+3. **Given** an account has exactly 4 prior consecutive failed attempts, **When** a 5th invalid password attempt is made, **Then** the account is locked, `account.locked` is appended to the audit log, a `email.send` event is published to Kafka (best-effort), and `ErrAccountLocked` is returned.
+4. **When** an account is not locked and the correct password is provided, **Then** login succeeds, the failure counter is reset to 0, and a valid session is returned.
+
+---
+
 ### Edge Cases
 
 - **Attempts during active lockout**: When an account is locked, any login attempt (even with correct password) must fail and must NOT extend the lockout duration beyond the original 30-minute expiration.
@@ -91,6 +108,10 @@ If a administrator gets locked out, a Super Admin can manually unlock the accoun
 - **FR-007**: System MUST provide an interface to query, increment, and reset the lockout/failure state in a cache.
 - **FR-008**: The Kafka adapter MUST wrap the `EmailSendEvent` domain payload inside a standard `EventEnvelope` (containing `id`, `type`, `source`, `version`, `correlation_id`, `occurred_at`, and `data` fields) before publishing.
 - **FR-009**: The Kafka adapter MUST publish the lockout email envelope to the topic `email.send.v1` using the project's `EventPublisher` interface backed by `sarama.SyncProducer`. The message key MUST be the recipient email address.
+- **FR-010**: `LoginUseCase` MUST call `BruteForceCache.IsLocked()` as the first step before any password verification; if locked, it MUST return `ErrAccountLocked` immediately.
+- **FR-011**: `LoginUseCase` MUST call `BruteForceCache.IncrementFailedAttempts()` after each failed password verification.
+- **FR-012**: `LoginUseCase` MUST call `BruteForceCache.SetLockout()`, append `account.locked` to the audit log, and publish an `email.send` event via Kafka when the failure count reaches exactly 5 consecutive failures.
+- **FR-013**: `LoginUseCase` MUST call `BruteForceCache.ClearFailures()` immediately after a successful password verification to reset the counter.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -122,6 +143,7 @@ If a administrator gets locked out, a Super Admin can manually unlock the accoun
 - **SC-002**: Lockout duration is precisely 30 minutes (+/- 5 seconds).
 - **SC-003**: Invalidation/lockout check must precede credential verification to prevent expensive password hashing (bcrypt) during active locks, saving CPU resources.
 - **SC-004**: All locking and unlocking events must generate corresponding audit logs and Kafka notification events with 100% reliability.
+- **SC-006**: `LoginUseCase` unit tests achieve 100% branch coverage across all four branches: already-locked, <5 failures, exactly 5 failures (triggering lockout + audit + Kafka), and successful login (counter reset).
 - **SC-005**: The lockout email Kafka message produced by the adapter must deserialize back into a fully-populated `EventEnvelope[EmailSendEvent]` with all required fields present and non-zero, as verified by unit tests against a mock producer.
 
 ## Assumptions
@@ -133,3 +155,4 @@ If a administrator gets locked out, a Super Admin can manually unlock the accoun
 - The `EventPublisher` interface used by the adapter wraps `sarama.SyncProducer` as defined in the tech-stack document. The adapter receives it via dependency injection.
 - The Kafka topic for lockout email events is `email.send.v1`, following the project's topic-naming convention `<domain>.<event-name>.v<version>`.
 - The message key is the recipient email address to ensure per-user partition ordering.
+- Kafka publish errors during lockout notification must be logged but MUST NOT propagate as login errors; the `ErrAccountLocked` result is determined by the Redis state, not the Kafka outcome.
