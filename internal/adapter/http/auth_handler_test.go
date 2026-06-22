@@ -180,6 +180,33 @@ func newLoginUCForTest(
 	)
 }
 
+type mockBruteForceCache struct{ mock.Mock }
+
+func (m *mockBruteForceCache) IncrementFailedAttempts(ctx context.Context, email string, window time.Duration) (int, error) {
+	args := m.Called(ctx, email, window)
+	return args.Int(0), args.Error(1)
+}
+
+func (m *mockBruteForceCache) GetFailedAttempts(ctx context.Context, email string) (int, error) {
+	args := m.Called(ctx, email)
+	return args.Int(0), args.Error(1)
+}
+
+func (m *mockBruteForceCache) SetLockout(ctx context.Context, email string, duration time.Duration) error {
+	args := m.Called(ctx, email, duration)
+	return args.Error(0)
+}
+
+func (m *mockBruteForceCache) IsLocked(ctx context.Context, email string) (bool, time.Time, error) {
+	args := m.Called(ctx, email)
+	return args.Bool(0), args.Get(1).(time.Time), args.Error(2)
+}
+
+func (m *mockBruteForceCache) Reset(ctx context.Context, email string) error {
+	args := m.Called(ctx, email)
+	return args.Error(0)
+}
+
 type mockTokenBlacklist struct{ mock.Mock }
 
 func (m *mockTokenBlacklist) Add(ctx context.Context, token string, ttl time.Duration) error {
@@ -398,6 +425,51 @@ func TestAuthHandler_Login(t *testing.T) {
 		err = json.Unmarshal(rec.Body.Bytes(), &errorResp)
 		assert.NoError(t, err)
 		assert.Equal(t, "validation_error", errorResp.Code)
+	})
+
+	t.Run("Temporary Lockout (Brute Force)", func(t *testing.T) {
+		mockUserRepo := new(mockUserRepo)
+		mockSessionRepo := new(mockSessionRepo)
+		mockPasswordHelper := new(mockPasswordHelper)
+		mockTokenProvider := new(mockTokenProvider)
+		mockAuditLogger := new(mockAuditLogger)
+		mockBruteForce := new(mockBruteForceCache)
+
+		loginUC := usecase.NewLoginUseCase(
+			mockUserRepo,
+			mockSessionRepo,
+			mockPasswordHelper,
+			mockTokenProvider,
+			mockAuditLogger,
+			mockBruteForce,
+			&nopLockoutNotifier{},
+			slog.Default(),
+		)
+		mockTokenBlacklist := new(mockTokenBlacklist)
+		logoutUC := usecase.NewLogoutUseCase(mockSessionRepo, mockTokenBlacklist, mockAuditLogger)
+		handler := NewAuthHandler(loginUC, logoutUC, nil)
+
+		reqBody := dto.LoginRequest{
+			Email:    "locked-bf@hros.com",
+			Password: "password123",
+		}
+		bodyBytes, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", bytes.NewBuffer(bodyBytes))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		mockBruteForce.On("IsLocked", mock.Anything, "locked-bf@hros.com").Return(true, time.Now().Add(30*time.Minute), nil)
+
+		err := handler.Login(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+
+		var errorResp sharedErrors.ErrorResponse
+		err = json.Unmarshal(rec.Body.Bytes(), &errorResp)
+		assert.NoError(t, err)
+		assert.Equal(t, "ACCOUNT_LOCKED", errorResp.Code)
+		assert.Equal(t, "Account is temporarily locked", errorResp.Message)
 	})
 }
 
@@ -800,5 +872,44 @@ func TestAuthHandler_Refresh(t *testing.T) {
 		err = json.Unmarshal(rec.Body.Bytes(), &errorResp)
 		assert.NoError(t, err)
 		assert.Equal(t, "internal_error", errorResp.Code)
+	})
+
+	t.Run("Temporary Lockout (Brute Force)", func(t *testing.T) {
+		mockUserRepo := new(mockUserRepo)
+		mockSessionRepo := new(mockSessionRepo)
+		mockTokenProvider := new(mockTokenProvider)
+		mockAuditLogger := new(mockAuditLogger)
+
+		refreshUC := usecase.NewRefreshSessionUseCase(mockUserRepo, mockSessionRepo, mockTokenProvider, mockAuditLogger)
+		handler := NewAuthHandler(nil, nil, refreshUC)
+
+		reqBody := dto.RefreshRequest{
+			RefreshToken: "valid-token",
+		}
+		bodyBytes, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPost, "/v1/auth/refresh", bytes.NewBuffer(bodyBytes))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		session := &domain.SessionToken{
+			ID:           "session-id",
+			AdminID:      "user-123",
+			RefreshToken: "valid-token",
+			ExpiresAt:    time.Now().Add(24 * time.Hour),
+		}
+
+		mockSessionRepo.On("FindByToken", mock.Anything, "valid-token").Return(session, nil).Once()
+		mockUserRepo.On("FindByID", mock.Anything, "user-123").Return((*domain.AdminUser)(nil), domainErrors.ErrAccountLocked).Once()
+
+		err := handler.Refresh(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+
+		var errorResp sharedErrors.ErrorResponse
+		err = json.Unmarshal(rec.Body.Bytes(), &errorResp)
+		assert.NoError(t, err)
+		assert.Equal(t, "ACCOUNT_LOCKED", errorResp.Code)
+		assert.Equal(t, "Account is temporarily locked", errorResp.Message)
 	})
 }

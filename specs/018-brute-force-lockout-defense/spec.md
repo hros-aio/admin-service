@@ -89,6 +89,20 @@ The `LoginUseCase` orchestrates all brute-force checks in a strict sequence: it 
 
 ---
 
+### User Story 6 - Lockout Error HTTP Mapping (Priority: P1)
+
+When a login attempt is made for a locked account, the HTTP handler must intercept the lockout error and map it to an HTTP 401 Unauthorized response with the specific error code `ACCOUNT_LOCKED` and a safe generic message, to inform the client of the temporary lockout without exposing unnecessary internal system details.
+
+**Why this priority**: Crucial for API boundary correctness. Clients must receive a clear, machine-readable error code to handle the lockout state (e.g., showing a locked-out UI message to the user) instead of a generic unauthorized or forbidden code.
+
+**Independent Test**: Send a login request for an account that is already locked, assert that the response has an HTTP 401 status code and the response body contains `code: "ACCOUNT_LOCKED"` in the JSON error payload.
+
+**Acceptance Scenarios**:
+
+1. **Given** an account is temporarily locked, **When** a login attempt is made, **Then** the handler returns HTTP 401 Unauthorized with the JSON body `{"code": "ACCOUNT_LOCKED", "message": "Account is temporarily locked"}`.
+
+---
+
 ### Edge Cases
 
 - **Attempts during active lockout**: When an account is locked, any login attempt (even with correct password) must fail and must NOT extend the lockout duration beyond the original 30-minute expiration.
@@ -112,6 +126,7 @@ The `LoginUseCase` orchestrates all brute-force checks in a strict sequence: it 
 - **FR-011**: `LoginUseCase` MUST call `BruteForceCache.IncrementFailedAttempts()` after each failed password verification.
 - **FR-012**: `LoginUseCase` MUST call `BruteForceCache.SetLockout()`, append `account.locked` to the audit log, and publish an `email.send` event via Kafka when the failure count reaches exactly 5 consecutive failures.
 - **FR-013**: `LoginUseCase` MUST call `BruteForceCache.ClearFailures()` immediately after a successful password verification to reset the counter.
+- **FR-014**: The HTTP adapter handler (or centralized Echo error handler) MUST catch `ErrAccountLocked` and map it to an HTTP 401 Unauthorized response with the code `ACCOUNT_LOCKED` and a safe generic message.
 
 ### Key Entities *(include if feature involves data)*
 

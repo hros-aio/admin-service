@@ -222,7 +222,7 @@ Phases 1–4 (TSK-AUTH-018 domain primitives, TSK-AUTH-019 Redis cache, TSK-AUTH
 
 ---
 
-## Phase 6: Polish 🔲 Post-Phase-5
+## Phase 6: Polish ✅
 
 **Purpose**: Format verification and regression guard after Phase 5 completes.
 
@@ -231,52 +231,46 @@ Phases 1–4 (TSK-AUTH-018 domain primitives, TSK-AUTH-019 Redis cache, TSK-AUTH
 
 ---
 
+## Phase 7: Lockout Error HTTP Mapping (TSK-AUTH-022) ✅ Complete
+
+**Goal**: Catch `ErrAccountLocked` at the adapter layer and map it to an HTTP 401 Unauthorized status with code `ACCOUNT_LOCKED`.
+
+- [x] T018 [US6] Update error mapping in `internal/adapter/http/auth_handler.go` Login and Refresh handler methods. Catch `domainErrors.ErrAccountLocked` and return `HTTP 401 Unauthorized` with error response `code: "ACCOUNT_LOCKED"` and a safe, generic message.
+- [x] T019 [US6] Add unit test cases in `internal/adapter/http/auth_handler_test.go` to verify that `Login` and `Refresh` endpoints return `HTTP 401` with `ACCOUNT_LOCKED` code when `domainErrors.ErrAccountLocked` is intercepted.
+- [x] T020 Run `go fmt ./...` and `go test -race -count=1 ./...` to verify clean validation.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
 
-- **Phases 1–4** (TSK-AUTH-018, 019, 020): ✅ Complete — no action needed
-- **Phase 5** (TSK-AUTH-021): Can start immediately. T014 and T015 are independent files and can be worked in parallel.
-- **Phase 6**: Must follow Phase 5 completion
+- **Phases 1–6** (TSK-AUTH-018, 019, 020, 021): ✅ Complete — no action needed
+- **Phase 7** (TSK-AUTH-022): Can start immediately.
 
-### Within Phase 5
-
-```bash
-T014 (login_usecase.go)
-       ├──► T016 ──► T017
-T015 (login_usecase_test.go)
-```
-
-- **T014** and **T015** can be worked in parallel (different files; T015 author needs the type signature from T014 but can write test stubs concurrently)
-- **T016–T017** (polish) must follow T015
-
-### Parallel Opportunities
+### Within Phase 7
 
 ```bash
-# These can be launched simultaneously:
-Task T014: "Update LoginUseCase in internal/application/usecase/login_usecase.go"
-Task T015: "Implement unit tests in internal/application/usecase/login_usecase_test.go"
+T018 (auth_handler.go) ──► T019 (auth_handler_test.go) ──► T020
 ```
 
 ---
 
 ## Implementation Strategy
 
-### Minimum Viable Task (TSK-AUTH-021 only)
+### Minimum Viable Task (TSK-AUTH-022 only)
 
-1. Implement T014 — `login_usecase.go` (lockout state machine)
-2. Implement T015 — `login_usecase_test.go` (100% branch coverage)
-3. Run T016–T017 — format, lint, full test suite
+1. Implement T018 — `auth_handler.go` (error mappings)
+2. Implement T019 — `auth_handler_test.go` (unit tests)
+3. Run T020 — format and run full test suite
 
-**Validation gate**: `go test -race -count=1 ./internal/application/usecase/...` must pass with 100% coverage before T016.
+**Validation gate**: `go test -race -count=1 ./internal/adapter/http/...` must pass.
 
 ---
 
 ## Notes
 
 - `[P]` tasks operate on different files with no blocking dependency — safe to implement concurrently
-- `BruteForceCache.IncrementFailedAttempts` returns `(count int, err error)` — use the count (not a second `GetFailedAttempts` call) to determine whether lockout threshold has been reached
-- `ClearFailures` is the semantic name used in the task description; use the actual method name exposed on the `BruteForceCache` interface (`Reset` or equivalent as defined in `internal/application/interfaces/brute_force_cache.go`)
-- Do NOT call `sarama.NewSyncProducer` directly from the use case — inject `*EmailKafkaProducer` or its interface via constructor
-- Do NOT add GORM or Redis calls inside `LoginUseCase` — all cache and Kafka interactions go through the injected interfaces
-- `app.go` wiring changes (registering the new `LoginUseCase` constructor parameters) are included in T014 scope if they require changes to `internal/application/module.go`
+- Catch `domainErrors.ErrAccountLocked` explicitly in `AuthHandler.Login` and `AuthHandler.Refresh` and return HTTP 401.
+- Make sure `ErrorResponse` formatting matches the standard schema: `sharedErrors.NewErrorResponse("ACCOUNT_LOCKED", "Account is temporarily locked", nil, traceID)`.
+- Avoid leaking internal trace or cache state in user-facing error messages.

@@ -82,6 +82,10 @@ func (h *AuthHandler) Login(c echo.Context) error {
 			resp := sharedErrors.NewErrorResponse("forbidden", "Account is locked", nil, traceID)
 			return c.JSON(http.StatusForbidden, resp)
 		}
+		if errors.Is(err, domainErrors.ErrAccountLocked) {
+			resp := sharedErrors.NewErrorResponse("ACCOUNT_LOCKED", "Account is temporarily locked", nil, traceID)
+			return c.JSON(http.StatusUnauthorized, resp)
+		}
 
 		resp := sharedErrors.NewErrorResponse("internal_error", "Internal server error", nil, traceID)
 		return c.JSON(http.StatusInternalServerError, resp)
@@ -175,6 +179,10 @@ func (h *AuthHandler) Refresh(c echo.Context) error {
 		if errors.Is(err, domainErrors.ErrUserLocked) {
 			resp := sharedErrors.NewErrorResponse("forbidden", "Account is locked", nil, traceID)
 			return c.JSON(http.StatusForbidden, resp)
+		}
+		if errors.Is(err, domainErrors.ErrAccountLocked) {
+			resp := sharedErrors.NewErrorResponse("ACCOUNT_LOCKED", "Account is temporarily locked", nil, traceID)
+			return c.JSON(http.StatusUnauthorized, resp)
 		}
 
 		resp := sharedErrors.NewErrorResponse("internal_error", "Internal server error", nil, traceID)

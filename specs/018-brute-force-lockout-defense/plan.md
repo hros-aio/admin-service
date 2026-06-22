@@ -12,9 +12,11 @@ This plan implements a three-phase brute-force lockout defense for the HROS Admi
 
 **Phase 2 (TSK-AUTH-019 — ✅ Done)**: Redis infrastructure — `RedisBruteForceCache` implementing the `BruteForceCache` interface using `auth:failed_attempts:{email}` (15-min TTL) and `auth:lockout:{email}` (30-min TTL) keys, with fail-open graceful degradation and PII-safe logging. Tested via miniredis.
 
-**Phase 3 (TSK-AUTH-020 — 🔲 Pending)**: Kafka adapter layer — `EventEnvelope[T]` generic struct, `EventPublisher` interface, and `EmailKafkaProducer` that wraps `EmailSendEvent` into the standard envelope and dispatches to topic `email.send.v1` via `sarama.SyncProducer`. Wired into the Uber Fx dependency graph. Tested with `sarama/mocks`.
+**Phase 3 (TSK-AUTH-020 — ✅ Done)**: Kafka adapter layer — `EventEnvelope[T]` generic struct, `EventPublisher` interface, and `EmailKafkaProducer` that wraps `EmailSendEvent` into the standard envelope and dispatches to topic `email.send.v1` via `sarama.SyncProducer`. Wired into the Uber Fx dependency graph. Tested with `sarama/mocks`.
 
-The login use case will be extended (post-Phase 3) to consume `BruteForceCache` for lockout checking, incrementing, and resetting — this wiring is tracked in the application module and `LoginUseCase`.
+**Phase 5 (TSK-AUTH-021 — ✅ Done)**: LoginUseCase lockout orchestration — Update `LoginUseCase.Execute` to check lockout state, increment failed attempts, trigger lockout/audit log/email events on the 5th failure, and clear attempts on successful login.
+
+**Phase 7 (TSK-AUTH-022 — ✅ Done)**: HTTP adapter error mapping — Catch `ErrAccountLocked` in the adapter layer and map it to an HTTP 401 Unauthorized status with code `ACCOUNT_LOCKED`.
 
 ---
 
@@ -148,32 +150,27 @@ internal/
 │   └── interfaces/
 │       ├── brute_force_cache.go            ✅  BruteForceCache interface
 │       └── brute_force_cache_test.go       ✅  Interface compile / contract tests
-└── infrastructure/
-    └── cache/
-        ├── brute_force_redis.go            ✅  RedisBruteForceCache implementation
-        └── brute_force_redis_test.go       ✅  Miniredis unit tests (5 test functions)
+├── infrastructure/
+│   └── cache/
+│       ├── brute_force_redis.go            ✅  RedisBruteForceCache implementation
+│       └── brute_force_redis_test.go       ✅  Miniredis unit tests (5 test functions)
+└── adapter/
+    └── kafka/
+        └── producer/
+            ├── email_events.go             ✅  EventEnvelope[T], EventPublisher,
+            │                                   EmailKafkaProducer.PublishLockoutEmail
+            ├── email_events_test.go        ✅  sarama/mocks unit tests
+            └── module.go                   ✅  Fx provider for EmailKafkaProducer
 ```
 
-### Source Code — Pending (TSK-AUTH-020)
+### Source Code — Completed (TSK-AUTH-022)
 
 ```text
 internal/
 └── adapter/
-    └── kafka/
-        └── producer/
-            ├── email_events.go             🔲  EventEnvelope[T], EventPublisher,
-            │                                   EmailKafkaProducer.PublishLockoutEmail
-            ├── email_events_test.go        🔲  sarama/mocks unit tests
-            └── module.go                   🔲  Fx provider for EmailKafkaProducer
-```
-
-### Wiring Changes Required (Post TSK-AUTH-020)
-
-```text
-internal/app/app.go                         🔲  Add cache.NewRedisBruteForceCache
-                                                and EmailKafkaProducer to fx.Options
-internal/application/module.go             🔲  (future) LoginUseCase extended to
-                                                accept BruteForceCache dependency
+    └── http/
+        ├── auth_handler.go                 ✅  Login/Refresh: catch ErrAccountLocked
+        └── auth_handler_test.go            ✅  Add unit tests for lockout HTTP mapping
 ```
 
 **Structure Decision**: The adapter layer (`internal/adapter/kafka/producer`) is the correct home for the envelope, publisher interface, and email producer, per Clean Architecture: adapters translate between domain events and infrastructure transports. No changes to domain or application packages are required for Phase 3.
@@ -235,7 +232,7 @@ func (p *EmailKafkaProducer) PublishLockoutEmail(
 
 ## API Contract
 
-No new REST endpoints are added by this feature. The existing `POST /v1/auth/login` will internally call `BruteForceCache.IsLocked` before password verification and return `HTTP 423` or `HTTP 403` for a locked account.
+No new REST endpoints are added by this feature. The existing `POST /v1/auth/login` will internally call `BruteForceCache.IsLocked` before password verification and return `HTTP 401 Unauthorized` with the error payload `{"code": "ACCOUNT_LOCKED", "message": "Account is temporarily locked"}` when the account is locked. This satisfies the error mapping required for lockout defense.
 
 The Kafka `email.send.v1` event is consumed by a downstream notification service and is not part of this service's REST API contract.
 
