@@ -1,15 +1,15 @@
-# Tasks: Brute-Force Lockout Defense — Kafka Producer Adapter (TSK-AUTH-020)
+# Tasks: Brute-Force Lockout Defense — LoginUseCase Orchestration (TSK-AUTH-021)
 
 **Input**: Design documents from `/specs/018-brute-force-lockout-defense/`
 
-**Prerequisites**: plan.md ✅, spec.md ✅, research.md ✅, data-model.md ✅, contracts/kafka.md ✅
+**Prerequisites**: plan.md ✅, spec.md ✅, research.md ✅, data-model.md ✅, contracts/kafka.md ✅, TSK-AUTH-020 ✅
 
-**Scope**: This tasks.md covers **only the pending work**: the Kafka producer adapter layer (TSK-AUTH-020).
-Phases 1–3 (TSK-AUTH-018 domain primitives, TSK-AUTH-019 Redis cache) are already complete and are recorded below as checkpointed history.
+**Scope**: This tasks.md now covers **all pending work**: TSK-AUTH-021 — the LoginUseCase lockout state-machine (Phase 5).
+Phases 1–4 (TSK-AUTH-018 domain primitives, TSK-AUTH-019 Redis cache, TSK-AUTH-020 Kafka adapter, TSK-AUTH-020 wiring) are already complete and recorded below as checkpointed history.
 
 **Tests**: Unit tests are mandatory per constitution Principle III (unit-test-per-file). Every production file must have a corresponding `_test.go`.
 
-**Organization**: Tasks are grouped by implementation phase. Phase 4 is the only actionable phase.
+**Organization**: Tasks are grouped by implementation phase. Phase 5 is the only actionable phase.
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -149,12 +149,83 @@ Phases 1–3 (TSK-AUTH-018 domain primitives, TSK-AUTH-019 Redis cache) are alre
 
 ---
 
-## Phase 5: Polish ✅ / 🔲 Post-Phase-4
+## Phase 5: LoginUseCase Lockout Orchestration (TSK-AUTH-021) 🔲 Pending
 
-**Purpose**: Format verification and regression guard after Phase 4 completes.
+**Goal**: Update `LoginUseCase.Execute` to implement the three-step brute-force state machine:
+1. Pre-check: `BruteForceCache.IsLocked()` — short-circuit with `ErrAccountLocked` if true.
+2. On bad password: `BruteForceCache.IncrementFailedAttempts()`; when count reaches 5, call `SetLockout()`, append `account.locked` audit event, and publish `email.send` via `EmailKafkaProducer` (best-effort, errors logged not propagated).
+3. On good password: `BruteForceCache.ClearFailures()` to reset the counter before returning a session.
 
-- [x] T012 Run `go fmt ./internal/adapter/kafka/producer/... ./internal/app/...` and `golangci-lint run` on all modified files. Fix any lint warnings.
-- [x] T013 Run the full unit test suite `go test -race -count=1 ./...` to verify zero regressions across all packages including pre-existing tests for TSK-AUTH-018 and TSK-AUTH-019.
+**Independent Test**: Mock `BruteForceCache`, `EmailKafkaProducer.PublishLockoutEmail`, and the audit-log writer; assert the exact sequence of calls for all four branches.
+
+### Implementation for User Story 5 (US5)
+
+- [x] T014 [US5] Update `LoginUseCase` in `internal/application/usecase/login_usecase.go`.
+
+  **Constructor signature change** (inject new dependencies):
+  ```go
+  func NewLoginUseCase(
+      adminRepo    interfaces.AdminUserRepository,
+      sessionRepo  interfaces.SessionTokenRepository,
+      bruteForce   interfaces.BruteForceCache,
+      emailPub     *kafkaProducer.EmailKafkaProducer,
+      auditLog     interfaces.AuditLogger,    // existing or new thin interface
+      logger       *slog.Logger,
+  ) *LoginUseCase
+  ```
+
+  **Execute orchestration (strict ordering)**:
+  1. `if locked, _ := bruteForce.IsLocked(ctx, req.Email); locked { return ErrAccountLocked }`
+  2. Verify password via bcrypt; if invalid:
+     - `count, _ := bruteForce.IncrementFailedAttempts(ctx, req.Email)`
+     - `if count >= 5 { bruteForce.SetLockout(ctx, req.Email); auditLog.Append(ctx, "account.locked", ...); go emailPub.PublishLockoutEmail(ctx, events.EmailSendEvent{...}) }`
+     - Return `ErrInvalidCredentials`
+  3. Password valid:
+     - `bruteForce.ClearFailures(ctx, req.Email)`
+     - Issue session tokens and return result
+
+  **Notes**:
+  - `ClearFailures` wraps the existing `Reset` method on the `BruteForceCache` interface (or is a semantic alias; use whichever name the interface exposes).
+  - Kafka publish errors must be logged with `slog.ErrorContext` and NOT returned — `ErrAccountLocked` is the single outcome of the 5th-failure branch.
+  - All `BruteForceCache` method errors must be fail-open (log and continue).
+  - Audit-log call may use an existing `AuditLogger` interface already in the application layer, or a minimal new one — do NOT add a GORM call to the use case.
+
+- [x] T015 [US5] Implement unit tests in `internal/application/usecase/login_usecase_test.go`.
+
+  **Required test cases (100% branch coverage)**:
+
+  1. `TestLoginUseCase_AlreadyLocked`
+     - Mock `IsLocked` returns `(true, nil)`
+     - Assert use case returns `ErrAccountLocked`
+     - Assert password check, `IncrementFailedAttempts`, `SetLockout`, `ClearFailures`, and email publisher are **not** called
+
+  2. `TestLoginUseCase_InvalidPassword_LessThan5Failures`
+     - Mock `IsLocked` returns `(false, nil)`; bcrypt check fails; `IncrementFailedAttempts` returns `(3, nil)`
+     - Assert use case returns `ErrInvalidCredentials`
+     - Assert `SetLockout`, audit log, and email publisher are **not** called
+
+  3. `TestLoginUseCase_InvalidPassword_FifthFailure_TriggersLockout`
+     - Mock `IsLocked` returns `(false, nil)`; bcrypt check fails; `IncrementFailedAttempts` returns `(5, nil)`
+     - Assert `SetLockout` is called once
+     - Assert audit log `Append` is called with event `"account.locked"`
+     - Assert `PublishLockoutEmail` is called with correct `To` field
+     - Assert use case returns `ErrAccountLocked`
+
+  4. `TestLoginUseCase_ValidPassword_ClearsFailures`
+     - Mock `IsLocked` returns `(false, nil)`; bcrypt check passes; `ClearFailures` returns `nil`
+     - Assert `IncrementFailedAttempts`, `SetLockout`, and email publisher are **not** called
+     - Assert use case returns a valid session result
+
+**Checkpoint**: `go test -race -count=1 ./internal/application/usecase/...` passes with 100% statement coverage on `login_usecase.go`. `go build ./...` succeeds.
+
+---
+
+## Phase 6: Polish 🔲 Post-Phase-5
+
+**Purpose**: Format verification and regression guard after Phase 5 completes.
+
+- [ ] T016 Run `go fmt ./internal/application/usecase/... ./internal/app/...` and `golangci-lint run` on all modified files. Fix any lint warnings.
+- [ ] T017 Run the full unit test suite `go test -race -count=1 ./...` to verify zero regressions across all packages.
 
 ---
 
@@ -162,53 +233,48 @@ Phases 1–3 (TSK-AUTH-018 domain primitives, TSK-AUTH-019 Redis cache) are alre
 
 ### Phase Dependencies
 
-- **Phases 1–3** (TSK-AUTH-018, 019): ✅ Complete — no action needed
-- **Phase 4** (TSK-AUTH-020): Can start immediately. T008 and T009 are independent files and can be worked on in parallel. T010 has no code dependency on T008/T009 (it only wires the type). T011 depends on T010 existing.
-- **Phase 5**: Must follow Phase 4 completion
+- **Phases 1–4** (TSK-AUTH-018, 019, 020): ✅ Complete — no action needed
+- **Phase 5** (TSK-AUTH-021): Can start immediately. T014 and T015 are independent files and can be worked in parallel.
+- **Phase 6**: Must follow Phase 5 completion
 
-### Within Phase 4
+### Within Phase 5
 
 ```
-T008 ──┐
-       ├──► T010 ──► T011 ──► T012 ──► T013
-T009 ──┘
+T014 (login_usecase.go)
+       ├──► T016 ──► T017
+T015 (login_usecase_test.go)
 ```
 
-- **T008** and **T009** can be worked in parallel (different files, T009 imports T008's types but can be written concurrently by a developer familiar with the types)
-- **T010** (`module.go`) can be written in parallel with T008/T009 — it only needs to know the constructor signature
-- **T011** (`app.go`) must follow T010
-- **T012–T013** (polish) must follow T011
+- **T014** and **T015** can be worked in parallel (different files; T015 author needs the type signature from T014 but can write test stubs concurrently)
+- **T016–T017** (polish) must follow T015
 
 ### Parallel Opportunities
 
 ```bash
 # These can be launched simultaneously:
-Task T008: "Define EventEnvelope, EventPublisher, EmailKafkaProducer in internal/adapter/kafka/producer/email_events.go"
-Task T009: "Implement unit tests in internal/adapter/kafka/producer/email_events_test.go"
-Task T010: "Create module.go in internal/adapter/kafka/producer/module.go"
+Task T014: "Update LoginUseCase in internal/application/usecase/login_usecase.go"
+Task T015: "Implement unit tests in internal/application/usecase/login_usecase_test.go"
 ```
 
 ---
 
 ## Implementation Strategy
 
-### Minimum Viable Task (TSK-AUTH-020 only)
+### Minimum Viable Task (TSK-AUTH-021 only)
 
-1. Implement T008 — `email_events.go` (core logic)
-2. Implement T009 — `email_events_test.go` (verify correctness)
-3. Implement T010 — `module.go` (Fx wiring)
-4. Implement T011 — wire into `app.go` (register provider)
-5. Run T012–T013 — format, lint, full test suite
+1. Implement T014 — `login_usecase.go` (lockout state machine)
+2. Implement T015 — `login_usecase_test.go` (100% branch coverage)
+3. Run T016–T017 — format, lint, full test suite
 
-**Validation gate**: `go test -race -count=1 ./internal/adapter/kafka/producer/...` must pass before T011.
+**Validation gate**: `go test -race -count=1 ./internal/application/usecase/...` must pass with 100% coverage before T016.
 
 ---
 
 ## Notes
 
 - `[P]` tasks operate on different files with no blocking dependency — safe to implement concurrently
-- `sarama/mocks.MockSyncProducer` is already imported by `test/integration/auth_flow_test.go` and `session_persistence_flow_test.go` — no new `go.mod` entry required
-- Do NOT use `sarama.NewSyncProducer` in tests — always use `mocks.NewMockSyncProducer`
-- Email masking is NOT required in the Kafka adapter logs (the `To` field in the log should use a masked or omitted representation — use `slog.String("key_masked", maskEmail(event.To))` if logging the key)
-- `domain.NewUUID()` is already defined in `internal/domain/id.go` — use it for envelope ID generation
-- `app.go` already imports the `cache` package — only add the new `fx.Provide(cache.NewRedisBruteForceCache)` line; do not restructure the file
+- `BruteForceCache.IncrementFailedAttempts` returns `(count int, err error)` — use the count (not a second `GetFailedAttempts` call) to determine whether lockout threshold has been reached
+- `ClearFailures` is the semantic name used in the task description; use the actual method name exposed on the `BruteForceCache` interface (`Reset` or equivalent as defined in `internal/application/interfaces/brute_force_cache.go`)
+- Do NOT call `sarama.NewSyncProducer` directly from the use case — inject `*EmailKafkaProducer` or its interface via constructor
+- Do NOT add GORM or Redis calls inside `LoginUseCase` — all cache and Kafka interactions go through the injected interfaces
+- `app.go` wiring changes (registering the new `LoginUseCase` constructor parameters) are included in T014 scope if they require changes to `internal/application/module.go`
