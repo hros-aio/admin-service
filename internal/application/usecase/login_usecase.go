@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/hros/admin-service/internal/application/auth"
@@ -73,10 +74,12 @@ func NewLoginUseCase(
 //
 // Step 3: On successful password verification, reset the failure counter.
 func (uc *LoginUseCase) Execute(ctx context.Context, input LoginInput) (*LoginOutput, error) {
+	email := strings.ToLower(strings.TrimSpace(input.Email))
+
 	// ── Step 1: Brute-force pre-check ─────────────────────────────────────────
 	// Check lockout state BEFORE any expensive operation (bcrypt, DB lookup).
 	// Fail-open: if the cache is unavailable, allow the request to proceed.
-	locked, _, cacheErr := uc.bruteForce.IsLocked(ctx, input.Email)
+	locked, _, cacheErr := uc.bruteForce.IsLocked(ctx, email)
 	if cacheErr != nil {
 		uc.logger.WarnContext(ctx, "brute force cache unavailable during IsLocked; failing open",
 			slog.String("error", cacheErr.Error()),
@@ -87,12 +90,12 @@ func (uc *LoginUseCase) Execute(ctx context.Context, input LoginInput) (*LoginOu
 	}
 
 	// 1b. Fetch user by email
-	user, err := uc.userRepo.FindByEmail(ctx, input.Email)
+	user, err := uc.userRepo.FindByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, domainErrors.ErrUserNotFound) {
 			// Perform dummy comparison to prevent timing attacks.
 			uc.password.CompareDummy(input.Password)
-			uc.audit.LogLoginFailed(ctx, input.Email, "user not found")
+			uc.audit.LogLoginFailed(ctx, email, "user not found")
 			return nil, domainErrors.ErrInvalidCredentials
 		}
 		return nil, fmt.Errorf("find user by email: %w", err)
@@ -101,26 +104,26 @@ func (uc *LoginUseCase) Execute(ctx context.Context, input LoginInput) (*LoginOu
 	// 1c. Check if user is active
 	if !user.IsActive() {
 		uc.password.CompareDummy(input.Password) // Keep timing consistent
-		uc.audit.LogLoginFailed(ctx, input.Email, "user inactive")
+		uc.audit.LogLoginFailed(ctx, email, "user inactive")
 		return nil, domainErrors.ErrUserInactive
 	}
 
 	// 1d. Check if user is locked at the domain level (LockedUntil field)
 	if user.IsLocked() {
 		uc.password.CompareDummy(input.Password) // Keep timing consistent
-		uc.audit.LogLoginFailed(ctx, input.Email, "user locked")
+		uc.audit.LogLoginFailed(ctx, email, "user locked")
 		return nil, domainErrors.ErrUserLocked
 	}
 
 	// ── Step 2: Password verification ─────────────────────────────────────────
 	if err := uc.password.Compare(user.PasswordHash, input.Password); err != nil {
-		uc.audit.LogLoginFailed(ctx, input.Email, "invalid password")
-		uc.handleFailedAttempt(ctx, input, user)
+		uc.audit.LogLoginFailed(ctx, email, "invalid password")
+		uc.handleFailedAttempt(ctx, email, user)
 		return nil, domainErrors.ErrInvalidCredentials
 	}
 
 	// ── Step 3: Successful login — reset the failure counter ──────────────────
-	if resetErr := uc.bruteForce.Reset(ctx, input.Email); resetErr != nil {
+	if resetErr := uc.bruteForce.Reset(ctx, email); resetErr != nil {
 		uc.logger.WarnContext(ctx, "brute force cache unavailable during Reset; proceeding",
 			slog.String("error", resetErr.Error()),
 		)
@@ -176,8 +179,8 @@ func (uc *LoginUseCase) Execute(ctx context.Context, input LoginInput) (*LoginOu
 // handleFailedAttempt increments the failure counter and, if the threshold is reached,
 // applies a cache lockout, emits the account.locked audit event, and publishes a
 // best-effort email notification. All cache errors are logged and treated as fail-open.
-func (uc *LoginUseCase) handleFailedAttempt(ctx context.Context, input LoginInput, user *domain.AdminUser) {
-	count, incrErr := uc.bruteForce.IncrementFailedAttempts(ctx, input.Email, failureWindow)
+func (uc *LoginUseCase) handleFailedAttempt(ctx context.Context, email string, user *domain.AdminUser) {
+	count, incrErr := uc.bruteForce.IncrementFailedAttempts(ctx, email, failureWindow)
 	if incrErr != nil {
 		uc.logger.WarnContext(ctx, "brute force cache unavailable during IncrementFailedAttempts; failing open",
 			slog.String("error", incrErr.Error()),
@@ -190,14 +193,14 @@ func (uc *LoginUseCase) handleFailedAttempt(ctx context.Context, input LoginInpu
 	}
 
 	// Threshold reached — apply lockout.
-	if lockErr := uc.bruteForce.SetLockout(ctx, input.Email, lockoutDuration); lockErr != nil {
+	if lockErr := uc.bruteForce.SetLockout(ctx, email, lockoutDuration); lockErr != nil {
 		uc.logger.WarnContext(ctx, "brute force cache unavailable during SetLockout",
 			slog.String("error", lockErr.Error()),
 		)
 	}
 
 	// Emit account.locked audit event.
-	uc.audit.LogAccountLocked(ctx, input.Email)
+	uc.audit.LogAccountLocked(ctx, email)
 
 	// Publish best-effort email notification (errors logged, never propagated).
 	unlockAt := time.Now().UTC().Add(lockoutDuration)

@@ -538,6 +538,11 @@ func TestLoginUseCase_IsLockedCacheError(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, out)
 	bf.AssertExpectations(t)
+	userRepo.AssertExpectations(t)
+	password.AssertExpectations(t)
+	tokens.AssertExpectations(t)
+	sessionRepo.AssertExpectations(t)
+	audit.AssertExpectations(t)
 }
 
 // TestLoginUseCase_ResetCacheError verifies that when Reset returns an error on a
@@ -574,6 +579,11 @@ func TestLoginUseCase_ResetCacheError(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, out)
 	bf.AssertExpectations(t)
+	userRepo.AssertExpectations(t)
+	password.AssertExpectations(t)
+	tokens.AssertExpectations(t)
+	sessionRepo.AssertExpectations(t)
+	audit.AssertExpectations(t)
 }
 
 // TestLoginUseCase_IncrementCacheError verifies that when IncrementFailedAttempts
@@ -611,6 +621,9 @@ func TestLoginUseCase_IncrementCacheError(t *testing.T) {
 	bf.AssertNotCalled(t, "SetLockout", mock.Anything, mock.Anything, mock.Anything)
 	notifier.AssertNotCalled(t, "PublishLockoutEmail", mock.Anything, mock.Anything)
 	bf.AssertExpectations(t)
+	userRepo.AssertExpectations(t)
+	password.AssertExpectations(t)
+	audit.AssertExpectations(t)
 }
 
 // TestLoginUseCase_SetLockoutCacheError verifies that when SetLockout returns an error,
@@ -723,4 +736,46 @@ func TestLoginUseCase_FindByEmailDBError(t *testing.T) {
 	assert.Nil(t, out)
 	userRepo.AssertExpectations(t)
 	bf.AssertExpectations(t)
+}
+
+// TestLoginUseCase_EmailNormalization verifies that input emails are normalized
+// (lowercased and whitespace trimmed) before any database, cache, or audit operations.
+func TestLoginUseCase_EmailNormalization(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	rawEmail := "  ADMIN@Example.Com  "
+	normalizedEmail := "admin@example.com"
+	input := LoginInput{Email: rawEmail, Password: "correct", IPAddress: "127.0.0.1", UserAgent: "ua"}
+
+	userRepo := new(mockUserRepo)
+	sessionRepo := new(mockSessionRepo)
+	password := new(mockPasswordHelper)
+	tokens := new(mockTokenProvider)
+	audit := new(mockAuditLogger)
+	bf := new(mockBruteForceCache)
+	notifier := new(mockLockoutNotifier)
+
+	user := activeUser(normalizedEmail)
+
+	bf.On("IsLocked", ctx, normalizedEmail).Return(false, time.Time{}, nil).Once()
+	userRepo.On("FindByEmail", ctx, normalizedEmail).Return(user, nil).Once()
+	password.On("Compare", "hashed", "correct").Return(nil).Once()
+	bf.On("Reset", ctx, normalizedEmail).Return(nil).Once()
+	tokens.On("GenerateAccessToken", ctx, user, 15*time.Minute).Return("at", nil).Once()
+	tokens.On("GenerateRefreshToken", ctx).Return("rt", nil).Once()
+	sessionRepo.On("Save", ctx, mock.Anything).Return(nil).Once()
+	audit.On("LogLoginSuccess", ctx, user.ID, normalizedEmail).Once()
+
+	uc := newTestUseCase(userRepo, sessionRepo, password, tokens, audit, bf, notifier)
+	out, err := uc.Execute(ctx, input)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, out)
+	bf.AssertExpectations(t)
+	userRepo.AssertExpectations(t)
+	password.AssertExpectations(t)
+	tokens.AssertExpectations(t)
+	sessionRepo.AssertExpectations(t)
+	audit.AssertExpectations(t)
 }
