@@ -18,6 +18,8 @@ This plan implements a three-phase brute-force lockout defense for the HROS Admi
 
 **Phase 7 (TSK-AUTH-022 — ✅ Done)**: HTTP adapter error mapping — Catch `ErrAccountLocked` in the adapter layer and map it to an HTTP 401 Unauthorized status with code `ACCOUNT_LOCKED`.
 
+**Phase 8 (TSK-AUTH-023 — ✅ Done)**: Integration Testing — Implement an end-to-end integration test for the brute-force lockout defense in `test/integration/brute_force_flow_test.go` using `testcontainers` for PostgreSQL and Redis.
+
 ---
 
 ## Technical Context

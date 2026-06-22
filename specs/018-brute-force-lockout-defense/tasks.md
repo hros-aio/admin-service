@@ -241,6 +241,14 @@ Phases 1–4 (TSK-AUTH-018 domain primitives, TSK-AUTH-019 Redis cache, TSK-AUTH
 
 ---
 
+## Phase 8: Integration Testing (TSK-AUTH-023) ✅ Complete
+
+**Goal**: Implement an end-to-end integration test for the brute-force flow using testcontainers.
+
+- [x] T021 [US1, US2, US5, US6] Implement an end-to-end integration test in `test/integration/brute_force_flow_test.go` using testcontainers for PostgreSQL and Redis to verify 5 failed logins, Kafka notification, and lockout behavior.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
