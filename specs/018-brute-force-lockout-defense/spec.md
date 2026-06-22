@@ -4,9 +4,11 @@
 
 **Created**: 2026-06-21
 
-**Status**: Draft
+**Updated**: 2026-06-21 (TSK-AUTH-020 — Kafka producer adapter layer)
 
-**Input**: User description: "TSK-AUTH-018: Define the BruteForceCache interface required by the application layer. Define the specific domain error ErrAccountLocked. Define the event payload structs for account.locked (audit) and email.send (Kafka notification). Input: Feature specifications (SRS-AUTH-002, Brute-Force Lockout Defense Roadmap)."
+**Status**: In Progress
+
+**Input**: User description: "TSK-AUTH-018 → TSK-AUTH-020: Define domain primitives (BruteForceCache, ErrAccountLocked, event payloads), Redis cache implementation, and Kafka producer adapter for lockout email notification."
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -37,6 +39,22 @@ When an admin account gets locked, the system automatically emails the account h
 **Acceptance Scenarios**:
 
 1. **Given** a user is on their 5th consecutive failed login attempt, **When** the attempt fails and triggers a lockout, **Then** the system publishes a notification event to send a lockout email to the user.
+
+---
+
+### User Story 4 - Kafka Adapter Serializes Lockout Email Event (Priority: P1)
+
+The lockout email notification must flow through a well-defined Kafka adapter that wraps the `EmailSendEvent` domain payload inside a standard JSON event envelope before dispatching it via the Sarama publisher interface.
+
+**Why this priority**: Without the adapter layer, the domain event payload cannot be dispatched over Kafka — the linkage between the domain (what) and infrastructure (how) is missing.
+
+**Independent Test**: Construct an `EmailSendEvent` with a recipient email and unlock timestamp, call the adapter's publish method against a mock `sarama.SyncProducer`, and verify the captured message body deserializes back to a correctly populated `EventEnvelope[EmailSendEvent]`.
+
+**Acceptance Scenarios**:
+
+1. **Given** a valid `EmailSendEvent` (recipient, subject, template, template data including unlock timestamp), **When** the Kafka email producer's `PublishLockoutEmail` is called, **Then** a Sarama `ProducerMessage` is sent to the topic `email.send.v1` with the event serialized inside the standard `EventEnvelope` JSON structure.
+2. **Given** the publisher interface is called with the envelope, **When** Sarama returns an error, **Then** the error is wrapped and returned to the caller without panicking.
+3. **Given** a zero-value or empty-string recipient email, **When** the adapter is called, **Then** it returns a validation error before attempting to publish.
 
 ---
 
@@ -71,6 +89,8 @@ If a administrator gets locked out, a Super Admin can manually unlock the accoun
 - **FR-005**: System MUST trigger an audit log event (`account.locked`) when an account is locked.
 - **FR-006**: System MUST trigger a notification event (`email.send`) containing the user's email, lockout event details, and the unlock timestamp.
 - **FR-007**: System MUST provide an interface to query, increment, and reset the lockout/failure state in a cache.
+- **FR-008**: The Kafka adapter MUST wrap the `EmailSendEvent` domain payload inside a standard `EventEnvelope` (containing `id`, `type`, `source`, `version`, `correlation_id`, `occurred_at`, and `data` fields) before publishing.
+- **FR-009**: The Kafka adapter MUST publish the lockout email envelope to the topic `email.send.v1` using the project's `EventPublisher` interface backed by `sarama.SyncProducer`. The message key MUST be the recipient email address.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -83,6 +103,17 @@ If a administrator gets locked out, a Super Admin can manually unlock the accoun
   - **AccountLockedEvent**: Payloads for `account.locked` (audit log entry: user details, timestamp).
   - **EmailSendEvent**: Payload for `email.send` (recipient email, body template/data, subject).
 
+- **EventEnvelope**: Standard Kafka message wrapper applied by the adapter layer.
+  - ID (UUID string) — unique event identifier
+  - Type (string) — event topic identifier, e.g. `email.send`
+  - Source (string) — originating service name
+  - Version (int) — schema version
+  - CorrelationID (string) — request trace correlation
+  - OccurredAt (timestamp) — event creation time
+  - Data (generic payload) — the domain event struct
+
+- **EmailKafkaProducer**: Adapter-layer producer responsible for mapping `EmailSendEvent` → `EventEnvelope[EmailSendEvent]` and dispatching via the `EventPublisher` interface.
+
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
@@ -91,9 +122,14 @@ If a administrator gets locked out, a Super Admin can manually unlock the accoun
 - **SC-002**: Lockout duration is precisely 30 minutes (+/- 5 seconds).
 - **SC-003**: Invalidation/lockout check must precede credential verification to prevent expensive password hashing (bcrypt) during active locks, saving CPU resources.
 - **SC-004**: All locking and unlocking events must generate corresponding audit logs and Kafka notification events with 100% reliability.
+- **SC-005**: The lockout email Kafka message produced by the adapter must deserialize back into a fully-populated `EventEnvelope[EmailSendEvent]` with all required fields present and non-zero, as verified by unit tests against a mock producer.
 
 ## Assumptions
 
 - We assume Redis will be the primary caching implementation for the lockout state in production, but the domain/application layers will remain cache-agnostic.
 - The system timezone is handled consistently (UTC or matching local time formatting).
 - Email notifications will be processed asynchronously by a separate notification service reading from Kafka.
+- The `EventEnvelope` generic struct is defined in `internal/adapter/kafka/producer/` or a shared platform package; the adapter owns the envelope construction.
+- The `EventPublisher` interface used by the adapter wraps `sarama.SyncProducer` as defined in the tech-stack document. The adapter receives it via dependency injection.
+- The Kafka topic for lockout email events is `email.send.v1`, following the project's topic-naming convention `<domain>.<event-name>.v<version>`.
+- The message key is the recipient email address to ensure per-user partition ordering.
