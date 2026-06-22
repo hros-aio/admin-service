@@ -14,7 +14,6 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/hros/admin-service/internal/adapter/http/auth/dto"
-	"github.com/hros/admin-service/internal/application/interfaces"
 	"github.com/hros/admin-service/internal/application/usecase"
 	"github.com/hros/admin-service/internal/domain"
 	domainErrors "github.com/hros/admin-service/internal/domain/errors"
@@ -165,8 +164,6 @@ func (n *nopLockoutNotifier) PublishLockoutEmail(_ context.Context, _ events.Ema
 func newLoginUCForTest(
 	userRepo domain.AdminUserRepository,
 	sessionRepo domain.SessionTokenRepository,
-	pwHelper interfaces.BruteForceCache, // unused overload — kept for signature compat
-	_ interface{}, // unused
 	password *mockPasswordHelper,
 	tokens *mockTokenProvider,
 	audit *mockAuditLogger,
@@ -204,7 +201,7 @@ func TestAuthHandler_Login(t *testing.T) {
 		mockTokenProvider := new(mockTokenProvider)
 		mockAuditLogger := new(mockAuditLogger)
 
-		loginUC := usecase.NewLoginUseCase(mockUserRepo, mockSessionRepo, mockPasswordHelper, mockTokenProvider, mockAuditLogger, &nopBruteForceCache{}, &nopLockoutNotifier{}, slog.Default())
+		loginUC := newLoginUCForTest(mockUserRepo, mockSessionRepo, mockPasswordHelper, mockTokenProvider, mockAuditLogger)
 		mockTokenBlacklist := new(mockTokenBlacklist)
 		logoutUC := usecase.NewLogoutUseCase(mockSessionRepo, mockTokenBlacklist, mockAuditLogger)
 		handler := NewAuthHandler(loginUC, logoutUC, nil)
@@ -254,7 +251,7 @@ func TestAuthHandler_Login(t *testing.T) {
 		mockTokenProvider := new(mockTokenProvider)
 		mockAuditLogger := new(mockAuditLogger)
 
-		loginUC := usecase.NewLoginUseCase(mockUserRepo, mockSessionRepo, mockPasswordHelper, mockTokenProvider, mockAuditLogger, &nopBruteForceCache{}, &nopLockoutNotifier{}, slog.Default())
+		loginUC := newLoginUCForTest(mockUserRepo, mockSessionRepo, mockPasswordHelper, mockTokenProvider, mockAuditLogger)
 		mockTokenBlacklist := new(mockTokenBlacklist)
 		logoutUC := usecase.NewLogoutUseCase(mockSessionRepo, mockTokenBlacklist, mockAuditLogger)
 		handler := NewAuthHandler(loginUC, logoutUC, nil)
@@ -298,7 +295,7 @@ func TestAuthHandler_Login(t *testing.T) {
 		mockTokenProvider := new(mockTokenProvider)
 		mockAuditLogger := new(mockAuditLogger)
 
-		loginUC := usecase.NewLoginUseCase(mockUserRepo, mockSessionRepo, mockPasswordHelper, mockTokenProvider, mockAuditLogger, &nopBruteForceCache{}, &nopLockoutNotifier{}, slog.Default())
+		loginUC := newLoginUCForTest(mockUserRepo, mockSessionRepo, mockPasswordHelper, mockTokenProvider, mockAuditLogger)
 		mockTokenBlacklist := new(mockTokenBlacklist)
 		logoutUC := usecase.NewLogoutUseCase(mockSessionRepo, mockTokenBlacklist, mockAuditLogger)
 		handler := NewAuthHandler(loginUC, logoutUC, nil)
@@ -342,7 +339,7 @@ func TestAuthHandler_Login(t *testing.T) {
 		mockTokenProvider := new(mockTokenProvider)
 		mockAuditLogger := new(mockAuditLogger)
 
-		loginUC := usecase.NewLoginUseCase(mockUserRepo, mockSessionRepo, mockPasswordHelper, mockTokenProvider, mockAuditLogger, &nopBruteForceCache{}, &nopLockoutNotifier{}, slog.Default())
+		loginUC := newLoginUCForTest(mockUserRepo, mockSessionRepo, mockPasswordHelper, mockTokenProvider, mockAuditLogger)
 		mockTokenBlacklist := new(mockTokenBlacklist)
 		logoutUC := usecase.NewLogoutUseCase(mockSessionRepo, mockTokenBlacklist, mockAuditLogger)
 		handler := NewAuthHandler(loginUC, logoutUC, nil)
@@ -381,7 +378,7 @@ func TestAuthHandler_Login(t *testing.T) {
 	})
 
 	t.Run("Validation Failure", func(t *testing.T) {
-		loginUC := usecase.NewLoginUseCase(nil, nil, nil, nil, nil, &nopBruteForceCache{}, &nopLockoutNotifier{}, slog.Default())
+		loginUC := newLoginUCForTest(nil, nil, nil, nil, nil)
 		handler := NewAuthHandler(loginUC, nil, nil)
 
 		reqBody := dto.LoginRequest{
