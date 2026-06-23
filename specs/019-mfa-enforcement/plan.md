@@ -39,7 +39,7 @@ This plan outlines the implementation of MFA Enforcement (Super Admins).
 - Register path `POST /v1/auth/mfa/verify` mapped to `AuthHandler.VerifyMFA` in route registration.
 - Update `AuthHandler.Login` to properly map `MFARequired`, `MFAToken`, and `MFAMethods` fields from output to client response envelope (already partially structured, but ensure it is strictly tested).
 - Implement `VerifyMFA` method on `AuthHandler` to parse, validate, and execute verification request, returning standard JWT access/refresh token pair or mapping domain errors `ErrMFAInvalid` / `ErrMFATokenExpired` to `401 Unauthorized` responses matching contract codes.
-- Implement comprehensive handler-level unit and integration tests inside `auth_handler_test.go` checking all scenarios (success, validation error, invalid token/code, inactive/locked users, usecase/internal errors).
+- Implement comprehensive handler-level unit and integration tests inside `auth_handler_test.go` checking all scenarios (success, validation error, invalid token/code, usecase/internal errors).
 
 
 ## Technical Context

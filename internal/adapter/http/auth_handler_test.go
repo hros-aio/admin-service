@@ -1237,4 +1237,86 @@ func TestAuthHandler_VerifyMFA(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "internal_error", errorResp.Code)
 	})
+
+	t.Run("Forbidden - User Inactive", func(t *testing.T) {
+		mockUserRepo := new(mockUserRepo)
+		mockSessionRepo := new(mockSessionRepo)
+		mockTokenProvider := new(mockTokenProvider)
+		mockAuditLogger := new(mockAuditLogger)
+		mockMFACache := new(mockMFACache)
+
+		verifyMfaUC := usecase.NewVerifyMFAUseCase(
+			mockUserRepo,
+			mockSessionRepo,
+			mockTokenProvider,
+			mockAuditLogger,
+			mockMFACache,
+			slog.Default(),
+		)
+		handler := NewAuthHandler(nil, nil, nil, verifyMfaUC)
+
+		reqBody := dto.MFAVerifyRequest{
+			MFAToken: "valid-mfa-token",
+			Method:   "totp",
+			Code:     "123456",
+		}
+		bodyBytes, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPost, "/v1/auth/mfa/verify", bytes.NewBuffer(bodyBytes))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		mockMFACache.On("GetAdminID", mock.Anything, "valid-mfa-token").Return("admin-id-123", nil).Once()
+		mockUserRepo.On("FindByID", mock.Anything, "admin-id-123").Return((*domain.AdminUser)(nil), domainErrors.ErrUserInactive).Once()
+
+		err := handler.VerifyMFA(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusForbidden, rec.Code)
+
+		var errorResp sharedErrors.ErrorResponse
+		err = json.Unmarshal(rec.Body.Bytes(), &errorResp)
+		assert.NoError(t, err)
+		assert.Equal(t, "forbidden", errorResp.Code)
+	})
+
+	t.Run("Forbidden - User Locked", func(t *testing.T) {
+		mockUserRepo := new(mockUserRepo)
+		mockSessionRepo := new(mockSessionRepo)
+		mockTokenProvider := new(mockTokenProvider)
+		mockAuditLogger := new(mockAuditLogger)
+		mockMFACache := new(mockMFACache)
+
+		verifyMfaUC := usecase.NewVerifyMFAUseCase(
+			mockUserRepo,
+			mockSessionRepo,
+			mockTokenProvider,
+			mockAuditLogger,
+			mockMFACache,
+			slog.Default(),
+		)
+		handler := NewAuthHandler(nil, nil, nil, verifyMfaUC)
+
+		reqBody := dto.MFAVerifyRequest{
+			MFAToken: "valid-mfa-token",
+			Method:   "totp",
+			Code:     "123456",
+		}
+		bodyBytes, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPost, "/v1/auth/mfa/verify", bytes.NewBuffer(bodyBytes))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		mockMFACache.On("GetAdminID", mock.Anything, "valid-mfa-token").Return("admin-id-123", nil).Once()
+		mockUserRepo.On("FindByID", mock.Anything, "admin-id-123").Return((*domain.AdminUser)(nil), domainErrors.ErrUserLocked).Once()
+
+		err := handler.VerifyMFA(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusForbidden, rec.Code)
+
+		var errorResp sharedErrors.ErrorResponse
+		err = json.Unmarshal(rec.Body.Bytes(), &errorResp)
+		assert.NoError(t, err)
+		assert.Equal(t, "forbidden", errorResp.Code)
+	})
 }
