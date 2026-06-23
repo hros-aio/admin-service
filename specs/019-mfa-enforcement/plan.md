@@ -10,25 +10,27 @@ This plan outlines the implementation of MFA Enforcement (Super Admins).
 
 **Phase 1 (TSK-MFA-001 — ✅ Done)**: Database migrations to add `totp_secret` and `webauthn_credentials` to the `admin_users` table with full up/down idempotency.
 
-**Phase 2 (TSK-MFA-002 — 🔲 Pending)**: Domain layer primitives. We will update the `AdminUser` domain entity, define the `MFACache` interface, add the specific domain errors `ErrMFAInvalid` and `ErrMFATokenExpired`, and define event payloads for `mfa.success` and `mfa.failed`.
+**Phase 2 (TSK-MFA-002 — ✅ Done)**: Domain layer primitives — update `AdminUser` entity, `MFACache` interface, errors, and events.
+
+**Phase 3 (TSK-MFA-003 — 🔲 Pending)**: DTO and OpenAPI Contract updates. We will update `api/openapi.yaml` to define `/v1/auth/mfa/verify` and update `LoginResponse` fields, and update `internal/adapter/http/auth/dto/auth_dto.go` to add validation tags and define `MFAVerifyRequest`.
 
 ## Technical Context
 
 **Language/Version**: Go 1.23+
 
-**Primary Dependencies**: None (Go standard library for domain primitives)
+**Primary Dependencies**: `github.com/go-playground/validator/v10` for DTO validations.
 
-**Storage**: PostgreSQL 15+ (migrations already created), Redis for the temporary MFA cache
+**Storage**: None in this phase.
 
-**Testing**: Unit tests for domain entity updates, errors serialization, and event structures.
+**Testing**: Unit tests for DTO validation tags (verifying invalid formats are blocked).
 
 **Target Platform**: Linux server / local developer machines
 
 **Project Type**: web-service (Go backend)
 
 **Constraints**:
-- Domain layer (`internal/domain`) must have zero external infrastructure/framework dependencies.
-- Cache interfaces must reside under `internal/application/interfaces` to maintain layer boundaries.
+- The OpenAPI YAML must be fully valid according to the OpenAPI 3.0.3 specification.
+- Response payloads must map correctly between Go models and JSON representations.
 
 ## Constitution Check
 
@@ -36,11 +38,11 @@ This plan outlines the implementation of MFA Enforcement (Super Admins).
 
 | Principle | Status | Evidence |
 |-----------|--------|---------|
-| **I. Clean Architecture & Strict Boundaries** | ✅ PASS | Domain entity, errors, and events have zero dependencies. `MFACache` interface is placed under application layer boundaries (`internal/application/interfaces`). |
-| **II. Documentation-First & OpenAPI-Driven** | ✅ PASS | API and handlers will be addressed in subsequent tasks; this task is purely domain/primitives. |
-| **III. Unit-Test-Per-File (NON-NEGOTIABLE)** | ✅ PASS | Every created/updated file will have a corresponding `_test.go` file with unit tests. |
-| **IV. Task-Driven & Atomic Implementation** | ✅ PASS | Target task TSK-MFA-002 maps to Phase 2 domain primitives creation. |
-| **V. Observability & Structured Logging** | ✅ PASS | Domain events will contain fields appropriate for audit logging and downstream analysis. |
+| **I. Clean Architecture & Strict Boundaries** | ✅ PASS | DTO files reside purely in the HTTP adapter boundary (`internal/adapter/http/auth/dto`), completely decoupled from domain and application layers. |
+| **II. Documentation-First & OpenAPI-Driven** | ✅ PASS | The API endpoint and request/response models are added to `api/openapi.yaml` in this phase before handler logic is built. |
+| **III. Unit-Test-Per-File (NON-NEGOTIABLE)** | ✅ PASS | Every created/updated DTO file has a corresponding `_test.go` file validating validation tags. |
+| **IV. Task-Driven & Atomic Implementation** | ✅ PASS | Target task TSK-MFA-003 maps to Phase 3 DTO & OpenAPI updates. |
+| **V. Observability & Structured Logging** | ✅ PASS | Standard ErrorResponse schemas are used for bad requests and validation errors. |
 
 ## Project Structure
 
@@ -58,16 +60,15 @@ specs/019-mfa-enforcement/
 ### Source Code (repository root)
 
 ```text
+api/
+└── openapi.yaml           # Updated to define verification endpoints and response models
 internal/
-├── domain/
-│   ├── admin_user.go     # Updated to include TotpSecret and WebauthnCredentials
-│   ├── errors/
-│   │   └── auth_errors.go # Updated to include ErrMFAInvalid and ErrMFATokenExpired
-│   └── events/
-│       └── auth_events.go # Updated to include mfa.success and mfa.failed payload structs
-└── application/
-    └── interfaces/
-        └── mfa_cache.go   # Created MFACache interface
+└── adapter/
+    └── http/
+        └── auth/
+            └── dto/
+                ├── auth_dto.go     # Updated LoginResponse and added MFAVerifyRequest
+                └── auth_dto_test.go # Updated tests to cover mfa verification validations
 ```
 
 **Structure Decision**: Standard Go files matching clean architecture structure.
