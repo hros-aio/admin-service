@@ -19,4 +19,6 @@ func TestAuthErrors(t *testing.T) {
 	assert.Equal(t, "invalid refresh token", ErrInvalidRefreshToken.Error())
 	assert.Equal(t, "unauthorized", ErrUnauthorized.Error())
 	assert.Equal(t, "forbidden", ErrForbidden.Error())
+	assert.Equal(t, "MFA verification failed", ErrMFAInvalid.Error())
+	assert.Equal(t, "MFA token has expired", ErrMFATokenExpired.Error())
 }

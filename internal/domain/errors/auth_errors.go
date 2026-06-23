@@ -39,4 +39,10 @@ var (
 
 	// ErrForbidden is returned when a user does not have permission for an action.
 	ErrForbidden = errors.New("forbidden")
+
+	// ErrMFAInvalid is returned when the MFA verification fails.
+	ErrMFAInvalid = errors.New("MFA verification failed")
+
+	// ErrMFATokenExpired is returned when the short-lived MFA session token has expired.
+	ErrMFATokenExpired = errors.New("MFA token has expired")
 )

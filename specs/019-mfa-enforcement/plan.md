@@ -6,25 +6,29 @@
 
 ## Summary
 
-This plan outlines the database migration required to support MFA Enforcement (Super Admins) and WebAuthn credentials storage. We will introduce `totp_secret` (VARCHAR) and `webauthn_credentials` (JSONB) columns to the `admin_users` table. To maintain backward compatibility and preserve existing data, we will copy any existing values in `mfa_secret` to `totp_secret` during the up migration, and revert it during the down migration.
+This plan outlines the implementation of MFA Enforcement (Super Admins).
+
+**Phase 1 (TSK-MFA-001 — ✅ Done)**: Database migrations to add `totp_secret` and `webauthn_credentials` to the `admin_users` table with full up/down idempotency.
+
+**Phase 2 (TSK-MFA-002 — 🔲 Pending)**: Domain layer primitives. We will update the `AdminUser` domain entity, define the `MFACache` interface, add the specific domain errors `ErrMFAInvalid` and `ErrMFATokenExpired`, and define event payloads for `mfa.success` and `mfa.failed`.
 
 ## Technical Context
 
 **Language/Version**: Go 1.23+
 
-**Primary Dependencies**: None (raw SQL migrations)
+**Primary Dependencies**: None (Go standard library for domain primitives)
 
-**Storage**: PostgreSQL 15+ (specifically using JSONB for WebAuthn credentials storage)
+**Storage**: PostgreSQL 15+ (migrations already created), Redis for the temporary MFA cache
 
-**Testing**: Local PostgreSQL instance migration run and rollback checks.
+**Testing**: Unit tests for domain entity updates, errors serialization, and event structures.
 
 **Target Platform**: Linux server / local developer machines
 
 **Project Type**: web-service (Go backend)
 
 **Constraints**:
-- Migrations must be non-destructive to existing user data.
-- The `webauthn_credentials` column must use the `JSONB` format to allow structured queries and future schema flexibility.
+- Domain layer (`internal/domain`) must have zero external infrastructure/framework dependencies.
+- Cache interfaces must reside under `internal/application/interfaces` to maintain layer boundaries.
 
 ## Constitution Check
 
@@ -32,11 +36,11 @@ This plan outlines the database migration required to support MFA Enforcement (S
 
 | Principle | Status | Evidence |
 |-----------|--------|---------|
-| **I. Clean Architecture & Strict Boundaries** | ✅ PASS | Schema migration files are standard PostgreSQL SQL files under the `migrations/` folder. |
-| **II. Documentation-First & OpenAPI-Driven** | ✅ PASS | Database migration task; no API endpoints are added or changed in this specific migration task. |
-| **III. Unit-Test-Per-File (NON-NEGOTIABLE)** | ✅ PASS | Migration SQL scripts will be run and tested against the local PostgreSQL test instance. |
-| **IV. Task-Driven & Atomic Implementation** | ✅ PASS | Target task TSK-MFA-001 maps to Phase 1 migration script creation. |
-| **V. Observability & Structured Logging** | ✅ PASS | Migration logging will be handled by the database schema executor. |
+| **I. Clean Architecture & Strict Boundaries** | ✅ PASS | Domain entity, errors, and events have zero dependencies. `MFACache` interface is placed under application layer boundaries (`internal/application/interfaces`). |
+| **II. Documentation-First & OpenAPI-Driven** | ✅ PASS | API and handlers will be addressed in subsequent tasks; this task is purely domain/primitives. |
+| **III. Unit-Test-Per-File (NON-NEGOTIABLE)** | ✅ PASS | Every created/updated file will have a corresponding `_test.go` file with unit tests. |
+| **IV. Task-Driven & Atomic Implementation** | ✅ PASS | Target task TSK-MFA-002 maps to Phase 2 domain primitives creation. |
+| **V. Observability & Structured Logging** | ✅ PASS | Domain events will contain fields appropriate for audit logging and downstream analysis. |
 
 ## Project Structure
 
@@ -54,12 +58,19 @@ specs/019-mfa-enforcement/
 ### Source Code (repository root)
 
 ```text
-migrations/
-├── 000003_add_mfa_to_admin_users.up.sql
-└── 000003_add_mfa_to_admin_users.down.sql
+internal/
+├── domain/
+│   ├── admin_user.go     # Updated to include TotpSecret and WebauthnCredentials
+│   ├── errors/
+│   │   └── auth_errors.go # Updated to include ErrMFAInvalid and ErrMFATokenExpired
+│   └── events/
+│       └── auth_events.go # Updated to include mfa.success and mfa.failed payload structs
+└── application/
+    └── interfaces/
+        └── mfa_cache.go   # Created MFACache interface
 ```
 
-**Structure Decision**: Standard SQL migrations under `migrations/` directory.
+**Structure Decision**: Standard Go files matching clean architecture structure.
 
 ## Complexity Tracking
 
