@@ -12,4 +12,8 @@ type AuditLogger interface {
 	LogAccountLocked(ctx context.Context, email string)
 	// LogMFAChallengeIssued records that an MFA challenge was successfully generated and issued.
 	LogMFAChallengeIssued(ctx context.Context, userID string, email string)
+	// LogMFASuccess records that a user successfully completed the second factor authentication.
+	LogMFASuccess(ctx context.Context, userID string, email string)
+	// LogMFAFailed records that a user failed the second factor authentication.
+	LogMFAFailed(ctx context.Context, email string, reason string)
 }

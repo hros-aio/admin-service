@@ -119,6 +119,12 @@ func (m *mockAuditLogger) LogAccountLocked(ctx context.Context, email string) {
 func (m *mockAuditLogger) LogMFAChallengeIssued(ctx context.Context, userID string, email string) {
 	m.Called(ctx, userID, email)
 }
+func (m *mockAuditLogger) LogMFASuccess(ctx context.Context, userID string, email string) {
+	m.Called(ctx, userID, email)
+}
+func (m *mockAuditLogger) LogMFAFailed(ctx context.Context, email string, reason string) {
+	m.Called(ctx, email, reason)
+}
 
 type mockBruteForceCache struct{ mock.Mock }
 

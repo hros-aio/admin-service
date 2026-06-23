@@ -99,4 +99,32 @@ func TestSlogAuditLogger(t *testing.T) {
 		assert.Equal(t, "user-123", logMap["user_id"])
 		assert.Equal(t, "test@example.com", logMap["email"])
 	})
+
+	t.Run("LogMFASuccess", func(t *testing.T) {
+		buf.Reset()
+		auditLogger.LogMFASuccess(ctx, "user-123", "test@example.com")
+
+		var logMap map[string]interface{}
+		err := json.Unmarshal(buf.Bytes(), &logMap)
+		assert.NoError(t, err)
+
+		assert.Equal(t, "MFA success", logMap["msg"])
+		assert.Equal(t, "mfa.success", logMap["event"])
+		assert.Equal(t, "user-123", logMap["user_id"])
+		assert.Equal(t, "test@example.com", logMap["email"])
+	})
+
+	t.Run("LogMFAFailed", func(t *testing.T) {
+		buf.Reset()
+		auditLogger.LogMFAFailed(ctx, "test@example.com", "invalid code")
+
+		var logMap map[string]interface{}
+		err := json.Unmarshal(buf.Bytes(), &logMap)
+		assert.NoError(t, err)
+
+		assert.Equal(t, "MFA failed", logMap["msg"])
+		assert.Equal(t, "mfa.failed", logMap["event"])
+		assert.Equal(t, "test@example.com", logMap["email"])
+		assert.Equal(t, "invalid code", logMap["reason"])
+	})
 }

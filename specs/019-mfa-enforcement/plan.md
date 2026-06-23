@@ -25,11 +25,20 @@ This plan outlines the implementation of MFA Enforcement (Super Admins).
 - Return a `LoginOutput` indicating MFA is required, containing the `mfa_token` and permitted methods, without generating access/refresh tokens or session records.
 - Add comprehensive unit tests in `login_usecase_test.go` to cover all branches.
 
+**Phase 6 (TSK-MFA-006 — ✅ Done)**: Implement `VerifyMFAUseCase`.
+- Create `VerifyMFAUseCase` accepting `VerifyMFAInput` (mfa_token, method, code) and returning `VerifyMFAOutput`.
+- Fetch the admin user ID from `MFACache` using `mfa_token`. If token is missing/expired, return `ErrMFATokenExpired`.
+- Fetch `AdminUser` from repository. If user not found, return appropriate error.
+- Verify the code using standard TOTP library `github.com/pquerna/otp`.
+- If verification fails, publish `mfa.failed` audit event and return `ErrMFAInvalid`.
+- If verification succeeds, publish `mfa.success` audit event, issue the standard JWT access/refresh token pair, store a persistent session record in `SessionTokenRepository`, and delete the `mfa_token` from `MFACache`.
+- Add unit tests in `verify_mfa_usecase_test.go` achieving 100% statement and branch coverage.
+
 ## Technical Context
 
 **Language/Version**: Go 1.23+
 
-**Primary Dependencies**: `github.com/redis/go-redis/v9` for Redis caching. `github.com/alicebob/miniredis/v2` for unit testing.
+**Primary Dependencies**: `github.com/redis/go-redis/v9` for Redis caching, `github.com/pquerna/otp` for TOTP validation. `github.com/alicebob/miniredis/v2` for unit testing.
 
 **Storage**: Redis for the temporary MFA cache (`auth:mfa_token:{mfaToken}`).
 
@@ -74,6 +83,10 @@ specs/019-mfa-enforcement/
 
 ```text
 internal/
+├── application/
+│   └── usecase/
+│       ├── verify_mfa_usecase.go     # VerifyMFAUseCase implementation
+│       └── verify_mfa_usecase_test.go # Unit tests for verify_mfa_usecase.go
 └── infrastructure/
     └── cache/
         ├── mfa_redis.go     # Redis implementation of MFACache
