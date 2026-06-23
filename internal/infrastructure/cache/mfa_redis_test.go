@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"log/slog"
+	"net"
 	"testing"
 	"time"
 
@@ -30,9 +31,8 @@ func TestRedisMFACache_StoreToken(t *testing.T) {
 	t.Run("successfully stores token with 5-minute TTL", func(t *testing.T) {
 		token := "mfa_sess_abc123"
 		adminID := "admin_user_uuid_123"
-		ttl := 5 * time.Minute
 
-		err := cache.StoreToken(ctx, token, adminID, ttl)
+		err := cache.StoreToken(ctx, token, adminID)
 		require.NoError(t, err)
 
 		key := "auth:mfa_token:" + token
@@ -46,7 +46,7 @@ func TestRedisMFACache_StoreToken(t *testing.T) {
 
 	t.Run("error when client fails", func(t *testing.T) {
 		badClient := redis.NewClient(&redis.Options{
-			Addr:        "localhost:9999",
+			Addr:        getClosedAddr(t),
 			MaxRetries:  -1,
 			DialTimeout: 10 * time.Millisecond,
 		})
@@ -54,7 +54,7 @@ func TestRedisMFACache_StoreToken(t *testing.T) {
 
 		badCache := NewRedisMFACache(badClient, logger)
 
-		err := badCache.StoreToken(ctx, "token", "id", 5*time.Minute)
+		err := badCache.StoreToken(ctx, "token", "id")
 		assert.Error(t, err)
 	})
 }
@@ -91,7 +91,7 @@ func TestRedisMFACache_GetAdminID(t *testing.T) {
 
 	t.Run("returns error on redis connection failure", func(t *testing.T) {
 		badClient := redis.NewClient(&redis.Options{
-			Addr:        "localhost:9999",
+			Addr:        getClosedAddr(t),
 			MaxRetries:  -1,
 			DialTimeout: 10 * time.Millisecond,
 		})
@@ -132,7 +132,7 @@ func TestRedisMFACache_DeleteToken(t *testing.T) {
 
 	t.Run("error when client fails", func(t *testing.T) {
 		badClient := redis.NewClient(&redis.Options{
-			Addr:        "localhost:9999",
+			Addr:        getClosedAddr(t),
 			MaxRetries:  -1,
 			DialTimeout: 10 * time.Millisecond,
 		})
@@ -143,4 +143,14 @@ func TestRedisMFACache_DeleteToken(t *testing.T) {
 		err := badCache.DeleteToken(ctx, "token")
 		assert.Error(t, err)
 	})
+}
+
+func getClosedAddr(t *testing.T) string {
+	t.Helper()
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	addr := l.Addr().String()
+	err = l.Close()
+	require.NoError(t, err)
+	return addr
 }

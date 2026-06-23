@@ -34,6 +34,7 @@ This plan outlines the implementation of MFA Enforcement (Super Admins).
 - Redis keys must follow the prefix format `auth:mfa_token:{mfaToken}`.
 - Cache TTL must be set to exactly 5 minutes on storage.
 - ErrMFATokenExpired must be returned if the token is not found.
+- All logs from the Redis cache implementation must redact the token portion of the key (e.g., logging `auth:mfa_token:[REDACTED]`) to prevent leaking raw MFA tokens.
 
 ## Constitution Check
 

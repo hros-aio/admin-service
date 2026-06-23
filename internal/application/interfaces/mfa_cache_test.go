@@ -2,10 +2,9 @@ package interfaces
 
 import (
 	"context"
-	"errors"
 	"testing"
-	"time"
 
+	domainErrors "github.com/hros/admin-service/internal/domain/errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,7 +18,7 @@ func newFakeMFACache() *fakeMFACache {
 	}
 }
 
-func (f *fakeMFACache) StoreToken(ctx context.Context, mfaToken string, adminID string, _ time.Duration) error {
+func (f *fakeMFACache) StoreToken(ctx context.Context, mfaToken string, adminID string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -33,7 +32,7 @@ func (f *fakeMFACache) GetAdminID(ctx context.Context, mfaToken string) (string,
 	}
 	adminID, exists := f.store[mfaToken]
 	if !exists {
-		return "", errors.New("MFA token has expired")
+		return "", domainErrors.ErrMFATokenExpired
 	}
 	return adminID, nil
 }
@@ -53,7 +52,7 @@ func TestMFACache_Workflow(t *testing.T) {
 	adminID := "admin_123"
 
 	// 1. Store
-	err := cache.StoreToken(ctx, token, adminID, 5*time.Minute)
+	err := cache.StoreToken(ctx, token, adminID)
 	assert.NoError(t, err)
 
 	// 2. Get
@@ -68,7 +67,7 @@ func TestMFACache_Workflow(t *testing.T) {
 	// 4. Get after delete
 	_, err = cache.GetAdminID(ctx, token)
 	assert.Error(t, err)
-	assert.Equal(t, "MFA token has expired", err.Error())
+	assert.ErrorIs(t, err, domainErrors.ErrMFATokenExpired)
 }
 
 func TestMFACache_ContextCancellation(t *testing.T) {
@@ -78,7 +77,7 @@ func TestMFACache_ContextCancellation(t *testing.T) {
 	token := "mfa_token_abc"
 	adminID := "admin_123"
 
-	err := cache.StoreToken(ctx, token, adminID, 5*time.Minute)
+	err := cache.StoreToken(ctx, token, adminID)
 	assert.ErrorIs(t, err, context.Canceled)
 
 	_, err = cache.GetAdminID(ctx, token)

@@ -78,7 +78,6 @@ As a developer, I want the short-lived MFA session token to map to the user's Ad
 
 - **Transaction isolation**: The migration script must run in a single transaction block so that failures in middle execution revert the table to its previous state.
 - **Nullability**: Since existing users do not have MFA secrets set, the new columns must allow `NULL` values.
-- **Cache serialization**: The cached admin user context must serialize to JSON and deserialize without data loss.
 - **Validation combinations**: The DTO for verification must require `code` if the verification method is `totp`.
 - **Redis downtime**: Cache operations must handle Redis client connectivity failures gracefully, returning standard errors.
 
@@ -91,15 +90,15 @@ As a developer, I want the short-lived MFA session token to map to the user's Ad
 - **FR-003**: The migrations MUST be non-destructive, preserving existing records in the `admin_users` table.
 - **FR-004**: The migration down script MUST revert the changes by dropping the `totp_secret` and `webauthn_credentials` columns from the `admin_users` table.
 - **FR-005**: `AdminUser` domain entity MUST include `TotpSecret` (string) and `WebauthnCredentials` ([]byte) fields.
-- **FR-006**: Define the `MFACache` interface with `Store`, `Get`, and `Delete` methods.
+- **FR-006**: Define the `MFACache` interface with `StoreToken`, `GetAdminID`, and `DeleteToken` methods.
 - **FR-007**: Define `ErrMFAInvalid` and `ErrMFATokenExpired` domain errors.
 - **FR-008**: Define `MFASuccessEvent` and `MFAFailedEvent` event payload structs.
 - **FR-009**: The OpenAPI contract `api/openapi.yaml` MUST define `POST /v1/auth/mfa/verify`.
 - **FR-010**: `LoginResponse` schema MUST include optional `mfa_required`, `mfa_token`, and `mfa_methods` properties.
 - **FR-011**: The DTO struct `LoginResponse` MUST support optional `MFARequired`, `MFAToken`, and `MFAMethods` fields.
 - **FR-012**: Define `MFAVerifyRequest` DTO containing `mfa_token`, `method`, and `code` with validation tags (`required` for token and method, `required_if` for code when method is `totp`).
-- **FR-013**: Define the `MFACache` interface with methods: `StoreToken(ctx, mfaToken, adminID)`, `GetAdminID(ctx, mfaToken)`, and `DeleteToken(ctx, mfaToken)`.
-- **FR-014**: Implement `RedisMFACache` mapping the token to the Admin ID key format `auth:mfa_token:{mfaToken}`.
+- **FR-013**: Define the `MFACache` interface with methods: `StoreToken(ctx, mfaToken, adminID)`, `GetAdminID(ctx, mfaToken)`, and `DeleteToken(ctx, mfaToken)`. The `StoreToken` method MUST NOT accept a TTL parameter from callers.
+- **FR-014**: Implement `RedisMFACache` mapping the token to the Admin ID key format `auth:mfa_token:{mfaToken}`. It MUST hard-code a 5-minute TTL when storing tokens.
 - **FR-015**: The cached keys MUST have a strict 5-minute TTL.
 
 ### Key Entities *(include if feature involves data)*
