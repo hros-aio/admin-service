@@ -219,11 +219,12 @@ func (h *AuthHandler) VerifyMFA(c echo.Context) error {
 	}
 
 	input := usecase.VerifyMFAInput{
-		MFAToken:  req.MFAToken,
-		Method:    req.Method,
-		Code:      req.Code,
-		IPAddress: c.RealIP(),
-		UserAgent: c.Request().UserAgent(),
+		MFAToken:   req.MFAToken,
+		Method:     req.Method,
+		Code:       req.Code,
+		RememberMe: req.RememberMe,
+		IPAddress:  c.RealIP(),
+		UserAgent:  c.Request().UserAgent(),
 	}
 
 	output, err := h.verifyMfaUC.Execute(c.Request().Context(), input)

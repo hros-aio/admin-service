@@ -24,7 +24,8 @@ type LoginResponse struct {
 
 // MFAVerifyRequest represents the payload for verifying the MFA code.
 type MFAVerifyRequest struct {
-	MFAToken string `json:"mfa_token" validate:"required"`
-	Method   string `json:"method" validate:"required,oneof=totp webauthn"`
-	Code     string `json:"code" validate:"required_if=Method totp"`
+	MFAToken   string `json:"mfa_token" validate:"required"`
+	Method     string `json:"method" validate:"required,oneof=totp webauthn"`
+	Code       string `json:"code" validate:"required_if=Method totp"`
+	RememberMe bool   `json:"remember_me"`
 }
