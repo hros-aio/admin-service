@@ -6,44 +6,43 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hros/admin-service/internal/domain"
 	"github.com/stretchr/testify/assert"
 )
 
 type fakeMFACache struct {
-	store map[string]*domain.AdminUser
+	store map[string]string
 }
 
 func newFakeMFACache() *fakeMFACache {
 	return &fakeMFACache{
-		store: make(map[string]*domain.AdminUser),
+		store: make(map[string]string),
 	}
 }
 
-func (f *fakeMFACache) Store(ctx context.Context, token string, user *domain.AdminUser, _ time.Duration) error {
+func (f *fakeMFACache) StoreToken(ctx context.Context, mfaToken string, adminID string, _ time.Duration) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	f.store[token] = user
+	f.store[mfaToken] = adminID
 	return nil
 }
 
-func (f *fakeMFACache) Get(ctx context.Context, token string) (*domain.AdminUser, error) {
+func (f *fakeMFACache) GetAdminID(ctx context.Context, mfaToken string) (string, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, err
+		return "", err
 	}
-	user, exists := f.store[token]
+	adminID, exists := f.store[mfaToken]
 	if !exists {
-		return nil, errors.New("MFA token has expired")
+		return "", errors.New("MFA token has expired")
 	}
-	return user, nil
+	return adminID, nil
 }
 
-func (f *fakeMFACache) Delete(ctx context.Context, token string) error {
+func (f *fakeMFACache) DeleteToken(ctx context.Context, mfaToken string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	delete(f.store, token)
+	delete(f.store, mfaToken)
 	return nil
 }
 
@@ -51,24 +50,23 @@ func TestMFACache_Workflow(t *testing.T) {
 	cache := newFakeMFACache()
 	ctx := context.Background()
 	token := "mfa_token_abc"
-	user := &domain.AdminUser{ID: "admin_123", Email: "admin@hros.io"}
+	adminID := "admin_123"
 
 	// 1. Store
-	err := cache.Store(ctx, token, user, 5*time.Minute)
+	err := cache.StoreToken(ctx, token, adminID, 5*time.Minute)
 	assert.NoError(t, err)
 
 	// 2. Get
-	retrieved, err := cache.Get(ctx, token)
+	retrieved, err := cache.GetAdminID(ctx, token)
 	assert.NoError(t, err)
-	assert.Equal(t, user.ID, retrieved.ID)
-	assert.Equal(t, user.Email, retrieved.Email)
+	assert.Equal(t, adminID, retrieved)
 
 	// 3. Delete
-	err = cache.Delete(ctx, token)
+	err = cache.DeleteToken(ctx, token)
 	assert.NoError(t, err)
 
 	// 4. Get after delete
-	_, err = cache.Get(ctx, token)
+	_, err = cache.GetAdminID(ctx, token)
 	assert.Error(t, err)
 	assert.Equal(t, "MFA token has expired", err.Error())
 }
@@ -78,14 +76,14 @@ func TestMFACache_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	token := "mfa_token_abc"
-	user := &domain.AdminUser{ID: "admin_123"}
+	adminID := "admin_123"
 
-	err := cache.Store(ctx, token, user, 5*time.Minute)
+	err := cache.StoreToken(ctx, token, adminID, 5*time.Minute)
 	assert.ErrorIs(t, err, context.Canceled)
 
-	_, err = cache.Get(ctx, token)
+	_, err = cache.GetAdminID(ctx, token)
 	assert.ErrorIs(t, err, context.Canceled)
 
-	err = cache.Delete(ctx, token)
+	err = cache.DeleteToken(ctx, token)
 	assert.ErrorIs(t, err, context.Canceled)
 }
