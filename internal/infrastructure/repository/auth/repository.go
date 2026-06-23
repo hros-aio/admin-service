@@ -65,3 +65,19 @@ func (r *GormAdminUserRepository) Delete(ctx context.Context, id string) error {
 	db := platformDB.GetTx(ctx, r.db)
 	return db.Delete(&adminUserModel{}, "id = ?", id).Error
 }
+
+// GetRoleNameByID retrieves the role name for the given role ID.
+func (r *GormAdminUserRepository) GetRoleNameByID(ctx context.Context, roleID string) (string, error) {
+	db := platformDB.GetTx(ctx, r.db)
+	var result struct {
+		Name string
+	}
+	err := db.Table("roles").Select("name").Where("id = ?", roleID).First(&result).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return "", domainErrors.ErrUserNotFound
+		}
+		return "", err
+	}
+	return result.Name, nil
+}

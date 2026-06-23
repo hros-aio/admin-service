@@ -14,7 +14,16 @@ This plan outlines the implementation of MFA Enforcement (Super Admins).
 
 **Phase 3 (TSK-MFA-003 — ✅ Done)**: DTO and OpenAPI Contract updates.
 
-**Phase 4 (TSK-MFA-004 — 🔲 Pending)**: Redis Cache implementation. We will implement `RedisMFACache` mapping the token to the user's Admin ID with a strict 5-minute TTL.
+**Phase 4 (TSK-MFA-004 — ✅ Done)**: Redis Cache implementation. We will implement `RedisMFACache` mapping the token to the user's Admin ID with a strict 5-minute TTL.
+
+**Phase 5 (TSK-MFA-005 — 🔲 Pending)**: Intercept Super Admin login in `LoginUseCase`.
+- Update `AdminUserRepository` to include a method `GetRoleNameByID(ctx context.Context, roleID string) (string, error)` for role validation.
+- Implement `GetRoleNameByID` in the GORM repository.
+- Update `LoginUseCase.Execute` to fetch the user's role name and check if it is `"Super Admin"`.
+- Generate a secure random 32-byte hex string using `crypto/rand` as the `mfa_token`.
+- Cache the `mfa_token` mapping to `user.ID` using `MFACache.StoreToken()`.
+- Return a `LoginOutput` indicating MFA is required, containing the `mfa_token` and permitted methods, without generating access/refresh tokens or session records.
+- Add comprehensive unit tests in `login_usecase_test.go` to cover all branches.
 
 ## Technical Context
 

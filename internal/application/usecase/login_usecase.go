@@ -2,6 +2,8 @@ package usecase
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -36,6 +38,7 @@ type LoginUseCase struct {
 	audit         authDomain.AuditLogger
 	bruteForce    interfaces.BruteForceCache
 	lockoutNotify interfaces.LockoutNotifier
+	mfaCache      interfaces.MFACache
 	logger        *slog.Logger
 }
 
@@ -48,6 +51,7 @@ func NewLoginUseCase(
 	audit authDomain.AuditLogger,
 	bruteForce interfaces.BruteForceCache,
 	lockoutNotify interfaces.LockoutNotifier,
+	mfaCache interfaces.MFACache,
 	logger *slog.Logger,
 ) *LoginUseCase {
 	return &LoginUseCase{
@@ -58,6 +62,7 @@ func NewLoginUseCase(
 		audit:         audit,
 		bruteForce:    bruteForce,
 		lockoutNotify: lockoutNotify,
+		mfaCache:      mfaCache,
 		logger:        logger,
 	}
 }
@@ -127,6 +132,45 @@ func (uc *LoginUseCase) Execute(ctx context.Context, input LoginInput) (*LoginOu
 		uc.logger.WarnContext(ctx, "brute force cache unavailable during Reset; proceeding",
 			slog.String("error", resetErr.Error()),
 		)
+	}
+
+	roleName, err := uc.userRepo.GetRoleNameByID(ctx, user.RoleID)
+	if err != nil {
+		return nil, fmt.Errorf("get role name: %w", err)
+	}
+
+	if roleName == "Super Admin" {
+		tokenBytes := make([]byte, 32)
+		if _, err := rand.Read(tokenBytes); err != nil {
+			return nil, fmt.Errorf("generate mfa token: %w", err)
+		}
+		mfaToken := hex.EncodeToString(tokenBytes)
+
+		if err := uc.mfaCache.StoreToken(ctx, mfaToken, user.ID); err != nil {
+			uc.logger.ErrorContext(ctx, "failed to cache MFA token for Super Admin",
+				slog.String("event", "login_usecase.cache_mfa_token_failed"),
+				slog.String("user_id", user.ID),
+				slog.Any("error", err),
+			)
+			return nil, fmt.Errorf("store mfa token: %w", err)
+		}
+
+		uc.logger.InfoContext(ctx, "Super Admin login intercepted; MFA token generated",
+			slog.String("event", "login_usecase.mfa_token_generated"),
+			slog.String("user_id", user.ID),
+			slog.String("key", "auth:mfa_token:[REDACTED]"),
+		)
+
+		return &LoginOutput{
+			MFARequired: true,
+			MFAToken:    mfaToken,
+			MFAMethods:  []string{"totp", "webauthn"},
+			User: AdminUserSummary{
+				ID:    user.ID,
+				Email: user.Email,
+				Name:  user.Name,
+			},
+		}, nil
 	}
 
 	// Issue RS256 JWT access token (15-min expiry)

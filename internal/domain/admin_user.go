@@ -80,4 +80,5 @@ type AdminUserRepository interface {
 	FindByID(ctx context.Context, id string) (*AdminUser, error)
 	FindByEmail(ctx context.Context, email string) (*AdminUser, error)
 	Delete(ctx context.Context, id string) error
+	GetRoleNameByID(ctx context.Context, roleID string) (string, error)
 }

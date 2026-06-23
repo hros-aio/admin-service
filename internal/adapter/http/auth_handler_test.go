@@ -56,6 +56,24 @@ func (m *mockUserRepo) Delete(ctx context.Context, id string) error {
 	return m.Called(ctx, id).Error(0)
 }
 
+func (m *mockUserRepo) GetRoleNameByID(ctx context.Context, roleID string) (string, error) {
+	args := m.Called(ctx, roleID)
+	return args.String(0), args.Error(1)
+}
+
+type mockMFACache struct{ mock.Mock }
+
+func (m *mockMFACache) StoreToken(ctx context.Context, token string, adminID string) error {
+	return m.Called(ctx, token, adminID).Error(0)
+}
+func (m *mockMFACache) GetAdminID(ctx context.Context, token string) (string, error) {
+	args := m.Called(ctx, token)
+	return args.String(0), args.Error(1)
+}
+func (m *mockMFACache) DeleteToken(ctx context.Context, token string) error {
+	return m.Called(ctx, token).Error(0)
+}
+
 type mockSessionRepo struct{ mock.Mock }
 
 func (m *mockSessionRepo) Save(ctx context.Context, t *domain.SessionToken) error {
@@ -168,6 +186,9 @@ func newLoginUCForTest(
 	tokens *mockTokenProvider,
 	audit *mockAuditLogger,
 ) *usecase.LoginUseCase {
+	if mRepo, ok := userRepo.(*mockUserRepo); ok {
+		mRepo.On("GetRoleNameByID", mock.Anything, mock.Anything).Return("Admin", nil).Maybe()
+	}
 	return usecase.NewLoginUseCase(
 		userRepo,
 		sessionRepo,
@@ -176,6 +197,7 @@ func newLoginUCForTest(
 		audit,
 		&nopBruteForceCache{},
 		&nopLockoutNotifier{},
+		&mockMFACache{},
 		slog.Default(),
 	)
 }
@@ -435,6 +457,8 @@ func TestAuthHandler_Login(t *testing.T) {
 		mockAuditLogger := new(mockAuditLogger)
 		mockBruteForce := new(mockBruteForceCache)
 
+		mockUserRepo.On("GetRoleNameByID", mock.Anything, mock.Anything).Return("Admin", nil).Maybe()
+
 		loginUC := usecase.NewLoginUseCase(
 			mockUserRepo,
 			mockSessionRepo,
@@ -443,6 +467,7 @@ func TestAuthHandler_Login(t *testing.T) {
 			mockAuditLogger,
 			mockBruteForce,
 			&nopLockoutNotifier{},
+			&mockMFACache{},
 			slog.Default(),
 		)
 		mockTokenBlacklist := new(mockTokenBlacklist)

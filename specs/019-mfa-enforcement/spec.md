@@ -74,12 +74,30 @@ As a developer, I want the short-lived MFA session token to map to the user's Ad
 
 ---
 
-### Edge Cases
+### User Story 5 - Intercept Super Admin login and generate MFA token (Priority: P1)
+
+As a Super Admin, when I log in with valid credentials, I want the system to prompt me for MFA validation by returning a short-lived `mfa_token` instead of a JWT token, so that my login cannot be completed without fulfilling the second factor.
+
+**Why this priority**: Core logic of MFA enforcement in the authentication flow.
+
+**Independent Test**: The `LoginUseCase` returns an MFA token and prevents JWT issuance for Super Admin users, while standard users still receive access/refresh tokens.
+
+**Acceptance Scenarios**:
+
+1. **Given** a Super Admin user with active status, **When** logging in with correct credentials, **Then** `LoginUseCase` generates a secure random token, stores it in `MFACache`, and returns a response containing the token with `mfa_required` set to true, without generating access/refresh tokens or session records.
+2. **Given** a standard Admin user (not Super Admin), **When** logging in with correct credentials, **Then** `LoginUseCase` generates and returns the standard JWT access/refresh token pair and saves the session token, as before.
+3. **Given** a Super Admin user logs in with incorrect credentials, **When** the login fails, **Then** the brute-force counter increases and standard invalid credentials error is returned.
+
+---
+
+## Edge Cases
 
 - **Transaction isolation**: The migration script must run in a single transaction block so that failures in middle execution revert the table to its previous state.
 - **Nullability**: Since existing users do not have MFA secrets set, the new columns must allow `NULL` values.
 - **Validation combinations**: The DTO for verification must require `code` if the verification method is `totp`.
 - **Redis downtime**: Cache operations must handle Redis client connectivity failures gracefully, returning standard errors.
+- **Concurrent logins**: Multiple concurrent Super Admin login attempts generate distinct secure tokens without conflict.
+- **Cache failure**: If the `MFACache` fails to save the token for a Super Admin, the usecase logs the failure and aborts login (returning an error) to prevent bypassing MFA checks.
 
 ## Requirements *(mandatory)*
 
@@ -100,6 +118,11 @@ As a developer, I want the short-lived MFA session token to map to the user's Ad
 - **FR-013**: Define the `MFACache` interface with methods: `StoreToken(ctx, mfaToken, adminID)`, `GetAdminID(ctx, mfaToken)`, and `DeleteToken(ctx, mfaToken)`. The `StoreToken` method MUST NOT accept a TTL parameter from callers.
 - **FR-014**: Implement `RedisMFACache` mapping the token to the Admin ID key format `auth:mfa_token:{mfaToken}`. It MUST hard-code a 5-minute TTL when storing tokens.
 - **FR-015**: The cached keys MUST have a strict 5-minute TTL.
+- **FR-016**: The `LoginUseCase` MUST verify the user's role after validating their password. If the user's role is `"Super Admin"`, the system MUST NOT issue JWT access/refresh tokens or create a persistent database session.
+- **FR-017**: If the user is a `"Super Admin"`, the system MUST generate a cryptographically secure random `mfa_token` (e.g., a 32-byte hex string) and store it in `MFACache` associated with the admin user ID.
+- **FR-018**: If the `MFACache` fails to store the token, the `LoginUseCase` MUST return an internal error and abort the login.
+- **FR-019**: If the user is a `"Super Admin"`, the `LoginUseCase` response MUST set `mfa_required` to true, return the generated `mfa_token`, and return the list of allowed MFA methods (such as "totp", "webauthn").
+- **FR-020**: If the user is NOT a `"Super Admin"`, the `LoginUseCase` MUST bypass the MFA challenge and directly return the standard JWT access/refresh token pair and save the session.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -110,6 +133,7 @@ As a developer, I want the short-lived MFA session token to map to the user's Ad
 - **MFASuccessEvent**: Emitted on successful MFA verification.
 - **MFAFailedEvent**: Emitted on failed MFA verification.
 - **MFAVerifyRequest**: DTO representing the client verification request payload.
+- **Role**: Represents authorization groups in the system. Used to identify the `"Super Admin"` role name.
 
 ## Success Criteria *(mandatory)*
 
@@ -124,6 +148,9 @@ As a developer, I want the short-lived MFA session token to map to the user's Ad
 - **SC-007**: HTTP validation tests verify DTO validator tags correctly block invalid request payloads.
 - **SC-008**: Cache store and retrieve operations complete in under 5ms (P95).
 - **SC-009**: Expiration test asserts key is missing exactly after 5 minutes (or appropriate mocked duration).
+- **SC-010**: `LoginUseCase` unit tests achieve 100% statement and branch coverage for the new MFA redirection check path.
+- **SC-011**: Standard admin login (non-Super Admin) continues to receive JWT tokens directly upon valid password verification.
+- **SC-012**: Super Admin login successfully returns a secure random `mfa_token` and `mfa_required = true` on valid password check.
 
 ## Assumptions
 
@@ -131,4 +158,6 @@ As a developer, I want the short-lived MFA session token to map to the user's Ad
 - The new columns are optional initially, so they must be nullable.
 - Migrations will be executed using the application's migration tool or raw SQL execution tool.
 - The go-playground/validator package is used for structural DTO validation in HTTP handlers.
-- Redis client is available and properly initialized.
+- The Redis client is available and properly initialized.
+- The system checks if a user is a `"Super Admin"` by querying the user's role name associated with their `RoleID` in the database.
+- A cryptographically secure random number generator (`crypto/rand`) is used to generate the `mfa_token`.
