@@ -50,6 +50,37 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /v1/auth/mfa/verify:
+    post:
+      operationId: mfaVerify
+      tags:
+        - Authentication
+      summary: Verify MFA
+      description: Complete MFA step for Super Admin after successful password auth.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MFAVerifyRequest'
+      responses:
+        '200':
+          description: Verification successful, returns access/refresh tokens
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: MFA verification failed (MFA_INVALID) or session expired (MFA_TOKEN_EXPIRED)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
   /v1/auth/session:
     delete:
       operationId: logout
@@ -155,6 +186,34 @@ components:
         refresh_token:
           type: string
           example: "def456..."
+        mfa_required:
+          type: boolean
+          example: true
+        mfa_token:
+          type: string
+          example: "mfa_sess_abc123"
+        mfa_methods:
+          type: array
+          items:
+            type: string
+          example: ["totp", "webauthn"]
+
+    MFAVerifyRequest:
+      type: object
+      required:
+        - mfa_token
+        - method
+      properties:
+        mfa_token:
+          type: string
+          example: "mfa_sess_abc123"
+        method:
+          type: string
+          enum: [totp, webauthn]
+          example: totp
+        code:
+          type: string
+          example: "123456"
 
     ErrorResponse:
       type: object

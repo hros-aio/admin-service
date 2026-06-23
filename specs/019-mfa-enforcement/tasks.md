@@ -4,7 +4,7 @@
 
 **Prerequisites**: plan.md ✅, spec.md ✅
 
-**Scope**: Implement migration (TSK-MFA-001) and domain layer primitives (TSK-MFA-002).
+**Scope**: Implement migration (TSK-MFA-001), domain primitives (TSK-MFA-002), and DTO/OpenAPI contract (TSK-MFA-003).
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -32,3 +32,11 @@
   - `internal/domain/errors/auth_errors_test.go`
   - `internal/domain/events/auth_events_test.go`
   - `internal/application/interfaces/mfa_cache_test.go`
+
+---
+
+## Phase 3: DTO & OpenAPI Contract (TSK-MFA-003) ✅ Complete
+
+- [x] T008 [P] [US3] Update `api/openapi.yaml` to define `/v1/auth/mfa/verify` endpoint, document its responses (200, 401 with `MFA_INVALID` and `MFA_TOKEN_EXPIRED`), update `LoginResponse` fields, and add `MFAVerifyRequest` schema.
+- [x] T009 [P] [US3] Update `LoginResponse` and implement `MFAVerifyRequest` with validation tags in `internal/adapter/http/auth/dto/auth_dto.go`.
+- [x] T010 [P] [US3] Update `internal/adapter/http/auth/dto/auth_dto_test.go` to test validations and JSON mapping of `MFAVerifyRequest` and `LoginResponse`.

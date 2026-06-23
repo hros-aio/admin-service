@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-**Input**: User description: "Feature: MFA Enforcement (Super Admins). Task: TSK-MFA-002. Layer: Domain. Description: Update the AdminUser domain entity to include TotpSecret and WebauthnCredentials. Define the MFACache interface required by the application layer to temporarily hold the authenticated context. Define the specific domain errors ErrMFAInvalid and ErrMFATokenExpired. Define the event payload structs for mfa.success and mfa.failed."
+**Input**: User description: "Feature: MFA Enforcement (Super Admins). Task: TSK-MFA-003. Layer: DTO. Description: Update the OpenAPI contract api/openapi.yaml and HTTP DTOs. Update the POST /auth/login` response schema to support returning an mfa_token` instead of a JWT. Create the MFAVerifyRequest` DTO containing mfa_token`, method`, and code`. Add strict validation tags."
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -41,11 +41,28 @@ As a developer, I want domain structures for MFA credentials inside the `AdminUs
 
 ---
 
+### User Story 3 - Define API Contracts and HTTP DTOs for MFA Verification (Priority: P1)
+
+As a front-end developer or API consumer, I want the login response to include MFA requirements when MFA is enforced, and I want a dedicated verification endpoint documented in the OpenAPI spec and defined in HTTP DTOs, so that we can implement the MFA user experience correctly.
+
+**Why this priority**: Prerequisite for implementing the HTTP handlers and API endpoints.
+
+**Independent Test**: The DTO structs compile with strict validation tags, and `api/openapi.yaml` passes validation checks.
+
+**Acceptance Scenarios**:
+
+1. **Given** an admin user with MFA enabled logs in, **When** the login endpoint is called, **Then** the response contains `mfa_required: true`, `mfa_token`, and allowed `mfa_methods`.
+2. **Given** a client has an `mfa_token`, **When** verifying MFA via `POST /v1/auth/mfa/verify`, **Then** they submit `mfa_token`, `method`, and `code` (if TOTP).
+3. **Given** an invalid verification request, **When** parsed by the handler, **Then** structural validation constraints fail with bad request.
+
+---
+
 ### Edge Cases
 
 - **Transaction isolation**: The migration script must run in a single transaction block so that failures in middle execution revert the table to its previous state.
 - **Nullability**: Since existing users do not have MFA secrets set, the new columns must allow `NULL` values.
 - **Cache serialization**: The cached admin user context must serialize to JSON and deserialize without data loss.
+- **Validation combinations**: The DTO for verification must require `code` if the verification method is `totp`.
 
 ## Requirements *(mandatory)*
 
@@ -59,6 +76,10 @@ As a developer, I want domain structures for MFA credentials inside the `AdminUs
 - **FR-006**: Define the `MFACache` interface with `Store`, `Get`, and `Delete` methods.
 - **FR-007**: Define `ErrMFAInvalid` and `ErrMFATokenExpired` domain errors.
 - **FR-008**: Define `MFASuccessEvent` and `MFAFailedEvent` event payload structs.
+- **FR-009**: The OpenAPI contract `api/openapi.yaml` MUST define `POST /v1/auth/mfa/verify`.
+- **FR-010**: `LoginResponse` schema MUST include optional `mfa_required`, `mfa_token`, and `mfa_methods` properties.
+- **FR-011**: The DTO struct `LoginResponse` MUST support optional `MFARequired`, `MFAToken`, and `MFAMethods` fields.
+- **FR-012**: Define `MFAVerifyRequest` DTO containing `mfa_token`, `method`, and `code` with validation tags (`required` for token and method, `required_if` for code when method is `totp`).
 
 ### Key Entities *(include if feature involves data)*
 
@@ -68,6 +89,7 @@ As a developer, I want domain structures for MFA credentials inside the `AdminUs
 - **MFACache**: Contract for temporary storage of partially authenticated context.
 - **MFASuccessEvent**: Emitted on successful MFA verification.
 - **MFAFailedEvent**: Emitted on failed MFA verification.
+- **MFAVerifyRequest**: DTO representing the client verification request payload.
 
 ## Success Criteria *(mandatory)*
 
@@ -78,9 +100,12 @@ As a developer, I want domain structures for MFA credentials inside the `AdminUs
 - **SC-003**: Down migration successfully drops columns `totp_secret` and `webauthn_credentials` from table `admin_users`.
 - **SC-004**: Zero loss of data in existing `admin_users` records when applying both up and down migrations.
 - **SC-005**: 100% test coverage for new errors, event structs, and entity methods.
+- **SC-006**: OpenAPI contract `api/openapi.yaml` compiles and passes validation (e.g., using swagger/openapi CLI tool if available).
+- **SC-007**: HTTP validation tests verify DTO validator tags correctly block invalid request payloads.
 
 ## Assumptions
 
 - PostgreSQL 15+ is used.
 - The new columns are optional initially, so they must be nullable.
 - Migrations will be executed using the application's migration tool or raw SQL execution tool.
+- The go-playground/validator package is used for structural DTO validation in HTTP handlers.
