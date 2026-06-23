@@ -69,3 +69,21 @@ func (l *SlogAuditLogger) LogMFAChallengeIssued(ctx context.Context, userID stri
 		slog.String("email", email),
 	)
 }
+
+// LogMFASuccess logs a successful MFA verification event.
+func (l *SlogAuditLogger) LogMFASuccess(ctx context.Context, userID string, email string) {
+	l.logger.InfoContext(ctx, "MFA success",
+		slog.String("event", "mfa.success"),
+		slog.String("user_id", userID),
+		slog.String("email", email),
+	)
+}
+
+// LogMFAFailed logs a failed MFA verification attempt.
+func (l *SlogAuditLogger) LogMFAFailed(ctx context.Context, email string, reason string) {
+	l.logger.WarnContext(ctx, "MFA failed",
+		slog.String("event", "mfa.failed"),
+		slog.String("email", email),
+		slog.String("reason", reason),
+	)
+}

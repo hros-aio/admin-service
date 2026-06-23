@@ -62,3 +62,15 @@ Independent test criteria: Unit tests cover user role resolution, checking for `
 - [x] T016 [US5] Update `LoginUseCase` in `internal/application/usecase/login_usecase.go` to check if user's role is `"Super Admin"`. If true, generate a cryptographically secure random `mfa_token` (e.g., 32-byte hex string), store in `MFACache`, log intermediate success (redacting token), and return a `LoginOutput` containing the token with `MFARequired: true`, bypassing JWT generation and session creation.
 - [x] T017 [P] [US5] Add unit tests in `internal/application/usecase/login_usecase_test.go` to achieve 100% statement and branch coverage for the Super Admin role check and MFA token redirection.
 
+---
+
+## Phase 6: VerifyMFAUseCase Implementation (TSK-MFA-006) ✅ Complete
+
+Story goal: Implement `VerifyMFAUseCase` to validate TOTP second factor authentication codes for Super Admin users, issue access/refresh token pair, store session, and evict the intermediate MFA token from cache.
+
+Independent test criteria: Unit tests cover resolving the token from cache, fetching user details, validating TOTP codes, emitting correct audit events (`mfa.success` or `mfa.failed`), registering sessions, and clearing cache.
+
+- [x] T018 [US6] Create `VerifyMFAUseCase` struct and execution inputs/outputs in `internal/application/usecase/verify_mfa_usecase.go` (defining types `VerifyMFAInput`, `VerifyMFAOutput` and constructor `NewVerifyMFAUseCase`).
+- [x] T019 [US6] Implement TOTP verification validation using `github.com/pquerna/otp` and logic inside `VerifyMFAUseCase.Execute`. Handle token resolution, user lookup, validation errors, emitting audit logs, session creation, and cache eviction.
+- [x] T020 [P] [US6] Create comprehensive unit tests inside `internal/application/usecase/verify_mfa_usecase_test.go` checking all scenarios (success, invalid code, expired/missing token, repository errors) to achieve 100% statement and branch coverage.
+

@@ -90,6 +90,22 @@ As a Super Admin, when I log in with valid credentials, I want the system to pro
 
 ---
 
+### User Story 6 - Verify MFA code and issue JWT tokens on success (Priority: P1)
+
+As a Super Admin who has passed the initial password authentication, when I verify my MFA code, I want the system to authenticate me fully, issue my JWT access/refresh token pair, establish my session, and log the event in the audit trail, so that I can access my dashboard securely.
+
+**Why this priority**: Core second-factor verification logic that completes the Super Admin login flow.
+
+**Independent Test**: The usecase resolves the token, validates the code, issues JWT tokens, saves a session record, and emits the correct success/failed audit events.
+
+**Acceptance Scenarios**:
+
+1. **Given** a valid `mfa_token`, a method `totp`, and a correct TOTP code, **When** verifying MFA via `VerifyMFAUseCase`, **Then** the usecase returns the access/refresh token pair, creates the persistent session token in the database, deletes the `mfa_token` from the cache, and logs a successful MFA authentication audit event.
+2. **Given** a valid `mfa_token`, a method `totp`, and an incorrect TOTP code, **When** verifying MFA, **Then** the usecase returns `ErrMFAInvalid` or validation error, does not issue tokens, does not create a session, and logs a failed MFA authentication audit event.
+3. **Given** a non-existent or expired `mfa_token`, **When** verifying MFA, **Then** the usecase returns `ErrMFATokenExpired` or appropriate token-expired error.
+
+---
+
 ## Edge Cases
 
 - **Transaction isolation**: The migration script must run in a single transaction block so that failures in middle execution revert the table to its previous state.
@@ -123,6 +139,11 @@ As a Super Admin, when I log in with valid credentials, I want the system to pro
 - **FR-018**: If the `MFACache` fails to store the token, the `LoginUseCase` MUST return an internal error and abort the login.
 - **FR-019**: If the user is a `"Super Admin"`, the `LoginUseCase` response MUST set `mfa_required` to true, return the generated `mfa_token`, and return the list of allowed MFA methods (such as "totp", "webauthn").
 - **FR-020**: If the user is NOT a `"Super Admin"`, the `LoginUseCase` MUST bypass the MFA challenge and directly return the standard JWT access/refresh token pair and save the session.
+- **FR-021**: Define `VerifyMFAUseCase` with an execute method accepting `VerifyMFAInput` (`mfa_token`, `method`, `code`) and returning `VerifyMFAOutput` containing standard JWT access/refresh token pair and user summary.
+- **FR-022**: The `VerifyMFAUseCase` MUST retrieve the associated admin ID from `MFACache` using the `mfa_token`. If the token is missing or expired, it MUST return `ErrMFATokenExpired`.
+- **FR-023**: The `VerifyMFAUseCase` MUST fetch the admin user from `AdminUserRepository`.
+- **FR-024**: The `VerifyMFAUseCase` MUST validate the TOTP code against the `AdminUser.TotpSecret` (e.g. using `pquerna/otp` or equivalent standard validation logic). If validation fails, it MUST publish an `mfa.failed` audit event and return `ErrMFAInvalid`.
+- **FR-025**: Upon successful MFA verification, the `VerifyMFAUseCase` MUST publish an `mfa.success` audit event, issue the JWT access/refresh token pair, save the session to `SessionTokenRepository`, and delete the `mfa_token` from `MFACache`.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -151,6 +172,8 @@ As a Super Admin, when I log in with valid credentials, I want the system to pro
 - **SC-010**: `LoginUseCase` unit tests achieve 100% statement and branch coverage for the new MFA redirection check path.
 - **SC-011**: Standard admin login (non-Super Admin) continues to receive JWT tokens directly upon valid password verification.
 - **SC-012**: Super Admin login successfully returns a secure random `mfa_token` and `mfa_required = true` on valid password check.
+- **SC-013**: `VerifyMFAUseCase` unit tests achieve 100% statement and branch coverage, covering success and failure verification scenarios.
+- **SC-014**: Upon successful TOTP code validation, the system issues the access/refresh token pair and deletes the token from cache within 10ms (P95).
 
 ## Assumptions
 
