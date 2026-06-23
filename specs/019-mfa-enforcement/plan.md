@@ -16,7 +16,7 @@ This plan outlines the implementation of MFA Enforcement (Super Admins).
 
 **Phase 4 (TSK-MFA-004 — ✅ Done)**: Redis Cache implementation. We will implement `RedisMFACache` mapping the token to the user's Admin ID with a strict 5-minute TTL.
 
-**Phase 5 (TSK-MFA-005 — 🔲 Pending)**: Intercept Super Admin login in `LoginUseCase`.
+**Phase 5 (TSK-MFA-005 — ✅ Done)**: Intercept Super Admin login in `LoginUseCase`.
 - Update `AdminUserRepository` to include a method `GetRoleNameByID(ctx context.Context, roleID string) (string, error)` for role validation.
 - Implement `GetRoleNameByID` in the GORM repository.
 - Update `LoginUseCase.Execute` to fetch the user's role name and check if it is `"Super Admin"`.

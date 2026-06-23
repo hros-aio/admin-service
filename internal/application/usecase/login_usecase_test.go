@@ -41,7 +41,7 @@ func (m *mockUserRepo) FindByEmail(ctx context.Context, email string) (*domain.A
 func (m *mockUserRepo) Delete(ctx context.Context, id string) error {
 	return m.Called(ctx, id).Error(0)
 }
-func (m *mockUserRepo) GetRoleNameByID(ctx context.Context, roleID string) (string, error) {
+func (m *mockUserRepo) GetRoleCodeByID(ctx context.Context, roleID string) (string, error) {
 	args := m.Called(ctx, roleID)
 	return args.String(0), args.Error(1)
 }
@@ -116,6 +116,9 @@ func (m *mockAuditLogger) LogSessionRefreshed(ctx context.Context, userID string
 func (m *mockAuditLogger) LogAccountLocked(ctx context.Context, email string) {
 	m.Called(ctx, email)
 }
+func (m *mockAuditLogger) LogMFAChallengeIssued(ctx context.Context, userID string, email string) {
+	m.Called(ctx, userID, email)
+}
 
 type mockBruteForceCache struct{ mock.Mock }
 
@@ -156,8 +159,8 @@ func newTestUseCase(
 	bruteForce *mockBruteForceCache,
 	notifier *mockLockoutNotifier,
 ) *LoginUseCase {
-	// Provide a default fallback expectation for GetRoleNameByID to return "Admin"
-	userRepo.On("GetRoleNameByID", mock.Anything, mock.Anything).Return("Admin", nil).Maybe()
+	// Provide a default fallback expectation for GetRoleCodeByID to return "Admin"
+	userRepo.On("GetRoleCodeByID", mock.Anything, mock.Anything).Return("Admin", nil).Maybe()
 
 	return NewLoginUseCase(
 		userRepo,
@@ -827,8 +830,9 @@ func TestLoginUseCase_SuperAdminMFA(t *testing.T) {
 		userRepo.On("FindByEmail", ctx, email).Return(user, nil).Once()
 		password.On("Compare", "hashed", "correct").Return(nil).Once()
 		bf.On("Reset", ctx, email).Return(nil).Once()
-		userRepo.On("GetRoleNameByID", ctx, user.RoleID).Return("Super Admin", nil).Once()
+		userRepo.On("GetRoleCodeByID", ctx, user.RoleID).Return("SUPER_ADMIN", nil).Once()
 		mfaCache.On("StoreToken", ctx, mock.Anything, user.ID).Return(nil).Once()
+		audit.On("LogMFAChallengeIssued", ctx, user.ID, user.Email).Once()
 
 		uc := NewLoginUseCase(userRepo, sessionRepo, password, tokens, audit, bf, notifier, mfaCache, slog.Default())
 		out, err := uc.Execute(ctx, input)
@@ -836,7 +840,7 @@ func TestLoginUseCase_SuperAdminMFA(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, out)
 		assert.True(t, out.MFARequired)
-		assert.NotEmpty(t, out.MFAToken)
+		assert.Regexp(t, "^[0-9a-fA-F]{64}$", out.MFAToken)
 		assert.Equal(t, []string{"totp", "webauthn"}, out.MFAMethods)
 		assert.Empty(t, out.AccessToken)
 		assert.Empty(t, out.RefreshToken)
@@ -850,6 +854,7 @@ func TestLoginUseCase_SuperAdminMFA(t *testing.T) {
 		userRepo.AssertExpectations(t)
 		password.AssertExpectations(t)
 		mfaCache.AssertExpectations(t)
+		audit.AssertExpectations(t)
 	})
 
 	t.Run("fails Super Admin login if MFACache fails to store token", func(t *testing.T) {
@@ -869,7 +874,7 @@ func TestLoginUseCase_SuperAdminMFA(t *testing.T) {
 		userRepo.On("FindByEmail", ctx, email).Return(user, nil).Once()
 		password.On("Compare", "hashed", "correct").Return(nil).Once()
 		bf.On("Reset", ctx, email).Return(nil).Once()
-		userRepo.On("GetRoleNameByID", ctx, user.RoleID).Return("Super Admin", nil).Once()
+		userRepo.On("GetRoleCodeByID", ctx, user.RoleID).Return("SUPER_ADMIN", nil).Once()
 
 		cacheErr := errors.New("redis connection timeout")
 		mfaCache.On("StoreToken", ctx, mock.Anything, user.ID).Return(cacheErr).Once()
@@ -906,13 +911,13 @@ func TestLoginUseCase_SuperAdminMFA(t *testing.T) {
 		bf.On("Reset", ctx, email).Return(nil).Once()
 
 		dbErr := errors.New("db error")
-		userRepo.On("GetRoleNameByID", ctx, user.RoleID).Return("", dbErr).Once()
+		userRepo.On("GetRoleCodeByID", ctx, user.RoleID).Return("", dbErr).Once()
 
 		uc := NewLoginUseCase(userRepo, sessionRepo, password, tokens, audit, bf, notifier, mfaCache, slog.Default())
 		out, err := uc.Execute(ctx, input)
 
 		assert.Error(t, err)
-		assert.ErrorContains(t, err, "get role name")
+		assert.ErrorContains(t, err, "get role code")
 		assert.Nil(t, out)
 
 		bf.AssertExpectations(t)

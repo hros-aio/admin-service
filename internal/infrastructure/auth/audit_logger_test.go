@@ -85,4 +85,18 @@ func TestSlogAuditLogger(t *testing.T) {
 		assert.Equal(t, "account.locked", logMap["event"])
 		assert.Equal(t, "locked@example.com", logMap["email"])
 	})
+
+	t.Run("LogMFAChallengeIssued", func(t *testing.T) {
+		buf.Reset()
+		auditLogger.LogMFAChallengeIssued(ctx, "user-123", "test@example.com")
+
+		var logMap map[string]interface{}
+		err := json.Unmarshal(buf.Bytes(), &logMap)
+		assert.NoError(t, err)
+
+		assert.Equal(t, "MFA challenge issued", logMap["msg"])
+		assert.Equal(t, "mfa.challenge_issued", logMap["event"])
+		assert.Equal(t, "user-123", logMap["user_id"])
+		assert.Equal(t, "test@example.com", logMap["email"])
+	})
 }

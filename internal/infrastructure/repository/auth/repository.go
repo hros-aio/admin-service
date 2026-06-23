@@ -66,8 +66,8 @@ func (r *GormAdminUserRepository) Delete(ctx context.Context, id string) error {
 	return db.Delete(&adminUserModel{}, "id = ?", id).Error
 }
 
-// GetRoleNameByID retrieves the role name for the given role ID.
-func (r *GormAdminUserRepository) GetRoleNameByID(ctx context.Context, roleID string) (string, error) {
+// GetRoleCodeByID retrieves the role code (e.g. "SUPER_ADMIN", "STANDARD_ADMIN") for the given role ID.
+func (r *GormAdminUserRepository) GetRoleCodeByID(ctx context.Context, roleID string) (string, error) {
 	db := platformDB.GetTx(ctx, r.db)
 	var result struct {
 		Name string
@@ -79,5 +79,13 @@ func (r *GormAdminUserRepository) GetRoleNameByID(ctx context.Context, roleID st
 		}
 		return "", err
 	}
-	return result.Name, nil
+	// Map the display name to an immutable role code.
+	switch result.Name {
+	case "Super Admin":
+		return "SUPER_ADMIN", nil
+	case "Standard Admin":
+		return "STANDARD_ADMIN", nil
+	default:
+		return "STANDARD_ADMIN", nil
+	}
 }

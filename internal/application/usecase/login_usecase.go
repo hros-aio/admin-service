@@ -134,12 +134,12 @@ func (uc *LoginUseCase) Execute(ctx context.Context, input LoginInput) (*LoginOu
 		)
 	}
 
-	roleName, err := uc.userRepo.GetRoleNameByID(ctx, user.RoleID)
+	roleCode, err := uc.userRepo.GetRoleCodeByID(ctx, user.RoleID)
 	if err != nil {
-		return nil, fmt.Errorf("get role name: %w", err)
+		return nil, fmt.Errorf("get role code: %w", err)
 	}
 
-	if roleName == "Super Admin" {
+	if roleCode == "SUPER_ADMIN" {
 		tokenBytes := make([]byte, 32)
 		if _, err := rand.Read(tokenBytes); err != nil {
 			return nil, fmt.Errorf("generate mfa token: %w", err)
@@ -160,6 +160,9 @@ func (uc *LoginUseCase) Execute(ctx context.Context, input LoginInput) (*LoginOu
 			slog.String("user_id", user.ID),
 			slog.String("key", "auth:mfa_token:[REDACTED]"),
 		)
+
+		// Log audit trail for successful password verification / MFA challenge issuance
+		uc.audit.LogMFAChallengeIssued(ctx, user.ID, user.Email)
 
 		return &LoginOutput{
 			MFARequired: true,

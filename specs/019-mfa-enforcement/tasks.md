@@ -51,7 +51,7 @@
 
 ---
 
-## Phase 5: LoginUseCase MFA Challenge Interception (TSK-MFA-005) 🔲 Pending
+## Phase 5: LoginUseCase MFA Challenge Interception (TSK-MFA-005) ✅ Complete
 
 Story goal: Update `LoginUseCase` to check user roles and issue an intermediate MFA challenge token for Super Admin logins instead of JWT pairs and persistent sessions.
 
@@ -59,6 +59,6 @@ Independent test criteria: Unit tests cover user role resolution, checking for `
 
 - [x] T014 [US5] Add `GetRoleNameByID(ctx context.Context, roleID string) (string, error)` method to `AdminUserRepository` interface in `internal/domain/admin_user.go`.
 - [x] T015 [P] [US5] Implement `GetRoleNameByID` method in `GormAdminUserRepository` in `internal/infrastructure/repository/auth/repository.go`.
-- [x] T016 [US5] Update `LoginUseCase` in `internal/application/usecase/login_usecase.go` to check if user's role is `"Super Admin"`. If true, generate a cryptographically secure random `mfa_token` (e.g., 32-byte hex string), store in `MFACache`, log intermediate success (redacting token), and return a `LoginOutput` containing the token with `MfaRequired: true`, bypassing JWT generation and session creation.
+- [x] T016 [US5] Update `LoginUseCase` in `internal/application/usecase/login_usecase.go` to check if user's role is `"Super Admin"`. If true, generate a cryptographically secure random `mfa_token` (e.g., 32-byte hex string), store in `MFACache`, log intermediate success (redacting token), and return a `LoginOutput` containing the token with `MFARequired: true`, bypassing JWT generation and session creation.
 - [x] T017 [P] [US5] Add unit tests in `internal/application/usecase/login_usecase_test.go` to achieve 100% statement and branch coverage for the Super Admin role check and MFA token redirection.
 
