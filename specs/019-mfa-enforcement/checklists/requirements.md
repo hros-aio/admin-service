@@ -31,4 +31,4 @@
 
 ## Notes
 
-- All items pass validation.
+- All items pass validation, including the requirements, scenarios, and criteria updated for TSK-MFA-005.

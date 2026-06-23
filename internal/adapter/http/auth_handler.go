@@ -94,6 +94,9 @@ func (h *AuthHandler) Login(c echo.Context) error {
 	resp := dto.LoginResponse{
 		AccessToken:  output.AccessToken,
 		RefreshToken: output.RefreshToken,
+		MFARequired:  output.MFARequired,
+		MFAToken:     output.MFAToken,
+		MFAMethods:   output.MFAMethods,
 	}
 	return c.JSON(http.StatusOK, resp)
 }

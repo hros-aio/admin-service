@@ -56,6 +56,24 @@ func (m *mockUserRepo) Delete(ctx context.Context, id string) error {
 	return m.Called(ctx, id).Error(0)
 }
 
+func (m *mockUserRepo) GetRoleCodeByID(ctx context.Context, roleID string) (string, error) {
+	args := m.Called(ctx, roleID)
+	return args.String(0), args.Error(1)
+}
+
+type mockMFACache struct{ mock.Mock }
+
+func (m *mockMFACache) StoreToken(ctx context.Context, token string, adminID string) error {
+	return m.Called(ctx, token, adminID).Error(0)
+}
+func (m *mockMFACache) GetAdminID(ctx context.Context, token string) (string, error) {
+	args := m.Called(ctx, token)
+	return args.String(0), args.Error(1)
+}
+func (m *mockMFACache) DeleteToken(ctx context.Context, token string) error {
+	return m.Called(ctx, token).Error(0)
+}
+
 type mockSessionRepo struct{ mock.Mock }
 
 func (m *mockSessionRepo) Save(ctx context.Context, t *domain.SessionToken) error {
@@ -134,6 +152,10 @@ func (m *mockAuditLogger) LogAccountLocked(ctx context.Context, email string) {
 	m.Called(ctx, email)
 }
 
+func (m *mockAuditLogger) LogMFAChallengeIssued(ctx context.Context, userID string, email string) {
+	m.Called(ctx, userID, email)
+}
+
 // nopBruteForceCache is a no-op implementation of interfaces.BruteForceCache
 // used in handler tests where brute-force state is not under test.
 type nopBruteForceCache struct{}
@@ -168,6 +190,9 @@ func newLoginUCForTest(
 	tokens *mockTokenProvider,
 	audit *mockAuditLogger,
 ) *usecase.LoginUseCase {
+	if mRepo, ok := userRepo.(*mockUserRepo); ok {
+		mRepo.On("GetRoleCodeByID", mock.Anything, mock.Anything).Return("STANDARD_ADMIN", nil).Maybe()
+	}
 	return usecase.NewLoginUseCase(
 		userRepo,
 		sessionRepo,
@@ -176,6 +201,7 @@ func newLoginUCForTest(
 		audit,
 		&nopBruteForceCache{},
 		&nopLockoutNotifier{},
+		&mockMFACache{},
 		slog.Default(),
 	)
 }
@@ -269,6 +295,68 @@ func TestAuthHandler_Login(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "access-token-xyz", resp.AccessToken)
 		assert.Equal(t, "refresh-token-abc", resp.RefreshToken)
+	})
+
+	t.Run("Super Admin MFA Challenge", func(t *testing.T) {
+		mockUserRepo := new(mockUserRepo)
+		mockSessionRepo := new(mockSessionRepo)
+		mockPasswordHelper := new(mockPasswordHelper)
+		mockTokenProvider := new(mockTokenProvider)
+		mockAuditLogger := new(mockAuditLogger)
+		mockMFACache := new(mockMFACache)
+
+		loginUC := usecase.NewLoginUseCase(
+			mockUserRepo,
+			mockSessionRepo,
+			mockPasswordHelper,
+			mockTokenProvider,
+			mockAuditLogger,
+			&nopBruteForceCache{},
+			&nopLockoutNotifier{},
+			mockMFACache,
+			slog.Default(),
+		)
+		mockTokenBlacklist := new(mockTokenBlacklist)
+		logoutUC := usecase.NewLogoutUseCase(mockSessionRepo, mockTokenBlacklist, mockAuditLogger)
+		handler := NewAuthHandler(loginUC, logoutUC, nil)
+
+		reqBody := dto.LoginRequest{
+			Email:      "superadmin@hros.com",
+			Password:   "password123",
+			RememberMe: true,
+		}
+		bodyBytes, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", bytes.NewBuffer(bodyBytes))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		user := &domain.AdminUser{
+			ID:           "super-admin-id-456",
+			Email:        "superadmin@hros.com",
+			PasswordHash: "hashed-pwd",
+			Status:       "active",
+			RoleID:       "super-admin-role-id",
+		}
+
+		mockUserRepo.On("FindByEmail", mock.Anything, reqBody.Email).Return(user, nil)
+		mockPasswordHelper.On("Compare", user.PasswordHash, reqBody.Password).Return(nil)
+		mockUserRepo.On("GetRoleCodeByID", mock.Anything, user.RoleID).Return("SUPER_ADMIN", nil)
+		mockMFACache.On("StoreToken", mock.Anything, mock.Anything, user.ID).Return(nil)
+		mockAuditLogger.On("LogMFAChallengeIssued", mock.Anything, user.ID, user.Email).Return()
+
+		err := handler.Login(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+
+		var resp dto.LoginResponse
+		err = json.Unmarshal(rec.Body.Bytes(), &resp)
+		assert.NoError(t, err)
+		assert.True(t, resp.MFARequired)
+		assert.Regexp(t, "^[0-9a-fA-F]{64}$", resp.MFAToken)
+		assert.Equal(t, []string{"totp", "webauthn"}, resp.MFAMethods)
+		assert.Empty(t, resp.AccessToken)
+		assert.Empty(t, resp.RefreshToken)
 	})
 
 	t.Run("Invalid Credentials", func(t *testing.T) {
@@ -435,6 +523,8 @@ func TestAuthHandler_Login(t *testing.T) {
 		mockAuditLogger := new(mockAuditLogger)
 		mockBruteForce := new(mockBruteForceCache)
 
+		mockUserRepo.On("GetRoleCodeByID", mock.Anything, mock.Anything).Return("STANDARD_ADMIN", nil).Maybe()
+
 		loginUC := usecase.NewLoginUseCase(
 			mockUserRepo,
 			mockSessionRepo,
@@ -443,6 +533,7 @@ func TestAuthHandler_Login(t *testing.T) {
 			mockAuditLogger,
 			mockBruteForce,
 			&nopLockoutNotifier{},
+			&mockMFACache{},
 			slog.Default(),
 		)
 		mockTokenBlacklist := new(mockTokenBlacklist)

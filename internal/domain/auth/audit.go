@@ -10,4 +10,6 @@ type AuditLogger interface {
 	LogSessionRefreshed(ctx context.Context, userID string)
 	// LogAccountLocked records that an account was temporarily locked due to brute-force protection.
 	LogAccountLocked(ctx context.Context, email string)
+	// LogMFAChallengeIssued records that an MFA challenge was successfully generated and issued.
+	LogMFAChallengeIssued(ctx context.Context, userID string, email string)
 }

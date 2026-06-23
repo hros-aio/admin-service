@@ -60,3 +60,12 @@ func (l *SlogAuditLogger) LogAccountLocked(ctx context.Context, email string) {
 		slog.String("email", email),
 	)
 }
+
+// LogMFAChallengeIssued logs that an MFA challenge has been issued to the user.
+func (l *SlogAuditLogger) LogMFAChallengeIssued(ctx context.Context, userID string, email string) {
+	l.logger.InfoContext(ctx, "MFA challenge issued",
+		slog.String("event", "mfa.challenge_issued"),
+		slog.String("user_id", userID),
+		slog.String("email", email),
+	)
+}

@@ -80,10 +80,10 @@ func TestBruteForceFlow(t *testing.T) {
 	runSQLFile(t, db, filepath.Join(migDir, "000001_init.up.sql"))
 	runSQLFile(t, db, filepath.Join(migDir, "000002_create_auth_tables.up.sql"))
 
-	// 4. Seed active Super Admin user
+	// 4. Seed active Standard Admin user
 	roleID := domain.NewUUID()
 	err = db.Exec("INSERT INTO roles (id, name, description, is_system_role) VALUES (?, ?, ?, ?)",
-		roleID, "Super Admin", "Super Admin Role", true).Error
+		roleID, "Standard Admin", "Standard Admin Role", false).Error
 	require.NoError(t, err)
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte("password123"), 12)
@@ -140,6 +140,7 @@ func TestBruteForceFlow(t *testing.T) {
 		fx.Provide(redis.NewRedisClient),
 		fx.Provide(authCache.NewRedisTokenBlacklist),
 		fx.Provide(authCache.NewRedisBruteForceCache),
+		fx.Provide(authCache.NewRedisMFACache),
 		fx.Provide(func() (sarama.SyncProducer, error) {
 			return mockProducer, nil
 		}),

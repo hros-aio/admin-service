@@ -65,3 +65,27 @@ func (r *GormAdminUserRepository) Delete(ctx context.Context, id string) error {
 	db := platformDB.GetTx(ctx, r.db)
 	return db.Delete(&adminUserModel{}, "id = ?", id).Error
 }
+
+// GetRoleCodeByID retrieves the role code (e.g. "SUPER_ADMIN", "STANDARD_ADMIN") for the given role ID.
+func (r *GormAdminUserRepository) GetRoleCodeByID(ctx context.Context, roleID string) (string, error) {
+	db := platformDB.GetTx(ctx, r.db)
+	var result struct {
+		Name string
+	}
+	err := db.Table("roles").Select("name").Where("id = ?", roleID).First(&result).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return "", domainErrors.ErrUserNotFound
+		}
+		return "", err
+	}
+	// Map the display name to an immutable role code.
+	switch result.Name {
+	case "Super Admin":
+		return "SUPER_ADMIN", nil
+	case "Standard Admin":
+		return "STANDARD_ADMIN", nil
+	default:
+		return "STANDARD_ADMIN", nil
+	}
+}

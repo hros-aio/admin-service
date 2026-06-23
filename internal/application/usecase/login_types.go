@@ -14,6 +14,9 @@ type LoginOutput struct {
 	AccessToken  string
 	RefreshToken string
 	User         AdminUserSummary
+	MFARequired  bool
+	MFAToken     string
+	MFAMethods   []string
 }
 
 // AdminUserSummary represents basic admin user details.
