@@ -12,25 +12,29 @@ This plan outlines the implementation of MFA Enforcement (Super Admins).
 
 **Phase 2 (TSK-MFA-002 — ✅ Done)**: Domain layer primitives — update `AdminUser` entity, `MFACache` interface, errors, and events.
 
-**Phase 3 (TSK-MFA-003 — 🔲 Pending)**: DTO and OpenAPI Contract updates. We will update `api/openapi.yaml` to define `/v1/auth/mfa/verify` and update `LoginResponse` fields, and update `internal/adapter/http/auth/dto/auth_dto.go` to add validation tags and define `MFAVerifyRequest`.
+**Phase 3 (TSK-MFA-003 — ✅ Done)**: DTO and OpenAPI Contract updates.
+
+**Phase 4 (TSK-MFA-004 — 🔲 Pending)**: Redis Cache implementation. We will implement `RedisMFACache` mapping the token to the user's Admin ID with a strict 5-minute TTL.
 
 ## Technical Context
 
 **Language/Version**: Go 1.23+
 
-**Primary Dependencies**: `github.com/go-playground/validator/v10` for DTO validations.
+**Primary Dependencies**: `github.com/redis/go-redis/v9` for Redis caching. `github.com/alicebob/miniredis/v2` for unit testing.
 
-**Storage**: None in this phase.
+**Storage**: Redis for the temporary MFA cache (`auth:mfa_token:{mfaToken}`).
 
-**Testing**: Unit tests for DTO validation tags (verifying invalid formats are blocked).
+**Testing**: Unit tests using miniredis checking store, retrieve, delete, and expiration/TTL.
 
 **Target Platform**: Linux server / local developer machines
 
 **Project Type**: web-service (Go backend)
 
 **Constraints**:
-- The OpenAPI YAML must be fully valid according to the OpenAPI 3.0.3 specification.
-- Response payloads must map correctly between Go models and JSON representations.
+- Redis keys must follow the prefix format `auth:mfa_token:{mfaToken}`.
+- Cache TTL must be set to exactly 5 minutes on storage.
+- ErrMFATokenExpired must be returned if the token is not found.
+- All logs from the Redis cache implementation must redact the token portion of the key (e.g., logging `auth:mfa_token:[REDACTED]`) to prevent leaking raw MFA tokens.
 
 ## Constitution Check
 
@@ -38,11 +42,11 @@ This plan outlines the implementation of MFA Enforcement (Super Admins).
 
 | Principle | Status | Evidence |
 |-----------|--------|---------|
-| **I. Clean Architecture & Strict Boundaries** | ✅ PASS | DTO files reside purely in the HTTP adapter boundary (`internal/adapter/http/auth/dto`), completely decoupled from domain and application layers. |
-| **II. Documentation-First & OpenAPI-Driven** | ✅ PASS | The API endpoint and request/response models are added to `api/openapi.yaml` in this phase before handler logic is built. |
-| **III. Unit-Test-Per-File (NON-NEGOTIABLE)** | ✅ PASS | Every created/updated DTO file has a corresponding `_test.go` file validating validation tags. |
-| **IV. Task-Driven & Atomic Implementation** | ✅ PASS | Target task TSK-MFA-003 maps to Phase 3 DTO & OpenAPI updates. |
-| **V. Observability & Structured Logging** | ✅ PASS | Standard ErrorResponse schemas are used for bad requests and validation errors. |
+| **I. Clean Architecture & Strict Boundaries** | ✅ PASS | Redis Cache implementation lives inside the infrastructure boundary (`internal/infrastructure/cache/mfa_redis.go`) and implements the application interface contract `interfaces.MFACache`. |
+| **II. Documentation-First & OpenAPI-Driven** | ✅ PASS | Relies on existing API specifications for MFA. |
+| **III. Unit-Test-Per-File (NON-NEGOTIABLE)** | ✅ PASS | The Redis implementation will have its corresponding `_test.go` file with full test cases. |
+| **IV. Task-Driven & Atomic Implementation** | ✅ PASS | Target task TSK-MFA-004 maps to Phase 4 Redis cache implementation. |
+| **V. Observability & Structured Logging** | ✅ PASS | Redis caching failures and validations will use structured logs with safe logging properties. |
 
 ## Project Structure
 
@@ -60,15 +64,11 @@ specs/019-mfa-enforcement/
 ### Source Code (repository root)
 
 ```text
-api/
-└── openapi.yaml           # Updated to define verification endpoints and response models
 internal/
-└── adapter/
-    └── http/
-        └── auth/
-            └── dto/
-                ├── auth_dto.go     # Updated LoginResponse and added MFAVerifyRequest
-                └── auth_dto_test.go # Updated tests to cover mfa verification validations
+└── infrastructure/
+    └── cache/
+        ├── mfa_redis.go     # Redis implementation of MFACache
+        └── mfa_redis_test.go # Unit tests using miniredis
 ```
 
 **Structure Decision**: Standard Go files matching clean architecture structure.

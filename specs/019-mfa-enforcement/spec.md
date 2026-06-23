@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-**Input**: User description: "Feature: MFA Enforcement (Super Admins). Task: TSK-MFA-003. Layer: DTO. Description: Update the OpenAPI contract api/openapi.yaml and HTTP DTOs. Update the POST /auth/login` response schema to support returning an mfa_token` instead of a JWT. Create the MFAVerifyRequest` DTO containing mfa_token`, method`, and code`. Add strict validation tags."
+**Input**: User description: "Feature: MFA Enforcement (Super Admins). Task: TSK-MFA-004. Layer: Cache. Description: Implement the MFACache interface using Redis. Implement StoreToken(ctx, mfaToken, adminID) mapping the short-lived token to the user ID with a strict 5-minute TTL. Implement GetAdminID(ctx, mfaToken) and DeleteToken(ctx, mfaToken)."
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -57,12 +57,29 @@ As a front-end developer or API consumer, I want the login response to include M
 
 ---
 
+### User Story 4 - Temporarily Cache MFA Session Context in Redis (Priority: P1)
+
+As a developer, I want the short-lived MFA session token to map to the user's Admin ID in a secure Redis cache with a strict 5-minute TTL, so that we can verify the user context during the MFA validation step.
+
+**Why this priority**: Essential middleware infrastructure to bridge the password login step and the MFA verification endpoint.
+
+**Independent Test**: Token storage, retrieval, and deletion operations succeed using `miniredis` and respect the 5-minute TTL.
+
+**Acceptance Scenarios**:
+
+1. **Given** a successful password login, **When** generating the short-lived MFA token, **Then** `MFACache` stores the mapping of token to Admin ID with a 5-minute expiration time.
+2. **Given** an MFA token, **When** verifying MFA, **Then** `MFACache` retrieves the Admin ID.
+3. **Given** an MFA token is verified, **When** verification finishes, **Then** `MFACache` deletes the token immediately.
+4. **Given** 5 minutes have elapsed since storing the token, **When** trying to retrieve the Admin ID, **Then** `MFACache` returns an error indicating the token has expired.
+
+---
+
 ### Edge Cases
 
 - **Transaction isolation**: The migration script must run in a single transaction block so that failures in middle execution revert the table to its previous state.
 - **Nullability**: Since existing users do not have MFA secrets set, the new columns must allow `NULL` values.
-- **Cache serialization**: The cached admin user context must serialize to JSON and deserialize without data loss.
 - **Validation combinations**: The DTO for verification must require `code` if the verification method is `totp`.
+- **Redis downtime**: Cache operations must handle Redis client connectivity failures gracefully, returning standard errors.
 
 ## Requirements *(mandatory)*
 
@@ -73,13 +90,16 @@ As a front-end developer or API consumer, I want the login response to include M
 - **FR-003**: The migrations MUST be non-destructive, preserving existing records in the `admin_users` table.
 - **FR-004**: The migration down script MUST revert the changes by dropping the `totp_secret` and `webauthn_credentials` columns from the `admin_users` table.
 - **FR-005**: `AdminUser` domain entity MUST include `TotpSecret` (string) and `WebauthnCredentials` ([]byte) fields.
-- **FR-006**: Define the `MFACache` interface with `Store`, `Get`, and `Delete` methods.
+- **FR-006**: Define the `MFACache` interface with `StoreToken`, `GetAdminID`, and `DeleteToken` methods.
 - **FR-007**: Define `ErrMFAInvalid` and `ErrMFATokenExpired` domain errors.
 - **FR-008**: Define `MFASuccessEvent` and `MFAFailedEvent` event payload structs.
 - **FR-009**: The OpenAPI contract `api/openapi.yaml` MUST define `POST /v1/auth/mfa/verify`.
 - **FR-010**: `LoginResponse` schema MUST include optional `mfa_required`, `mfa_token`, and `mfa_methods` properties.
 - **FR-011**: The DTO struct `LoginResponse` MUST support optional `MFARequired`, `MFAToken`, and `MFAMethods` fields.
 - **FR-012**: Define `MFAVerifyRequest` DTO containing `mfa_token`, `method`, and `code` with validation tags (`required` for token and method, `required_if` for code when method is `totp`).
+- **FR-013**: Define the `MFACache` interface with methods: `StoreToken(ctx, mfaToken, adminID)`, `GetAdminID(ctx, mfaToken)`, and `DeleteToken(ctx, mfaToken)`. The `StoreToken` method MUST NOT accept a TTL parameter from callers.
+- **FR-014**: Implement `RedisMFACache` mapping the token to the Admin ID key format `auth:mfa_token:{mfaToken}`. It MUST hard-code a 5-minute TTL when storing tokens.
+- **FR-015**: The cached keys MUST have a strict 5-minute TTL.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -102,6 +122,8 @@ As a front-end developer or API consumer, I want the login response to include M
 - **SC-005**: 100% test coverage for new errors, event structs, and entity methods.
 - **SC-006**: OpenAPI contract `api/openapi.yaml` compiles and passes validation (e.g., using swagger/openapi CLI tool if available).
 - **SC-007**: HTTP validation tests verify DTO validator tags correctly block invalid request payloads.
+- **SC-008**: Cache store and retrieve operations complete in under 5ms (P95).
+- **SC-009**: Expiration test asserts key is missing exactly after 5 minutes (or appropriate mocked duration).
 
 ## Assumptions
 
@@ -109,3 +131,4 @@ As a front-end developer or API consumer, I want the login response to include M
 - The new columns are optional initially, so they must be nullable.
 - Migrations will be executed using the application's migration tool or raw SQL execution tool.
 - The go-playground/validator package is used for structural DTO validation in HTTP handlers.
+- Redis client is available and properly initialized.

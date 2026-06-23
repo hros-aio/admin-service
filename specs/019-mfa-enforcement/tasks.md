@@ -4,7 +4,7 @@
 
 **Prerequisites**: plan.md ✅, spec.md ✅
 
-**Scope**: Implement migration (TSK-MFA-001), domain primitives (TSK-MFA-002), and DTO/OpenAPI contract (TSK-MFA-003).
+**Scope**: Implement migration (TSK-MFA-001), domain primitives (TSK-MFA-002), DTO/OpenAPI contract (TSK-MFA-003), and Redis cache (TSK-MFA-004).
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -40,3 +40,11 @@
 - [x] T008 [P] [US3] Update `api/openapi.yaml` to define `/v1/auth/mfa/verify` endpoint, document its responses (200, 401 with `MFA_INVALID` and `MFA_TOKEN_EXPIRED`), update `LoginResponse` fields, and add `MFAVerifyRequest` schema.
 - [x] T009 [P] [US3] Update `LoginResponse` and implement `MFAVerifyRequest` with validation tags in `internal/adapter/http/auth/dto/auth_dto.go`.
 - [x] T010 [P] [US3] Update `internal/adapter/http/auth/dto/auth_dto_test.go` to test validations and JSON mapping of `MFAVerifyRequest` and `LoginResponse`.
+
+---
+
+## Phase 4: Redis Cache (TSK-MFA-004) ✅ Complete
+
+- [x] T011 [P] [US4] Update `MFACache` interface definition in `internal/application/interfaces/mfa_cache.go` and its unit tests to use `StoreToken`, `GetAdminID`, and `DeleteToken` methods mapping to the Admin ID.
+- [x] T012 [P] [US4] Implement `RedisMFACache` in `internal/infrastructure/cache/mfa_redis.go` using Redis client connection and key prefix `auth:mfa_token:{mfaToken}` with 5-minute TTL.
+- [x] T013 [P] [US4] Implement unit tests in `internal/infrastructure/cache/mfa_redis_test.go` using `miniredis` to verify cache operations and strict expiration.
