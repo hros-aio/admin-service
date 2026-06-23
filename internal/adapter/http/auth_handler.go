@@ -16,10 +16,11 @@ import (
 
 // AuthHandler handles authentication HTTP requests.
 type AuthHandler struct {
-	loginUC   *usecase.LoginUseCase
-	logoutUC  *usecase.LogoutUseCase
-	refreshUC *usecase.RefreshSessionUseCase
-	validate  *validator.Validate
+	loginUC     *usecase.LoginUseCase
+	logoutUC    *usecase.LogoutUseCase
+	refreshUC   *usecase.RefreshSessionUseCase
+	verifyMfaUC *usecase.VerifyMFAUseCase
+	validate    *validator.Validate
 }
 
 // NewAuthHandler creates a new AuthHandler.
@@ -27,12 +28,14 @@ func NewAuthHandler(
 	loginUC *usecase.LoginUseCase,
 	logoutUC *usecase.LogoutUseCase,
 	refreshUC *usecase.RefreshSessionUseCase,
+	verifyMfaUC *usecase.VerifyMFAUseCase,
 ) *AuthHandler {
 	return &AuthHandler{
-		loginUC:   loginUC,
-		logoutUC:  logoutUC,
-		refreshUC: refreshUC,
-		validate:  validator.New(),
+		loginUC:     loginUC,
+		logoutUC:    logoutUC,
+		refreshUC:   refreshUC,
+		verifyMfaUC: verifyMfaUC,
+		validate:    validator.New(),
 	}
 }
 
@@ -41,6 +44,7 @@ func RegisterRoutes(e *echo.Echo, h *AuthHandler) {
 	e.POST("/v1/auth/login", h.Login)
 	e.DELETE("/v1/auth/session", h.Logout)
 	e.POST("/v1/auth/refresh", h.Refresh)
+	e.POST("/v1/auth/mfa/verify", h.VerifyMFA)
 }
 
 // Login handles the admin login request.
@@ -186,6 +190,62 @@ func (h *AuthHandler) Refresh(c echo.Context) error {
 		if errors.Is(err, domainErrors.ErrAccountLocked) {
 			resp := sharedErrors.NewErrorResponse("ACCOUNT_LOCKED", "Account is temporarily locked", nil, traceID)
 			return c.JSON(http.StatusUnauthorized, resp)
+		}
+
+		resp := sharedErrors.NewErrorResponse("internal_error", "Internal server error", nil, traceID)
+		return c.JSON(http.StatusInternalServerError, resp)
+	}
+
+	resp := dto.LoginResponse{
+		AccessToken:  output.AccessToken,
+		RefreshToken: output.RefreshToken,
+	}
+	return c.JSON(http.StatusOK, resp)
+}
+
+// VerifyMFA handles the MFA verification request.
+func (h *AuthHandler) VerifyMFA(c echo.Context) error {
+	var req dto.MFAVerifyRequest
+	if err := c.Bind(&req); err != nil {
+		traceID := c.Response().Header().Get(echo.HeaderXRequestID)
+		resp := sharedErrors.NewErrorResponse("bad_request", "Invalid request body", err.Error(), traceID)
+		return c.JSON(http.StatusBadRequest, resp)
+	}
+
+	if err := h.validate.Struct(&req); err != nil {
+		traceID := c.Response().Header().Get(echo.HeaderXRequestID)
+		resp := sharedErrors.NewErrorResponse("validation_error", "Request validation failed", err.Error(), traceID)
+		return c.JSON(http.StatusBadRequest, resp)
+	}
+
+	input := usecase.VerifyMFAInput{
+		MFAToken:   req.MFAToken,
+		Method:     req.Method,
+		Code:       req.Code,
+		RememberMe: req.RememberMe,
+		IPAddress:  c.RealIP(),
+		UserAgent:  c.Request().UserAgent(),
+	}
+
+	output, err := h.verifyMfaUC.Execute(c.Request().Context(), input)
+	if err != nil {
+		traceID := c.Response().Header().Get(echo.HeaderXRequestID)
+
+		if errors.Is(err, domainErrors.ErrMFAInvalid) {
+			resp := sharedErrors.NewErrorResponse("MFA_INVALID", "Invalid MFA verification code", nil, traceID)
+			return c.JSON(http.StatusUnauthorized, resp)
+		}
+		if errors.Is(err, domainErrors.ErrMFATokenExpired) {
+			resp := sharedErrors.NewErrorResponse("MFA_TOKEN_EXPIRED", "MFA token has expired", nil, traceID)
+			return c.JSON(http.StatusUnauthorized, resp)
+		}
+		if errors.Is(err, domainErrors.ErrUserInactive) {
+			resp := sharedErrors.NewErrorResponse("forbidden", "Account is deactivated", nil, traceID)
+			return c.JSON(http.StatusForbidden, resp)
+		}
+		if errors.Is(err, domainErrors.ErrUserLocked) {
+			resp := sharedErrors.NewErrorResponse("forbidden", "Account is locked", nil, traceID)
+			return c.JSON(http.StatusForbidden, resp)
 		}
 
 		resp := sharedErrors.NewErrorResponse("internal_error", "Internal server error", nil, traceID)

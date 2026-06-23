@@ -11,5 +11,6 @@ var Module = fx.Module("application",
 		usecase.NewLoginUseCase,
 		usecase.NewLogoutUseCase,
 		usecase.NewRefreshSessionUseCase,
+		usecase.NewVerifyMFAUseCase,
 	),
 )

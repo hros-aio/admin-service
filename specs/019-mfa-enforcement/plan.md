@@ -34,6 +34,14 @@ This plan outlines the implementation of MFA Enforcement (Super Admins).
 - If verification succeeds, publish `mfa.success` audit event, issue the standard JWT access/refresh token pair, store a persistent session record in `SessionTokenRepository`, and delete the `mfa_token` from `MFACache`.
 - Add unit tests in `verify_mfa_usecase_test.go` achieving 100% statement and branch coverage.
 
+**Phase 7 (TSK-MFA-007 — ✅ Done)**: HTTP Handler for MFA Verification.
+- Inject `VerifyMFAUseCase` into `AuthHandler`.
+- Register path `POST /v1/auth/mfa/verify` mapped to `AuthHandler.VerifyMFA` in route registration.
+- Update `AuthHandler.Login` to properly map `MFARequired`, `MFAToken`, and `MFAMethods` fields from output to client response envelope (already partially structured, but ensure it is strictly tested).
+- Implement `VerifyMFA` method on `AuthHandler` to parse, validate, and execute verification request, returning standard JWT access/refresh token pair or mapping domain errors `ErrMFAInvalid` / `ErrMFATokenExpired` to `401 Unauthorized` responses matching contract codes.
+- Implement comprehensive handler-level unit and integration tests inside `auth_handler_test.go` checking all scenarios (success, validation error, invalid token/code, usecase/internal errors).
+
+
 ## Technical Context
 
 **Language/Version**: Go 1.23+
@@ -83,6 +91,10 @@ specs/019-mfa-enforcement/
 
 ```text
 internal/
+├── adapter/
+│   └── http/
+│       ├── auth_handler.go           # Wired with VerifyMFAUseCase and custom error mappings
+│       └── auth_handler_test.go      # Integration and unit tests for auth handlers
 ├── application/
 │   └── usecase/
 │       ├── verify_mfa_usecase.go     # VerifyMFAUseCase implementation

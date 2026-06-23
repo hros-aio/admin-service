@@ -106,6 +106,23 @@ As a Super Admin who has passed the initial password authentication, when I veri
 
 ---
 
+### User Story 7 - HTTP Handler implementation for MFA Verification (Priority: P1)
+
+As a client app or frontend developer, I want to call `POST /v1/auth/mfa/verify` to complete my login using my MFA token and TOTP code, so that I can receive my authentication JWT tokens.
+
+**Why this priority**: Complete delivery of the MFA verification API endpoint to frontend consumers.
+
+**Independent Test**: The endpoint `/v1/auth/mfa/verify` is correctly routed, handles validations, invokes `VerifyMFAUseCase`, maps domain errors to appropriate HTTP status codes, and returns success JWT tokens.
+
+**Acceptance Scenarios**:
+
+1. **Given** a valid verification request body containing `mfa_token` and `code` (TOTP), **When** calling `POST /v1/auth/mfa/verify`, **Then** the server returns `200 OK` with the access/refresh token pair.
+2. **Given** an invalid or expired MFA token, **When** calling `POST /v1/auth/mfa/verify`, **Then** the server returns `401 Unauthorized` with error code `MFA_TOKEN_EXPIRED`.
+3. **Given** an incorrect TOTP code, **When** calling `POST /v1/auth/mfa/verify`, **Then** the server returns `401 Unauthorized` with error code `MFA_INVALID`.
+4. **Given** a malformed request body (missing fields), **When** calling `POST /v1/auth/mfa/verify`, **Then** the server returns `400 Bad Request` validation error.
+
+---
+
 ## Edge Cases
 
 - **Transaction isolation**: The migration script must run in a single transaction block so that failures in middle execution revert the table to its previous state.
@@ -144,6 +161,14 @@ As a Super Admin who has passed the initial password authentication, when I veri
 - **FR-023**: The `VerifyMFAUseCase` MUST fetch the admin user from `AdminUserRepository`.
 - **FR-024**: The `VerifyMFAUseCase` MUST validate the TOTP code against the `AdminUser.TotpSecret` (e.g. using `pquerna/otp` or equivalent standard validation logic). If validation fails, it MUST publish an `mfa.failed` audit event and return `ErrMFAInvalid`.
 - **FR-025**: Upon successful MFA verification, the `VerifyMFAUseCase` MUST publish an `mfa.success` audit event, issue the JWT access/refresh token pair, save the session to `SessionTokenRepository`, and delete the `mfa_token` from `MFACache`.
+- **FR-026**: Register routing path `POST /v1/auth/mfa/verify` to `AuthHandler.VerifyMFA`.
+- **FR-027**: The `VerifyMFA` handler MUST bind the JSON request body to `MFAVerifyRequest` DTO and validate it using the validator framework.
+- **FR-028**: The `VerifyMFA` handler MUST invoke `VerifyMFAUseCase.Execute`.
+- **FR-029**: The `VerifyMFA` handler MUST map domain errors to HTTP responses:
+  - `ErrMFAInvalid` -> `401 Unauthorized` with error response containing code `MFA_INVALID` and appropriate translation message.
+  - `ErrMFATokenExpired` -> `401 Unauthorized` with error response containing code `MFA_TOKEN_EXPIRED` and appropriate translation message.
+- **FR-030**: Upon successful verification, the `VerifyMFA` handler MUST return `200 OK` containing `dto.LoginResponse` populated with the access/refresh token pair and omit MFA fields.
+- **FR-031**: Update the `POST /v1/auth/login` handler to return the correct JSON envelope with `mfa_required`, `mfa_token`, and `mfa_methods` populated when an MFA challenge is required.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -174,6 +199,7 @@ As a Super Admin who has passed the initial password authentication, when I veri
 - **SC-012**: Super Admin login successfully returns a secure random `mfa_token` and `mfa_required = true` on valid password check.
 - **SC-013**: `VerifyMFAUseCase` unit tests achieve 100% statement and branch coverage, covering success and failure verification scenarios.
 - **SC-014**: Upon successful TOTP code validation, the system issues the access/refresh token pair and deletes the token from cache within 10ms (P95).
+- **SC-015**: Unit tests for the verify MFA endpoint check both successful mapping (200 OK), validation errors (400 Bad Request), expired token (401), invalid code (401), and internal error mappings (500), achieving 100% test coverage for the handlers.
 
 ## Assumptions
 
