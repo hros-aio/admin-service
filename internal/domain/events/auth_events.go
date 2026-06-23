@@ -22,3 +22,24 @@ type EmailSendEvent struct {
 	Template     string                 `json:"template"`
 	TemplateData map[string]interface{} `json:"template_data"`
 }
+
+// MFASuccessEvent defines the payload structure for the 'mfa.success' event.
+type MFASuccessEvent struct {
+	AdminID    string    `json:"admin_id"`
+	Email      string    `json:"email"`
+	Method     string    `json:"method"`
+	IPAddress  string    `json:"ip_address"`
+	UserAgent  string    `json:"user_agent"`
+	OccurredAt time.Time `json:"occurred_at"`
+}
+
+// MFAFailedEvent defines the payload structure for the 'mfa.failed' event.
+type MFAFailedEvent struct {
+	AdminID    string    `json:"admin_id"`
+	Email      string    `json:"email"`
+	Method     string    `json:"method"`
+	Reason     string    `json:"reason"`
+	IPAddress  string    `json:"ip_address"`
+	UserAgent  string    `json:"user_agent"`
+	OccurredAt time.Time `json:"occurred_at"`
+}

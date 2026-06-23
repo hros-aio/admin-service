@@ -48,3 +48,13 @@ func TestAdminUser_IsLocked(t *testing.T) {
 		})
 	}
 }
+
+func TestAdminUser_MFAFields(t *testing.T) {
+	u := &AdminUser{
+		TotpSecret:          "secret_totp_key",
+		WebauthnCredentials: []byte(`{"id":"cred_123"}`),
+	}
+
+	assert.Equal(t, "secret_totp_key", u.TotpSecret)
+	assert.Equal(t, []byte(`{"id":"cred_123"}`), u.WebauthnCredentials)
+}

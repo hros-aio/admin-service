@@ -16,20 +16,22 @@ const (
 
 // AdminUser represents an HROS administrator.
 type AdminUser struct {
-	ID           string
-	Name         string
-	Email        string
-	PasswordHash string
-	RoleID       string
-	Status       AdminUserStatus
-	MFAEnabled   bool
-	MFASecret    string
-	LastLoginAt  *time.Time
-	FailCount    int
-	LockedUntil  *time.Time
-	InvitedBy    *string
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID                  string
+	Name                string
+	Email               string
+	PasswordHash        string
+	RoleID              string
+	Status              AdminUserStatus
+	MFAEnabled          bool
+	MFASecret           string
+	TotpSecret          string
+	WebauthnCredentials []byte
+	LastLoginAt         *time.Time
+	FailCount           int
+	LockedUntil         *time.Time
+	InvitedBy           *string
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
 }
 
 // Role represents a set of permissions.
