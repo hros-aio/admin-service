@@ -74,3 +74,15 @@ Independent test criteria: Unit tests cover resolving the token from cache, fetc
 - [x] T019 [US6] Implement TOTP verification validation using `github.com/pquerna/otp` and logic inside `VerifyMFAUseCase.Execute`. Handle token resolution, user lookup, validation errors, emitting audit logs, session creation, and cache eviction.
 - [x] T020 [P] [US6] Create comprehensive unit tests inside `internal/application/usecase/verify_mfa_usecase_test.go` checking all scenarios (success, invalid code, expired/missing token, repository errors) to achieve 100% statement and branch coverage.
 
+---
+
+## Phase 7: HTTP Handler for MFA Verification (TSK-MFA-007) ✅ Complete
+
+Story goal: Wire the Echo handler for `POST /v1/auth/mfa/verify` to parse requests, invoke `VerifyMFAUseCase`, map business/domain errors to contract HTTP statuses, and return JWT payloads on success. Update `POST /v1/auth/login` to return standard envelopes when MFA challenges are issued.
+
+Independent test criteria: Integration/unit tests assert correct HTTP status code mappings (200, 400, 401, 403, 500) and response formats.
+
+- [x] T021 [US7] Update `internal/adapter/http/auth_handler.go` to inject `VerifyMFAUseCase` into `AuthHandler`, register route `/v1/auth/mfa/verify`, and implement `VerifyMFA` handler mapping validation/domain errors and success outputs.
+- [x] T022 [P] [US7] Implement unit and integration tests inside `internal/adapter/http/auth_handler_test.go` verifying routing, validation tag behavior, success tokens, error formatting, and mapping correctness.
+
+

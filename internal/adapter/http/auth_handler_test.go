@@ -20,6 +20,7 @@ import (
 	"github.com/hros/admin-service/internal/domain/events"
 	sharedErrors "github.com/hros/admin-service/internal/shared/errors"
 	"github.com/labstack/echo/v4"
+	"github.com/pquerna/otp/totp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -265,7 +266,7 @@ func TestAuthHandler_Login(t *testing.T) {
 		loginUC := newLoginUCForTest(mockUserRepo, mockSessionRepo, mockPasswordHelper, mockTokenProvider, mockAuditLogger)
 		mockTokenBlacklist := new(mockTokenBlacklist)
 		logoutUC := usecase.NewLogoutUseCase(mockSessionRepo, mockTokenBlacklist, mockAuditLogger)
-		handler := NewAuthHandler(loginUC, logoutUC, nil)
+		handler := NewAuthHandler(loginUC, logoutUC, nil, nil)
 
 		reqBody := dto.LoginRequest{
 			Email:      "admin@hros.com",
@@ -326,7 +327,7 @@ func TestAuthHandler_Login(t *testing.T) {
 		)
 		mockTokenBlacklist := new(mockTokenBlacklist)
 		logoutUC := usecase.NewLogoutUseCase(mockSessionRepo, mockTokenBlacklist, mockAuditLogger)
-		handler := NewAuthHandler(loginUC, logoutUC, nil)
+		handler := NewAuthHandler(loginUC, logoutUC, nil, nil)
 
 		reqBody := dto.LoginRequest{
 			Email:      "superadmin@hros.com",
@@ -377,7 +378,7 @@ func TestAuthHandler_Login(t *testing.T) {
 		loginUC := newLoginUCForTest(mockUserRepo, mockSessionRepo, mockPasswordHelper, mockTokenProvider, mockAuditLogger)
 		mockTokenBlacklist := new(mockTokenBlacklist)
 		logoutUC := usecase.NewLogoutUseCase(mockSessionRepo, mockTokenBlacklist, mockAuditLogger)
-		handler := NewAuthHandler(loginUC, logoutUC, nil)
+		handler := NewAuthHandler(loginUC, logoutUC, nil, nil)
 
 		reqBody := dto.LoginRequest{
 			Email:    "admin@hros.com",
@@ -421,7 +422,7 @@ func TestAuthHandler_Login(t *testing.T) {
 		loginUC := newLoginUCForTest(mockUserRepo, mockSessionRepo, mockPasswordHelper, mockTokenProvider, mockAuditLogger)
 		mockTokenBlacklist := new(mockTokenBlacklist)
 		logoutUC := usecase.NewLogoutUseCase(mockSessionRepo, mockTokenBlacklist, mockAuditLogger)
-		handler := NewAuthHandler(loginUC, logoutUC, nil)
+		handler := NewAuthHandler(loginUC, logoutUC, nil, nil)
 
 		reqBody := dto.LoginRequest{
 			Email:    "inactive@hros.com",
@@ -465,7 +466,7 @@ func TestAuthHandler_Login(t *testing.T) {
 		loginUC := newLoginUCForTest(mockUserRepo, mockSessionRepo, mockPasswordHelper, mockTokenProvider, mockAuditLogger)
 		mockTokenBlacklist := new(mockTokenBlacklist)
 		logoutUC := usecase.NewLogoutUseCase(mockSessionRepo, mockTokenBlacklist, mockAuditLogger)
-		handler := NewAuthHandler(loginUC, logoutUC, nil)
+		handler := NewAuthHandler(loginUC, logoutUC, nil, nil)
 
 		reqBody := dto.LoginRequest{
 			Email:    "locked@hros.com",
@@ -502,7 +503,7 @@ func TestAuthHandler_Login(t *testing.T) {
 
 	t.Run("Validation Failure", func(t *testing.T) {
 		loginUC := newLoginUCForTest(nil, nil, nil, nil, nil)
-		handler := NewAuthHandler(loginUC, nil, nil)
+		handler := NewAuthHandler(loginUC, nil, nil, nil)
 
 		reqBody := dto.LoginRequest{
 			Email: "invalid-email",
@@ -546,7 +547,7 @@ func TestAuthHandler_Login(t *testing.T) {
 		)
 		mockTokenBlacklist := new(mockTokenBlacklist)
 		logoutUC := usecase.NewLogoutUseCase(mockSessionRepo, mockTokenBlacklist, mockAuditLogger)
-		handler := NewAuthHandler(loginUC, logoutUC, nil)
+		handler := NewAuthHandler(loginUC, logoutUC, nil, nil)
 
 		reqBody := dto.LoginRequest{
 			Email:    "locked-bf@hros.com",
@@ -581,7 +582,7 @@ func TestAuthHandler_Logout(t *testing.T) {
 		mockAuditLogger := new(mockAuditLogger)
 
 		logoutUC := usecase.NewLogoutUseCase(mockSessionRepo, mockTokenBlacklist, mockAuditLogger)
-		handler := NewAuthHandler(nil, logoutUC, nil)
+		handler := NewAuthHandler(nil, logoutUC, nil, nil)
 
 		req := httptest.NewRequest(http.MethodDelete, "/v1/auth/session", nil)
 		req.Header.Set("Authorization", "Bearer valid-refresh-token")
@@ -602,7 +603,7 @@ func TestAuthHandler_Logout(t *testing.T) {
 		mockAuditLogger := new(mockAuditLogger)
 
 		logoutUC := usecase.NewLogoutUseCase(mockSessionRepo, mockTokenBlacklist, mockAuditLogger)
-		handler := NewAuthHandler(nil, logoutUC, nil)
+		handler := NewAuthHandler(nil, logoutUC, nil, nil)
 
 		req := httptest.NewRequest(http.MethodDelete, "/v1/auth/session", nil)
 		xToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -627,7 +628,7 @@ func TestAuthHandler_Logout(t *testing.T) {
 	})
 
 	t.Run("Malformed X-Refresh-Token Returns 400", func(t *testing.T) {
-		handler := NewAuthHandler(nil, nil, nil)
+		handler := NewAuthHandler(nil, nil, nil, nil)
 
 		invalidTokens := []string{"", "   ", "\t", "\n"}
 		for _, token := range invalidTokens {
@@ -649,7 +650,7 @@ func TestAuthHandler_Logout(t *testing.T) {
 	})
 
 	t.Run("Missing Authorization Header", func(t *testing.T) {
-		handler := NewAuthHandler(nil, nil, nil)
+		handler := NewAuthHandler(nil, nil, nil, nil)
 
 		req := httptest.NewRequest(http.MethodDelete, "/v1/auth/session", nil)
 		rec := httptest.NewRecorder()
@@ -666,7 +667,7 @@ func TestAuthHandler_Logout(t *testing.T) {
 	})
 
 	t.Run("Malformed Authorization Header", func(t *testing.T) {
-		handler := NewAuthHandler(nil, nil, nil)
+		handler := NewAuthHandler(nil, nil, nil, nil)
 
 		req := httptest.NewRequest(http.MethodDelete, "/v1/auth/session", nil)
 		req.Header.Set("Authorization", "InvalidHeaderFormat")
@@ -689,7 +690,7 @@ func TestAuthHandler_Logout(t *testing.T) {
 		mockAuditLogger := new(mockAuditLogger)
 
 		logoutUC := usecase.NewLogoutUseCase(mockSessionRepo, mockTokenBlacklist, mockAuditLogger)
-		handler := NewAuthHandler(nil, logoutUC, nil)
+		handler := NewAuthHandler(nil, logoutUC, nil, nil)
 
 		req := httptest.NewRequest(http.MethodDelete, "/v1/auth/session", nil)
 		req.Header.Set("Authorization", "Bearer valid-refresh-token")
@@ -709,7 +710,7 @@ func TestAuthHandler_Logout(t *testing.T) {
 	})
 
 	t.Run("Empty Token After Bearer Prefix", func(t *testing.T) {
-		handler := NewAuthHandler(nil, nil, nil)
+		handler := NewAuthHandler(nil, nil, nil, nil)
 
 		req := httptest.NewRequest(http.MethodDelete, "/v1/auth/session", nil)
 		req.Header.Set("Authorization", "Bearer ")
@@ -737,7 +738,7 @@ func TestAuthHandler_Refresh(t *testing.T) {
 		mockAuditLogger := new(mockAuditLogger)
 
 		refreshUC := usecase.NewRefreshSessionUseCase(mockUserRepo, mockSessionRepo, mockTokenProvider, mockAuditLogger)
-		handler := NewAuthHandler(nil, nil, refreshUC)
+		handler := NewAuthHandler(nil, nil, refreshUC, nil)
 
 		reqBody := dto.RefreshRequest{
 			RefreshToken: "valid-refresh-token",
@@ -778,7 +779,7 @@ func TestAuthHandler_Refresh(t *testing.T) {
 	})
 
 	t.Run("Validation Failure", func(t *testing.T) {
-		handler := NewAuthHandler(nil, nil, nil)
+		handler := NewAuthHandler(nil, nil, nil, nil)
 
 		reqBody := dto.RefreshRequest{
 			RefreshToken: "",
@@ -802,7 +803,7 @@ func TestAuthHandler_Refresh(t *testing.T) {
 	t.Run("Invalid Refresh Token Returns 401", func(t *testing.T) {
 		mockSessionRepo := new(mockSessionRepo)
 		refreshUC := usecase.NewRefreshSessionUseCase(nil, mockSessionRepo, nil, nil)
-		handler := NewAuthHandler(nil, nil, refreshUC)
+		handler := NewAuthHandler(nil, nil, refreshUC, nil)
 
 		reqBody := dto.RefreshRequest{
 			RefreshToken: "invalid-token",
@@ -829,7 +830,7 @@ func TestAuthHandler_Refresh(t *testing.T) {
 		mockUserRepo := new(mockUserRepo)
 		mockSessionRepo := new(mockSessionRepo)
 		refreshUC := usecase.NewRefreshSessionUseCase(mockUserRepo, mockSessionRepo, nil, nil)
-		handler := NewAuthHandler(nil, nil, refreshUC)
+		handler := NewAuthHandler(nil, nil, refreshUC, nil)
 
 		reqBody := dto.RefreshRequest{
 			RefreshToken: "valid-token-inactive-user",
@@ -868,7 +869,7 @@ func TestAuthHandler_Refresh(t *testing.T) {
 		mockUserRepo := new(mockUserRepo)
 		mockSessionRepo := new(mockSessionRepo)
 		refreshUC := usecase.NewRefreshSessionUseCase(mockUserRepo, mockSessionRepo, nil, nil)
-		handler := NewAuthHandler(nil, nil, refreshUC)
+		handler := NewAuthHandler(nil, nil, refreshUC, nil)
 
 		reqBody := dto.RefreshRequest{
 			RefreshToken: "valid-token-locked-user",
@@ -908,7 +909,7 @@ func TestAuthHandler_Refresh(t *testing.T) {
 	t.Run("Expired Token Returns 401", func(t *testing.T) {
 		mockSessionRepo := new(mockSessionRepo)
 		refreshUC := usecase.NewRefreshSessionUseCase(nil, mockSessionRepo, nil, nil)
-		handler := NewAuthHandler(nil, nil, refreshUC)
+		handler := NewAuthHandler(nil, nil, refreshUC, nil)
 
 		reqBody := dto.RefreshRequest{
 			RefreshToken: "expired-token",
@@ -942,7 +943,7 @@ func TestAuthHandler_Refresh(t *testing.T) {
 		mockUserRepo := new(mockUserRepo)
 		mockSessionRepo := new(mockSessionRepo)
 		refreshUC := usecase.NewRefreshSessionUseCase(mockUserRepo, mockSessionRepo, nil, nil)
-		handler := NewAuthHandler(nil, nil, refreshUC)
+		handler := NewAuthHandler(nil, nil, refreshUC, nil)
 
 		reqBody := dto.RefreshRequest{
 			RefreshToken: "valid-token-db-err",
@@ -980,7 +981,7 @@ func TestAuthHandler_Refresh(t *testing.T) {
 		mockAuditLogger := new(mockAuditLogger)
 
 		refreshUC := usecase.NewRefreshSessionUseCase(mockUserRepo, mockSessionRepo, mockTokenProvider, mockAuditLogger)
-		handler := NewAuthHandler(nil, nil, refreshUC)
+		handler := NewAuthHandler(nil, nil, refreshUC, nil)
 
 		reqBody := dto.RefreshRequest{
 			RefreshToken: "valid-token",
@@ -1010,5 +1011,230 @@ func TestAuthHandler_Refresh(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "ACCOUNT_LOCKED", errorResp.Code)
 		assert.Equal(t, "Account is temporarily locked", errorResp.Message)
+	})
+}
+
+func TestAuthHandler_VerifyMFA(t *testing.T) {
+	e := echo.New()
+
+	t.Run("Successful MFA Verification", func(t *testing.T) {
+		mockUserRepo := new(mockUserRepo)
+		mockSessionRepo := new(mockSessionRepo)
+		mockTokenProvider := new(mockTokenProvider)
+		mockAuditLogger := new(mockAuditLogger)
+		mockMFACache := new(mockMFACache)
+
+		verifyMfaUC := usecase.NewVerifyMFAUseCase(
+			mockUserRepo,
+			mockSessionRepo,
+			mockTokenProvider,
+			mockAuditLogger,
+			mockMFACache,
+			slog.Default(),
+		)
+		handler := NewAuthHandler(nil, nil, nil, verifyMfaUC)
+
+		reqBody := dto.MFAVerifyRequest{
+			MFAToken: "valid-mfa-token",
+			Method:   "totp",
+			Code:     "123456",
+		}
+		bodyBytes, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPost, "/v1/auth/mfa/verify", bytes.NewBuffer(bodyBytes))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		user := &domain.AdminUser{
+			ID:         "admin-id-123",
+			Email:      "admin@hros.com",
+			Name:       "Admin",
+			Status:     "active",
+			TotpSecret: "secret",
+		}
+
+		mockMFACache.On("GetAdminID", mock.Anything, "valid-mfa-token").Return("admin-id-123", nil).Once()
+		mockUserRepo.On("FindByID", mock.Anything, "admin-id-123").Return(user, nil).Once()
+
+		totpSecret := "JBSWY3DPEHPK3PXP" // Valid Base32
+		user.TotpSecret = totpSecret
+		validCode, err := totp.GenerateCode(totpSecret, time.Now())
+		assert.NoError(t, err)
+		reqBody.Code = validCode
+		bodyBytes, _ = json.Marshal(reqBody)
+		req = httptest.NewRequest(http.MethodPost, "/v1/auth/mfa/verify", bytes.NewBuffer(bodyBytes))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec = httptest.NewRecorder()
+		c = e.NewContext(req, rec)
+
+		mockAuditLogger.On("LogMFASuccess", mock.Anything, "admin-id-123", "admin@hros.com").Return().Once()
+		mockTokenProvider.On("GenerateAccessToken", mock.Anything, user, 15*time.Minute).Return("access-token-xyz", nil).Once()
+		mockTokenProvider.On("GenerateRefreshToken", mock.Anything).Return("refresh-token-abc", nil).Once()
+		mockSessionRepo.On("Save", mock.Anything, mock.Anything).Return(nil).Once()
+		mockMFACache.On("DeleteToken", mock.Anything, "valid-mfa-token").Return(nil).Once()
+
+		err = handler.VerifyMFA(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+
+		var resp dto.LoginResponse
+		err = json.Unmarshal(rec.Body.Bytes(), &resp)
+		assert.NoError(t, err)
+		assert.Equal(t, "access-token-xyz", resp.AccessToken)
+		assert.Equal(t, "refresh-token-abc", resp.RefreshToken)
+	})
+
+	t.Run("Validation Failure", func(t *testing.T) {
+		handler := NewAuthHandler(nil, nil, nil, nil)
+
+		reqBody := dto.MFAVerifyRequest{
+			MFAToken: "", // Empty token triggers validation failure
+			Method:   "totp",
+			Code:     "",
+		}
+		bodyBytes, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPost, "/v1/auth/mfa/verify", bytes.NewBuffer(bodyBytes))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		err := handler.VerifyMFA(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+
+		var errorResp sharedErrors.ErrorResponse
+		err = json.Unmarshal(rec.Body.Bytes(), &errorResp)
+		assert.NoError(t, err)
+		assert.Equal(t, "validation_error", errorResp.Code)
+	})
+
+	t.Run("Invalid MFA Token / Expired", func(t *testing.T) {
+		mockUserRepo := new(mockUserRepo)
+		mockSessionRepo := new(mockSessionRepo)
+		mockTokenProvider := new(mockTokenProvider)
+		mockAuditLogger := new(mockAuditLogger)
+		mockMFACache := new(mockMFACache)
+
+		verifyMfaUC := usecase.NewVerifyMFAUseCase(
+			mockUserRepo,
+			mockSessionRepo,
+			mockTokenProvider,
+			mockAuditLogger,
+			mockMFACache,
+			slog.Default(),
+		)
+		handler := NewAuthHandler(nil, nil, nil, verifyMfaUC)
+
+		reqBody := dto.MFAVerifyRequest{
+			MFAToken: "expired-token",
+			Method:   "totp",
+			Code:     "123456",
+		}
+		bodyBytes, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPost, "/v1/auth/mfa/verify", bytes.NewBuffer(bodyBytes))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		mockMFACache.On("GetAdminID", mock.Anything, "expired-token").Return("", domainErrors.ErrMFATokenExpired).Once()
+
+		err := handler.VerifyMFA(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+
+		var errorResp sharedErrors.ErrorResponse
+		err = json.Unmarshal(rec.Body.Bytes(), &errorResp)
+		assert.NoError(t, err)
+		assert.Equal(t, "MFA_TOKEN_EXPIRED", errorResp.Code)
+	})
+
+	t.Run("Invalid Code", func(t *testing.T) {
+		mockUserRepo := new(mockUserRepo)
+		mockSessionRepo := new(mockSessionRepo)
+		mockTokenProvider := new(mockTokenProvider)
+		mockAuditLogger := new(mockAuditLogger)
+		mockMFACache := new(mockMFACache)
+
+		verifyMfaUC := usecase.NewVerifyMFAUseCase(
+			mockUserRepo,
+			mockSessionRepo,
+			mockTokenProvider,
+			mockAuditLogger,
+			mockMFACache,
+			slog.Default(),
+		)
+		handler := NewAuthHandler(nil, nil, nil, verifyMfaUC)
+
+		reqBody := dto.MFAVerifyRequest{
+			MFAToken: "valid-mfa-token",
+			Method:   "totp",
+			Code:     "000000", // Incorrect code
+		}
+		bodyBytes, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPost, "/v1/auth/mfa/verify", bytes.NewBuffer(bodyBytes))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		user := &domain.AdminUser{
+			ID:         "admin-id-123",
+			Email:      "admin@hros.com",
+			Name:       "Admin",
+			Status:     "active",
+			TotpSecret: "JBSWY3DPEHPK3PXP",
+		}
+
+		mockMFACache.On("GetAdminID", mock.Anything, "valid-mfa-token").Return("admin-id-123", nil).Once()
+		mockUserRepo.On("FindByID", mock.Anything, "admin-id-123").Return(user, nil).Once()
+		mockAuditLogger.On("LogMFAFailed", mock.Anything, "admin@hros.com", "invalid TOTP code").Return().Once()
+
+		err := handler.VerifyMFA(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+
+		var errorResp sharedErrors.ErrorResponse
+		err = json.Unmarshal(rec.Body.Bytes(), &errorResp)
+		assert.NoError(t, err)
+		assert.Equal(t, "MFA_INVALID", errorResp.Code)
+	})
+
+	t.Run("Internal Server Error", func(t *testing.T) {
+		mockUserRepo := new(mockUserRepo)
+		mockSessionRepo := new(mockSessionRepo)
+		mockTokenProvider := new(mockTokenProvider)
+		mockAuditLogger := new(mockAuditLogger)
+		mockMFACache := new(mockMFACache)
+
+		verifyMfaUC := usecase.NewVerifyMFAUseCase(
+			mockUserRepo,
+			mockSessionRepo,
+			mockTokenProvider,
+			mockAuditLogger,
+			mockMFACache,
+			slog.Default(),
+		)
+		handler := NewAuthHandler(nil, nil, nil, verifyMfaUC)
+
+		reqBody := dto.MFAVerifyRequest{
+			MFAToken: "valid-mfa-token",
+			Method:   "totp",
+			Code:     "123456",
+		}
+		bodyBytes, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPost, "/v1/auth/mfa/verify", bytes.NewBuffer(bodyBytes))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		mockMFACache.On("GetAdminID", mock.Anything, "valid-mfa-token").Return("", errors.New("db disconnect")).Once()
+
+		err := handler.VerifyMFA(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+
+		var errorResp sharedErrors.ErrorResponse
+		err = json.Unmarshal(rec.Body.Bytes(), &errorResp)
+		assert.NoError(t, err)
+		assert.Equal(t, "internal_error", errorResp.Code)
 	})
 }
