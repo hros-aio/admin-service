@@ -19,6 +19,7 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/IBM/sarama/mocks"
+	"github.com/golang-jwt/jwt/v5"
 	adapterHttp "github.com/hros/admin-service/internal/adapter/http"
 	"github.com/hros/admin-service/internal/adapter/http/auth/dto"
 	kafkaProducer "github.com/hros/admin-service/internal/adapter/kafka/producer"
@@ -34,6 +35,7 @@ import (
 	"github.com/hros/admin-service/internal/platform/redis"
 	sharedErrors "github.com/hros/admin-service/internal/shared/errors"
 	"github.com/pquerna/otp/totp"
+	goRedis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
@@ -49,20 +51,39 @@ import (
 // It matches the format required by github.com/pquerna/otp/totp for code generation.
 const knownTotpSecret = "JBSWY3DPEHPK3PXP"
 
+// invalidTOTPCode generates a valid TOTP code from the given secret and then
+// deterministically corrupts it by incrementing the last digit, guaranteeing
+// the returned code is never coincidentally valid.
+func invalidTOTPCode(t *testing.T, secret string) string {
+	t.Helper()
+	valid, err := totp.GenerateCode(secret, time.Now())
+	require.NoError(t, err, "TOTP code generation must succeed")
+	// Flip the last digit by cycling it: '9'→'0', others +1.
+	runes := []rune(valid)
+	last := runes[len(runes)-1]
+	if last == '9' {
+		runes[len(runes)-1] = '0'
+	} else {
+		runes[len(runes)-1] = last + 1
+	}
+	return string(runes)
+}
+
 // TestSuperAdminMFALoginFlow tests the full end-to-end Super Admin login flow
 // with MFA enforcement using real PostgreSQL and Redis containers.
 //
 // Flow:
 //  1. Seed a Super Admin user with a known TOTP secret.
 //  2. POST /v1/auth/login → expect MFA challenge (mfa_required=true, mfa_token set).
-//  3. Generate a valid TOTP code from the known secret.
-//  4. POST /v1/auth/mfa/verify → expect 200 OK with valid access/refresh tokens.
+//  3. Assert the mfa_token key exists in Redis with the expected 5-minute TTL.
+//  4. Generate a valid TOTP code from the known secret.
+//  5. POST /v1/auth/mfa/verify → expect 200 OK with structurally valid JWTs.
 //
 // Definition of Done:
 //   - The intermediate 5-minute Redis state mapping is proven (mfa_token exists in
-//     Redis between login and verify).
-//   - Correct JWT generation is proven upon MFA success (non-empty access_token and
-//     refresh_token returned, mfa fields absent from the success response).
+//     Redis with TTL ≤ 300 s between login and verify).
+//   - Correct JWT generation is proven upon MFA success (tokens parse and verify
+//     successfully against the RSA public key kept in test scope).
 func TestSuperAdminMFALoginFlow(t *testing.T) {
 	ctx := context.Background()
 
@@ -86,8 +107,13 @@ func TestSuperAdminMFALoginFlow(t *testing.T) {
 	require.NoError(t, err)
 
 	// Connect directly with GORM to run migrations and seed test data.
+	// FIX (line 89-90): retrieve the underlying *sql.DB and defer Close() so the
+	// connection pool is cleaned up at the end of the test lifecycle.
 	db, err := gorm.Open(postgresDriver.Open(connStr), &gorm.Config{})
 	require.NoError(t, err)
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	defer func() { _ = sqlDB.Close() }()
 
 	// ── 2. Run database migrations (all three) ────────────────────────────────
 	migDir := findMigrationsDir(t)
@@ -132,23 +158,22 @@ func TestSuperAdminMFALoginFlow(t *testing.T) {
 		require.NoError(t, redisContainer.Terminate(ctx))
 	}()
 
-	// ── 6. Bootstrap the Fx application with the test infrastructure ──────────
+	// ── 6. Generate the RSA key at test scope so the public key remains ────────
+	// available for JWT structural validation after the Fx app is started.
+	// FIX (line 306-307): the private key is generated here rather than inside
+	// the Fx provider closure so the public key can be used to verify tokens.
+	testPrivateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	privBytes := x509.MarshalPKCS1PrivateKey(testPrivateKey)
+	pemBytes := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: privBytes})
+
+	// ── 7. Bootstrap the Fx application with the test infrastructure ──────────
 	testPort := getFreePort(t)
 
 	opts := fx.Options(
 		fx.NopLogger,
 		fx.Provide(func() (*config.Config, error) {
-			privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-			if err != nil {
-				return nil, err
-			}
-			privBytes := x509.MarshalPKCS1PrivateKey(privateKey)
-			pemBlock := &pem.Block{
-				Type:  "RSA PRIVATE KEY",
-				Bytes: privBytes,
-			}
-			pemBytes := pem.EncodeToMemory(pemBlock)
-
 			return &config.Config{
 				AppName:       "admin-service-mfa-flow-test",
 				Env:           "test",
@@ -218,7 +243,15 @@ func TestSuperAdminMFALoginFlow(t *testing.T) {
 	}
 	require.True(t, ready, "server failed to become ready in time")
 
-	// ── 7. POST /v1/auth/login — expect MFA challenge ─────────────────────────
+	// Build a direct Redis client against the same container so subtests can
+	// inspect cache state independently of the application layer.
+	// FIX (line 61-63): used to assert the mfa_token Redis key and its TTL.
+	redisOpts, err := goRedis.ParseURL(redisURL)
+	require.NoError(t, err)
+	testRedisClient := goRedis.NewClient(redisOpts)
+	defer func() { _ = testRedisClient.Close() }()
+
+	// ── 8. POST /v1/auth/login — expect MFA challenge ─────────────────────────
 	t.Run("login returns MFA challenge for Super Admin", func(t *testing.T) {
 		loginReq := dto.LoginRequest{
 			Email:    superAdminEmail,
@@ -248,9 +281,20 @@ func TestSuperAdminMFALoginFlow(t *testing.T) {
 		assert.Empty(t, loginResp.RefreshToken, "expected refresh_token to be absent during MFA challenge")
 		assert.NotEmpty(t, loginResp.MFAMethods, "expected mfa_methods to be present")
 		assert.Contains(t, loginResp.MFAMethods, "totp", "expected totp in mfa_methods")
+
+		// FIX (line 61-63): assert the mfa_token key exists in Redis with the
+		// expected ≤5-minute lifetime, directly proving the intermediate state.
+		if loginResp.MFAToken != "" {
+			redisKey := "auth:mfa_token:" + loginResp.MFAToken
+			ttl, err := testRedisClient.TTL(ctx, redisKey).Result()
+			require.NoError(t, err, "Redis TTL lookup must succeed")
+			assert.Positive(t, ttl, "mfa_token Redis key must exist after login")
+			assert.LessOrEqual(t, ttl, 5*time.Minute,
+				"mfa_token TTL must be at most 5 minutes")
+		}
 	})
 
-	// ── 8. POST /v1/auth/mfa/verify — expect JWT tokens on success ─────────────
+	// ── 9. POST /v1/auth/mfa/verify — expect JWT tokens on success ─────────────
 	t.Run("mfa verify completes login and returns JWT tokens", func(t *testing.T) {
 		// Step A: Re-issue a new login to get a fresh mfa_token (subtests are independent).
 		loginReq := dto.LoginRequest{
@@ -274,8 +318,14 @@ func TestSuperAdminMFALoginFlow(t *testing.T) {
 		require.True(t, mfaChallenge.MFARequired)
 		require.NotEmpty(t, mfaChallenge.MFAToken)
 
+		// FIX (line 61-63): prove the intermediate Redis state exists with a TTL ≤ 5 min.
+		redisKey := "auth:mfa_token:" + mfaChallenge.MFAToken
+		ttl, err := testRedisClient.TTL(ctx, redisKey).Result()
+		require.NoError(t, err, "Redis TTL lookup must succeed")
+		assert.Positive(t, ttl, "mfa_token Redis key must exist between login and verify")
+		assert.LessOrEqual(t, ttl, 5*time.Minute, "mfa_token TTL must be at most 5 minutes")
+
 		// Step B: Generate a valid TOTP code from the known secret at this moment.
-		// This proves the system can complete verification with a genuine TOTP code.
 		totpCode, err := totp.GenerateCode(knownTotpSecret, time.Now())
 		require.NoError(t, err, "TOTP code generation must succeed with known secret")
 
@@ -296,20 +346,41 @@ func TestSuperAdminMFALoginFlow(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { _ = verifyResp.Body.Close() }()
 
-		// Step D: Assert that the response is 200 OK with valid JWT tokens.
+		// Step D: Assert that the response is 200 OK with structurally valid JWTs.
 		assert.Equal(t, http.StatusOK, verifyResp.StatusCode)
 
 		var tokenResp dto.LoginResponse
 		err = json.NewDecoder(verifyResp.Body).Decode(&tokenResp)
 		require.NoError(t, err)
 
-		assert.NotEmpty(t, tokenResp.AccessToken, "expected non-empty access_token after MFA verification")
-		assert.NotEmpty(t, tokenResp.RefreshToken, "expected non-empty refresh_token after MFA verification")
+		require.NotEmpty(t, tokenResp.AccessToken, "expected non-empty access_token after MFA verification")
+		require.NotEmpty(t, tokenResp.RefreshToken, "expected non-empty refresh_token after MFA verification")
 		assert.False(t, tokenResp.MFARequired, "expected mfa_required to be false in success response")
 		assert.Empty(t, tokenResp.MFAToken, "expected mfa_token to be absent in success response")
+
+		// FIX (line 306-307): validate the access token is a structurally valid
+		// RS256 JWT signed by the key we generated at test scope.
+		accessToken, err := jwt.Parse(tokenResp.AccessToken, func(tok *jwt.Token) (interface{}, error) {
+			if _, ok := tok.Method.(*jwt.SigningMethodRSA); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", tok.Header["alg"])
+			}
+			return &testPrivateKey.PublicKey, nil
+		})
+		require.NoError(t, err, "access_token must parse and verify against the RSA public key")
+		assert.True(t, accessToken.Valid, "access_token must be a valid JWT")
+
+		claims, ok := accessToken.Claims.(jwt.MapClaims)
+		require.True(t, ok)
+		assert.NotEmpty(t, claims["sub"], "access_token must carry a sub claim")
+		assert.NotEmpty(t, claims["jti"], "access_token must carry a jti claim")
+		assert.Equal(t, "hros-admin", claims["iss"], "access_token issuer must be hros-admin")
+
+		// The refresh token is a 64-character hex string (32 random bytes), not a JWT.
+		assert.Len(t, tokenResp.RefreshToken, 64,
+			"refresh_token must be a 64-character hex-encoded random string")
 	})
 
-	// ── 9. Expired/consumed mfa_token is rejected ──────────────────────────────
+	// ── 10. Expired/consumed mfa_token is rejected ──────────────────────────────
 	t.Run("replayed mfa_token is rejected after use", func(t *testing.T) {
 		// Obtain a fresh mfa_token.
 		loginReq := dto.LoginRequest{
@@ -387,7 +458,7 @@ func TestSuperAdminMFALoginFlow(t *testing.T) {
 			"replayed token must return MFA_TOKEN_EXPIRED error code")
 	})
 
-	// ── 10. Invalid TOTP code is rejected ──────────────────────────────────────
+	// ── 11. Invalid TOTP code is rejected ──────────────────────────────────────
 	t.Run("invalid TOTP code is rejected with MFA_INVALID", func(t *testing.T) {
 		loginReq := dto.LoginRequest{
 			Email:    superAdminEmail,
@@ -409,10 +480,15 @@ func TestSuperAdminMFALoginFlow(t *testing.T) {
 		require.NoError(t, json.NewDecoder(loginResp.Body).Decode(&mfaChallenge))
 		require.NotEmpty(t, mfaChallenge.MFAToken)
 
+		// FIX (line 412-416): generate a deterministically invalid code by
+		// deriving a valid TOTP and mutating the last digit, so the code is
+		// guaranteed to be wrong regardless of the current TOTP window.
+		badCode := invalidTOTPCode(t, knownTotpSecret)
+
 		verifyReq := dto.MFAVerifyRequest{
 			MFAToken: mfaChallenge.MFAToken,
 			Method:   "totp",
-			Code:     "000000", // deliberately wrong code
+			Code:     badCode,
 		}
 		verifyBody, err := json.Marshal(verifyReq)
 		require.NoError(t, err)
@@ -434,7 +510,7 @@ func TestSuperAdminMFALoginFlow(t *testing.T) {
 			"invalid TOTP code must return MFA_INVALID error code")
 	})
 
-	// ── 11. Standard Admin login bypasses MFA ──────────────────────────────────
+	// ── 12. Standard Admin login bypasses MFA ──────────────────────────────────
 	t.Run("standard admin login does not trigger MFA challenge", func(t *testing.T) {
 		// Seed a Standard Admin role and user.
 		standardRoleID := domain.NewUUID()
