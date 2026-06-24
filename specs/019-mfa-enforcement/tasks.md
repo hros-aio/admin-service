@@ -84,5 +84,18 @@ Independent test criteria: Integration/unit tests assert correct HTTP status cod
 
 - [x] T021 [US7] Update `internal/adapter/http/auth_handler.go` to inject `VerifyMFAUseCase` into `AuthHandler`, register route `/v1/auth/mfa/verify`, and implement `VerifyMFA` handler mapping validation/domain errors and success outputs.
 - [x] T022 [P] [US7] Implement unit and integration tests inside `internal/adapter/http/auth_handler_test.go` verifying routing, validation tag behavior, success tokens, error formatting, and mapping correctness.
+---
 
+## Phase 8: Full MFA Flow Integration Test (TSK-MFA-008) ✅ Complete
 
+Story goal: Prove the complete Super Admin login flow end-to-end using real infrastructure containers. Verify that the intermediate 5-minute Redis state mapping works correctly and that valid JWTs are returned upon successful MFA verification.
+
+Independent test criteria: Integration test spins up PostgreSQL and Redis testcontainers, seeds a Super Admin with a known TOTP secret, completes both legs of the MFA login flow, and asserts correct behaviour for success, replay, and invalid-code scenarios.
+
+- [x] T023 [US8] Also update `internal/infrastructure/repository/auth/model.go` and `mapper.go` to correctly map the `totp_secret` and `webauthn_credentials` DB columns (added by migration 3) to the `TotpSecret` and `WebauthnCredentials` domain fields, replacing the legacy `MFASecret` field.
+- [x] T024 [US8] Implement `test/integration/mfa_flow_test.go` — `TestSuperAdminMFALoginFlow` with subtests:
+  - `login returns MFA challenge for Super Admin` — asserts 200 OK with `mfa_required=true`, `mfa_token` populated, and no JWT tokens.
+  - `mfa verify completes login and returns JWT tokens` — generates a valid TOTP code from the known secret and asserts 200 OK with non-empty `access_token` and `refresh_token`.
+  - `replayed mfa_token is rejected after use` — verifies the mfa_token is deleted from Redis after first use and a second verify returns 401 `MFA_TOKEN_EXPIRED`.
+  - `invalid TOTP code is rejected with MFA_INVALID` — asserts 401 `MFA_INVALID` for a wrong TOTP code.
+  - `standard admin login does not trigger MFA challenge` — proves non-Super-Admin users still receive JWT tokens directly.
