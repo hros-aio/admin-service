@@ -67,6 +67,7 @@ As a front-end developer or API consumer, I want the password reset endpoints (`
 - **FR-008**: Implement `RedisPasswordResetCache` in package `cache` implementing the `PasswordResetCache` interface.
 - **FR-009**: The key format stored in Redis MUST be `auth:reset_token:{token}` and it MUST enforce a strict 60-minute TTL (or the duration passed by the caller).
 - **FR-010**: All logs from the Redis cache implementation must redact the token portion of the key (e.g., logging `auth:reset_token:[REDACTED]`) to prevent leaking raw tokens.
+- **FR-011**: The `EmailKafkaProducer` MUST implement a method `PublishPasswordResetEmail` to serialize and publish `EmailSendEvent` to topic `email.send.v1`.
 
 ### Key Entities
 
@@ -88,6 +89,7 @@ As a front-end developer or API consumer, I want the password reset endpoints (`
 - **SC-005**: OpenAPI contract `api/openapi.yaml` validates successfully.
 - **SC-006**: Redis cache store, retrieve, and delete operations complete successfully.
 - **SC-007**: 100% test coverage for `RedisPasswordResetCache` using `miniredis`.
+- **SC-008**: 100% test coverage for `PublishPasswordResetEmail` using Sarama mocks.
 
 ## Assumptions
 
