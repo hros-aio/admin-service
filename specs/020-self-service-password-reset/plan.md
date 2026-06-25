@@ -10,6 +10,8 @@ This plan outlines the implementation of Self-Service Password Reset.
 
 **Phase 1 (TSK-PR-001 — ✅ Done)**: Define the `PasswordResetCache` interface, domain error variables (`ErrTokenExpired`, `ErrTokenUsed`, `ErrPasswordWeak`), and domain event payloads (`PasswordResetRequestedEvent`, `PasswordResetCompletedEvent`, `EmailSendEvent`).
 
+**Phase 2 (TSK-PR-002 — ✅ Done)**: Define `PasswordResetRequest` and `PasswordResetConfirmRequest` DTOs with validation tags and update the OpenAPI contract.
+
 ## Technical Context
 
 **Language/Version**: Go 1.23+

@@ -23,3 +23,12 @@
   - `internal/application/interfaces/password_reset_cache_test.go`
   - `internal/domain/errors/auth_errors_test.go`
   - `internal/domain/events/auth_events_test.go`
+
+---
+
+## Phase 2: DTO & OpenAPI Contract (TSK-PR-002)
+
+- [x] T005 [P] [US2] Update `internal/adapter/http/auth/dto/auth_dto.go` to add `PasswordResetRequest` and `PasswordResetConfirmRequest` structs with validation tags.
+- [x] T006 [P] [US2] Update `internal/adapter/http/auth/dto/auth_dto_test.go` to test validations and JSON mapping of `PasswordResetRequest` and `PasswordResetConfirmRequest`.
+- [x] T007 [P] [US2] Update `api/openapi.yaml` to document `/v1/auth/password-reset/request` and `/v1/auth/password-reset/confirm` endpoints, detailing error responses for 200, 400 (`TOKEN_EXPIRED`, `TOKEN_USED`), and 422 (`PASSWORD_WEAK`).
+

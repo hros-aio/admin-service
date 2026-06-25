@@ -184,3 +184,108 @@ func TestMFAVerifyRequest_Validation(t *testing.T) {
 		})
 	}
 }
+
+func TestPasswordResetRequest_Validation(t *testing.T) {
+	validate := validator.New()
+
+	tests := []struct {
+		name    string
+		request PasswordResetRequest
+		isValid bool
+	}{
+		{
+			name: "Valid request",
+			request: PasswordResetRequest{
+				Email: "admin@hros.com",
+			},
+			isValid: true,
+		},
+		{
+			name:    "Missing email",
+			request: PasswordResetRequest{},
+			isValid: false,
+		},
+		{
+			name: "Invalid email format",
+			request: PasswordResetRequest{
+				Email: "invalid-email",
+			},
+			isValid: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validate.Struct(tt.request)
+			if tt.isValid {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+			}
+		})
+	}
+}
+
+func TestPasswordResetConfirmRequest_Validation(t *testing.T) {
+	validate := validator.New()
+
+	tests := []struct {
+		name    string
+		request PasswordResetConfirmRequest
+		isValid bool
+	}{
+		{
+			name: "Valid request",
+			request: PasswordResetConfirmRequest{
+				Token:                "reset-token-123",
+				Password:             "SecurePass1!",
+				PasswordConfirmation: "SecurePass1!",
+			},
+			isValid: true,
+		},
+		{
+			name: "Missing token",
+			request: PasswordResetConfirmRequest{
+				Password:             "SecurePass1!",
+				PasswordConfirmation: "SecurePass1!",
+			},
+			isValid: false,
+		},
+		{
+			name: "Missing password",
+			request: PasswordResetConfirmRequest{
+				Token:                "reset-token-123",
+				PasswordConfirmation: "SecurePass1!",
+			},
+			isValid: false,
+		},
+		{
+			name: "Missing password confirmation",
+			request: PasswordResetConfirmRequest{
+				Token:    "reset-token-123",
+				Password: "SecurePass1!",
+			},
+			isValid: false,
+		},
+		{
+			name: "Mismatched passwords",
+			request: PasswordResetConfirmRequest{
+				Token:                "reset-token-123",
+				Password:             "SecurePass1!",
+				PasswordConfirmation: "DifferentPass1!",
+			},
+			isValid: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validate.Struct(tt.request)
+			if tt.isValid {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+			}
+		})
+	}
+}
