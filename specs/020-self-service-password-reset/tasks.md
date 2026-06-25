@@ -32,3 +32,10 @@
 - [x] T006 [P] [US2] Update `internal/adapter/http/auth/dto/auth_dto_test.go` to test validations and JSON mapping of `PasswordResetRequest` and `PasswordResetConfirmRequest`.
 - [x] T007 [P] [US2] Update `api/openapi.yaml` to document `/v1/auth/password-reset/request` and `/v1/auth/password-reset/confirm` endpoints, detailing error responses for 200, 400 (`TOKEN_EXPIRED`, `TOKEN_USED`), and 422 (`PASSWORD_WEAK`).
 
+---
+
+## Phase 3: Redis Cache (TSK-PR-003)
+
+- [x] T008 [P] [US3] Implement `RedisPasswordResetCache` in `internal/infrastructure/cache/password_reset_redis.go` using Redis client connection and key prefix `auth:reset_token:{token}` with a strict 60-minute TTL.
+- [x] T009 [P] [US3] Implement unit tests in `internal/infrastructure/cache/password_reset_redis_test.go` using `miniredis` to verify cache operations and strict expiration.
+

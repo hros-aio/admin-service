@@ -51,7 +51,7 @@ As a front-end developer or API consumer, I want the password reset endpoints (`
 
 ### Functional Requirements
 
-- **FR-001**: Define the `PasswordResetCache` interface with methods: `StoreToken(ctx context.Context, token string, email string, ttl time.Duration) error`, `GetEmail(ctx context.Context, token string) (string, error)`, and `DeleteToken(ctx context.Context, token string) error`.
+- **FR-001**: Define the `PasswordResetCache` interface with methods: `StoreToken(ctx context.Context, token string, adminID string, ttl time.Duration) error`, `GetAdminID(ctx context.Context, token string) (string, error)`, and `DeleteToken(ctx context.Context, token string) error`.
 - **FR-002**: Define the specific domain errors:
   - `ErrTokenExpired` = `errors.New("reset token has expired")`
   - `ErrTokenUsed` = `errors.New("reset token has already been used")`
@@ -64,6 +64,9 @@ As a front-end developer or API consumer, I want the password reset endpoints (`
 - **FR-005**: Define `PasswordResetConfirmRequest` HTTP DTO with `Token` (validate `"required"`), `Password` (validate `"required"`), and `PasswordConfirmation` (validate `"required,eqfield=Password"`).
 - **FR-006**: Update `api/openapi.yaml` to document `POST /v1/auth/password-reset/request` returning 200 and standard error responses.
 - **FR-007**: Update `api/openapi.yaml` to document `POST /v1/auth/password-reset/confirm` returning 200, 400 (`TOKEN_EXPIRED`, `TOKEN_USED`), and 422 (`PASSWORD_WEAK`) error responses.
+- **FR-008**: Implement `RedisPasswordResetCache` in package `cache` implementing the `PasswordResetCache` interface.
+- **FR-009**: The key format stored in Redis MUST be `auth:reset_token:{token}` and it MUST enforce a strict 60-minute TTL (or the duration passed by the caller).
+- **FR-010**: All logs from the Redis cache implementation must redact the token portion of the key (e.g., logging `auth:reset_token:[REDACTED]`) to prevent leaking raw tokens.
 
 ### Key Entities
 
@@ -83,6 +86,8 @@ As a front-end developer or API consumer, I want the password reset endpoints (`
 - **SC-003**: Event structs serialize correctly to and from JSON.
 - **SC-004**: 100% test coverage for validation rules of `PasswordResetRequest` and `PasswordResetConfirmRequest`.
 - **SC-005**: OpenAPI contract `api/openapi.yaml` validates successfully.
+- **SC-006**: Redis cache store, retrieve, and delete operations complete successfully.
+- **SC-007**: 100% test coverage for `RedisPasswordResetCache` using `miniredis`.
 
 ## Assumptions
 
