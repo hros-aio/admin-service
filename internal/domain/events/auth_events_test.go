@@ -115,3 +115,49 @@ func TestMFAFailedEvent_Serialization(t *testing.T) {
 	assert.Equal(t, event.UserAgent, unmarshaled.UserAgent)
 	assert.True(t, event.OccurredAt.Equal(unmarshaled.OccurredAt))
 }
+
+func TestPasswordResetRequestedEvent_Serialization(t *testing.T) {
+	now := time.Now().UTC()
+	event := PasswordResetRequestedEvent{
+		Email:      "admin@hros.io",
+		Token:      "reset_token_123",
+		IPAddress:  "192.168.1.1",
+		UserAgent:  "Mozilla/5.0",
+		OccurredAt: now,
+	}
+
+	data, err := json.Marshal(event)
+	require.NoError(t, err)
+
+	var unmarshaled PasswordResetRequestedEvent
+	err = json.Unmarshal(data, &unmarshaled)
+	require.NoError(t, err)
+
+	assert.Equal(t, event.Email, unmarshaled.Email)
+	assert.Equal(t, event.Token, unmarshaled.Token)
+	assert.Equal(t, event.IPAddress, unmarshaled.IPAddress)
+	assert.Equal(t, event.UserAgent, unmarshaled.UserAgent)
+	assert.True(t, event.OccurredAt.Equal(unmarshaled.OccurredAt))
+}
+
+func TestPasswordResetCompletedEvent_Serialization(t *testing.T) {
+	now := time.Now().UTC()
+	event := PasswordResetCompletedEvent{
+		Email:      "admin@hros.io",
+		IPAddress:  "192.168.1.1",
+		UserAgent:  "Mozilla/5.0",
+		OccurredAt: now,
+	}
+
+	data, err := json.Marshal(event)
+	require.NoError(t, err)
+
+	var unmarshaled PasswordResetCompletedEvent
+	err = json.Unmarshal(data, &unmarshaled)
+	require.NoError(t, err)
+
+	assert.Equal(t, event.Email, unmarshaled.Email)
+	assert.Equal(t, event.IPAddress, unmarshaled.IPAddress)
+	assert.Equal(t, event.UserAgent, unmarshaled.UserAgent)
+	assert.True(t, event.OccurredAt.Equal(unmarshaled.OccurredAt))
+}

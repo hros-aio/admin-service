@@ -43,3 +43,20 @@ type MFAFailedEvent struct {
 	UserAgent  string    `json:"user_agent"`
 	OccurredAt time.Time `json:"occurred_at"`
 }
+
+// PasswordResetRequestedEvent defines the payload structure for the 'password.reset_requested' audit event.
+type PasswordResetRequestedEvent struct {
+	Email      string    `json:"email"`
+	Token      string    `json:"token"`
+	IPAddress  string    `json:"ip_address"`
+	UserAgent  string    `json:"user_agent"`
+	OccurredAt time.Time `json:"occurred_at"`
+}
+
+// PasswordResetCompletedEvent defines the payload structure for the 'password.reset_completed' audit event.
+type PasswordResetCompletedEvent struct {
+	Email      string    `json:"email"`
+	IPAddress  string    `json:"ip_address"`
+	UserAgent  string    `json:"user_agent"`
+	OccurredAt time.Time `json:"occurred_at"`
+}
