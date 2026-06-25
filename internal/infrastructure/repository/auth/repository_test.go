@@ -79,3 +79,53 @@ func TestGormAdminUserRepository_FindByEmail(t *testing.T) {
 		assert.Nil(t, user)
 	})
 }
+
+func TestGormAdminUserRepository_UpdatePassword(t *testing.T) {
+	adminID := "admin-uuid"
+	newHash := "new-hashed-password"
+
+	t.Run("success", func(t *testing.T) {
+		gormDB, mock := setupTestDB(t)
+		repo := NewGormAdminUserRepository(gormDB)
+
+		mock.ExpectBegin()
+		mock.ExpectExec(regexp.QuoteMeta(`UPDATE "admin_users" SET "password_hash"=$1,"updated_at"=$2 WHERE id = $3`)).
+			WithArgs(newHash, sqlmock.AnyArg(), adminID).
+			WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectCommit()
+
+		err := repo.UpdatePassword(context.Background(), adminID, newHash)
+		assert.NoError(t, err)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		gormDB, mock := setupTestDB(t)
+		repo := NewGormAdminUserRepository(gormDB)
+
+		mock.ExpectBegin()
+		mock.ExpectExec(regexp.QuoteMeta(`UPDATE "admin_users" SET "password_hash"=$1,"updated_at"=$2 WHERE id = $3`)).
+			WithArgs(newHash, sqlmock.AnyArg(), adminID).
+			WillReturnResult(sqlmock.NewResult(0, 0))
+		mock.ExpectCommit()
+
+		err := repo.UpdatePassword(context.Background(), adminID, newHash)
+		assert.ErrorIs(t, err, domainErrors.ErrUserNotFound)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("database error", func(t *testing.T) {
+		gormDB, mock := setupTestDB(t)
+		repo := NewGormAdminUserRepository(gormDB)
+
+		mock.ExpectBegin()
+		mock.ExpectExec(regexp.QuoteMeta(`UPDATE "admin_users" SET "password_hash"=$1,"updated_at"=$2 WHERE id = $3`)).
+			WithArgs(newHash, sqlmock.AnyArg(), adminID).
+			WillReturnError(sql.ErrConnDone)
+		mock.ExpectRollback()
+
+		err := repo.UpdatePassword(context.Background(), adminID, newHash)
+		assert.Error(t, err)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+}

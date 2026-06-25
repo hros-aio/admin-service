@@ -81,4 +81,5 @@ type AdminUserRepository interface {
 	FindByEmail(ctx context.Context, email string) (*AdminUser, error)
 	Delete(ctx context.Context, id string) error
 	GetRoleCodeByID(ctx context.Context, roleID string) (string, error)
+	UpdatePassword(ctx context.Context, id string, newHash string) error
 }

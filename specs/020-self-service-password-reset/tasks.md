@@ -46,4 +46,17 @@
 - [x] T010 [P] [US4] Update `internal/adapter/kafka/producer/email_events.go` to add `PublishPasswordResetEmail` method on `EmailKafkaProducer` dispatching `events.EmailSendEvent` to topic `email.send.v1`.
 - [x] T011 [P] [US4] Update `internal/adapter/kafka/producer/email_events_test.go` to test `PublishPasswordResetEmail` serialization, formatting, and dispatching.
 
+---
+
+## Phase 5: Repository Updates (TSK-PR-005)
+
+- [x] T012 [P] [US5] Update `AdminUserRepository` interface in `internal/domain/admin_user.go` to add `UpdatePassword(ctx, id, newHash)`.
+- [x] T013 [P] [US5] Update `SessionTokenRepository` interface in `internal/domain/session_token.go` to add `DeleteAllByAdminID(ctx, adminID)`.
+- [x] T014 [P] [US5] Implement GORM repository method `UpdatePassword` in `internal/infrastructure/repository/auth/repository.go`.
+- [x] T015 [P] [US5] Implement GORM repository method `DeleteAllByAdminID` in `internal/infrastructure/repository/auth/session_token_repository.go`.
+- [x] T016 [P] [US5] Implement unit tests for `UpdatePassword` in `internal/infrastructure/repository/auth/repository_test.go` using `sqlmock`.
+- [x] T017 [P] [US5] Implement unit tests for `DeleteAllByAdminID` in `internal/infrastructure/repository/auth/session_token_repository_test.go` using `sqlmock`.
+- [x] T018 [P] [US5] Update test mocks in `internal/adapter/http/auth_handler_test.go` and `internal/application/usecase/login_usecase_test.go`.
+
+
 

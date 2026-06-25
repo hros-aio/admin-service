@@ -51,6 +51,7 @@ type SessionTokenRepository interface {
 	FindByToken(ctx context.Context, token string) (*SessionToken, error)
 	DeleteByToken(ctx context.Context, token string) error
 	DeleteByAdminID(ctx context.Context, adminID string) error
+	DeleteAllByAdminID(ctx context.Context, adminID string) error
 	Revoke(ctx context.Context, token string, reason string) error
 	UpdateToken(ctx context.Context, session *SessionToken) error
 }
