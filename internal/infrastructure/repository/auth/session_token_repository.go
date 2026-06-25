@@ -51,6 +51,12 @@ func (r *GormSessionTokenRepository) DeleteByAdminID(ctx context.Context, adminI
 	return db.Where("admin_id = ?", adminID).Delete(&sessionTokenModel{}).Error
 }
 
+// DeleteAllByAdminID removes all session tokens for a specific admin.
+func (r *GormSessionTokenRepository) DeleteAllByAdminID(ctx context.Context, adminID string) error {
+	db := platformDB.GetTx(ctx, r.db)
+	return db.Where("admin_id = ?", adminID).Delete(&sessionTokenModel{}).Error
+}
+
 // Revoke updates a session token's revocation status.
 func (r *GormSessionTokenRepository) Revoke(ctx context.Context, token string, reason string) error {
 	db := platformDB.GetTx(ctx, r.db)

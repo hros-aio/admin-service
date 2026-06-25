@@ -89,3 +89,18 @@ func (r *GormAdminUserRepository) GetRoleCodeByID(ctx context.Context, roleID st
 		return "STANDARD_ADMIN", nil
 	}
 }
+
+// UpdatePassword updates only the password hash of the admin user.
+func (r *GormAdminUserRepository) UpdatePassword(ctx context.Context, id string, newHash string) error {
+	db := platformDB.GetTx(ctx, r.db)
+	result := db.Model(&adminUserModel{}).
+		Where("id = ?", id).
+		Update("password_hash", newHash)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return domainErrors.ErrUserNotFound
+	}
+	return nil
+}

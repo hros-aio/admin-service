@@ -62,6 +62,10 @@ func (m *mockUserRepo) GetRoleCodeByID(ctx context.Context, roleID string) (stri
 	return args.String(0), args.Error(1)
 }
 
+func (m *mockUserRepo) UpdatePassword(ctx context.Context, id string, newHash string) error {
+	return m.Called(ctx, id, newHash).Error(0)
+}
+
 type mockMFACache struct{ mock.Mock }
 
 func (m *mockMFACache) StoreToken(ctx context.Context, token string, adminID string) error {
@@ -95,6 +99,10 @@ func (m *mockSessionRepo) DeleteByToken(ctx context.Context, t string) error {
 
 func (m *mockSessionRepo) DeleteByAdminID(ctx context.Context, id string) error {
 	return m.Called(ctx, id).Error(0)
+}
+
+func (m *mockSessionRepo) DeleteAllByAdminID(ctx context.Context, adminID string) error {
+	return m.Called(ctx, adminID).Error(0)
 }
 
 func (m *mockSessionRepo) Revoke(ctx context.Context, t string, r string) error {

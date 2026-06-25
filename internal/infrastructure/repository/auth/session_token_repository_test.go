@@ -3,6 +3,7 @@ package auth
 
 import (
 	"context"
+	"database/sql"
 	"regexp"
 	"testing"
 	"time"
@@ -197,5 +198,39 @@ func TestGormSessionTokenRepository_UpdateToken(t *testing.T) {
 	t.Run("nil token", func(t *testing.T) {
 		err := repo.UpdateToken(context.Background(), nil)
 		assert.ErrorIs(t, err, gorm.ErrInvalidData)
+	})
+}
+
+func TestGormSessionTokenRepository_DeleteAllByAdminID(t *testing.T) {
+	adminID := "admin-uuid"
+
+	t.Run("success", func(t *testing.T) {
+		gormDB, mock := setupSessionTokenTestDB(t)
+		repo := NewGormSessionTokenRepository(gormDB)
+
+		mock.ExpectBegin()
+		mock.ExpectExec(regexp.QuoteMeta(`DELETE FROM "session_tokens" WHERE admin_id = $1`)).
+			WithArgs(adminID).
+			WillReturnResult(sqlmock.NewResult(0, 5))
+		mock.ExpectCommit()
+
+		err := repo.DeleteAllByAdminID(context.Background(), adminID)
+		assert.NoError(t, err)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("database error", func(t *testing.T) {
+		gormDB, mock := setupSessionTokenTestDB(t)
+		repo := NewGormSessionTokenRepository(gormDB)
+
+		mock.ExpectBegin()
+		mock.ExpectExec(regexp.QuoteMeta(`DELETE FROM "session_tokens" WHERE admin_id = $1`)).
+			WithArgs(adminID).
+			WillReturnError(sql.ErrConnDone)
+		mock.ExpectRollback()
+
+		err := repo.DeleteAllByAdminID(context.Background(), adminID)
+		assert.Error(t, err)
+		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }
