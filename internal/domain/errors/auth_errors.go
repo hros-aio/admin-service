@@ -45,4 +45,10 @@ var (
 
 	// ErrMFATokenExpired is returned when the short-lived MFA session token has expired.
 	ErrMFATokenExpired = errors.New("MFA token has expired")
+
+	// ErrTokenUsed is returned when a reset token has already been used.
+	ErrTokenUsed = errors.New("reset token has already been used")
+
+	// ErrPasswordWeak is returned when a new password does not meet complexity requirements.
+	ErrPasswordWeak = errors.New("password does not meet complexity requirements")
 )
