@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/IBM/sarama"
@@ -83,7 +84,7 @@ func maskEmail(email string) string {
 // Returns a wrapped error if Sarama fails to deliver the message.
 // On success, logs the published event at Info level.
 func (p *EmailKafkaProducer) PublishLockoutEmail(ctx context.Context, event events.EmailSendEvent) error {
-	if event.To == "" {
+	if strings.TrimSpace(event.To) == "" {
 		return fmt.Errorf("recipient email must not be empty")
 	}
 
@@ -129,7 +130,7 @@ func (p *EmailKafkaProducer) PublishLockoutEmail(ctx context.Context, event even
 // Returns a wrapped error if Sarama fails to deliver the message.
 // On success, logs the published event at Info level.
 func (p *EmailKafkaProducer) PublishPasswordResetEmail(ctx context.Context, event events.EmailSendEvent) error {
-	if event.To == "" {
+	if strings.TrimSpace(event.To) == "" {
 		return fmt.Errorf("recipient email must not be empty")
 	}
 

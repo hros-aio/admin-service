@@ -113,6 +113,13 @@ func TestEmailKafkaProducer_PublishLockoutEmail_EmptyRecipient(t *testing.T) {
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "recipient email must not be empty")
 
+	event2 := newValidEvent()
+	event2.To = "   "
+
+	err = producer.PublishLockoutEmail(context.Background(), event2)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "recipient email must not be empty")
+
 	// Close with no consumed expectations — mock asserts nothing unexpected was called.
 	require.NoError(t, mock.Close())
 }
@@ -188,6 +195,30 @@ func TestEmailKafkaProducer_PublishPasswordResetEmail_EmptyRecipient(t *testing.
 	err := producer.PublishPasswordResetEmail(context.Background(), event)
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "recipient email must not be empty")
+
+	event2 := newValidEvent()
+	event2.To = "   "
+
+	err = producer.PublishPasswordResetEmail(context.Background(), event2)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "recipient email must not be empty")
+
+	require.NoError(t, mock.Close())
+}
+
+func TestEmailKafkaProducer_PublishPasswordResetEmail_MarshalError(t *testing.T) {
+	mock := mocks.NewSyncProducer(t, nil)
+	producer := NewEmailKafkaProducer(mock, newTestLogger())
+
+	event := newValidEvent()
+	// Channel values cannot be serialized to JSON, causing marshal error
+	event.TemplateData = map[string]interface{}{
+		"channel": make(chan int),
+	}
+
+	err := producer.PublishPasswordResetEmail(context.Background(), event)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "marshal password reset email envelope")
 
 	require.NoError(t, mock.Close())
 }
