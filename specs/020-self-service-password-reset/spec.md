@@ -24,6 +24,23 @@ As a developer, I want to define the cache interface `PasswordResetCache` to sto
 2. **Given** validation or expiration checks fail, **When** returning errors, **Then** `ErrTokenExpired`, `ErrTokenUsed`, and `ErrPasswordWeak` are returned.
 3. **Given** password reset events are triggered, **When** serializing event payloads, **Then** they can be serialized to JSON and contain correct metadata fields.
 
+---
+
+### User Story 2 - Define API Contracts and HTTP DTOs for Password Reset (Priority: P1)
+
+As a front-end developer or API consumer, I want the password reset endpoints (`POST /v1/auth/password-reset/request` and `POST /v1/auth/password-reset/confirm`) documented in the OpenAPI spec and defined in HTTP DTOs, so that we can implement the password reset UI and clients correctly.
+
+**Why this priority**: Prerequisite for implementing the password reset HTTP handlers.
+
+**Independent Test**: The DTO structs compile with strict validation tags, and `api/openapi.yaml` passes validation checks.
+
+**Acceptance Scenarios**:
+
+1. **Given** an admin user wants to request a password reset, **When** they submit their email, **Then** they send a `PasswordResetRequest` and receive a success response.
+2. **Given** a user has a password reset token, **When** they submit their new password, **Then** they send a `PasswordResetConfirmRequest` containing token, password, and password_confirmation.
+3. **Given** structural validation constraints are violated (e.g. missing fields, mismatched confirmation, invalid email), **When** parsed by the handler, **Then** validation fails with a bad request response.
+4. **Given** a password reset attempt fails due to business rules, **When** returning errors, **Then** `api/openapi.yaml` documents `400` errors for `TOKEN_EXPIRED` and `TOKEN_USED`, and `422` error for `PASSWORD_WEAK`.
+
 ## Edge Cases
 
 - **Token Replay**: A token must be single-use. Once verified, it should be deleted/marked as used. `ErrTokenUsed` is returned if the token has already been consumed.
@@ -43,6 +60,10 @@ As a developer, I want to define the cache interface `PasswordResetCache` to sto
   - `PasswordResetRequestedEvent` containing details of the password reset request (`Email`, `Token`, `IPAddress`, `UserAgent`, `OccurredAt`).
   - `PasswordResetCompletedEvent` containing details of the password reset completion (`Email`, `IPAddress`, `UserAgent`, `OccurredAt`).
   - `EmailSendEvent` is already defined in `auth_events.go`. If needed, ensure its payload struct is documented or reused.
+- **FR-004**: Define `PasswordResetRequest` HTTP DTO with `Email` validate tag `"required,email"`.
+- **FR-005**: Define `PasswordResetConfirmRequest` HTTP DTO with `Token` (validate `"required"`), `Password` (validate `"required"`), and `PasswordConfirmation` (validate `"required,eqfield=Password"`).
+- **FR-006**: Update `api/openapi.yaml` to document `POST /v1/auth/password-reset/request` returning 200 and standard error responses.
+- **FR-007**: Update `api/openapi.yaml` to document `POST /v1/auth/password-reset/confirm` returning 200, 400 (`TOKEN_EXPIRED`, `TOKEN_USED`), and 422 (`PASSWORD_WEAK`) error responses.
 
 ### Key Entities
 
@@ -50,6 +71,8 @@ As a developer, I want to define the cache interface `PasswordResetCache` to sto
 - **PasswordResetRequestedEvent**: Emitted when a password reset is requested.
 - **PasswordResetCompletedEvent**: Emitted when a password reset is successfully completed.
 - **EmailSendEvent**: Existing struct representing a request to send an email.
+- **PasswordResetRequest**: DTO representing the request payload.
+- **PasswordResetConfirmRequest**: DTO representing the confirm payload.
 
 ## Success Criteria *(mandatory)*
 
@@ -58,8 +81,11 @@ As a developer, I want to define the cache interface `PasswordResetCache` to sto
 - **SC-001**: 100% test coverage for new error definitions, event structs, and cache interface behaviors.
 - **SC-002**: Domain interfaces and error types compile without importing any external infrastructure or framework dependencies (e.g. Echo, GORM, Redis, Sarama).
 - **SC-003**: Event structs serialize correctly to and from JSON.
+- **SC-004**: 100% test coverage for validation rules of `PasswordResetRequest` and `PasswordResetConfirmRequest`.
+- **SC-005**: OpenAPI contract `api/openapi.yaml` validates successfully.
 
 ## Assumptions
 
 - The cache TTL for the token will be 60 minutes.
 - Password complexity requirements are verified at the domain/usecase layer before invoking the password reset.
+

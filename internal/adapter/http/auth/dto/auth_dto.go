@@ -29,3 +29,15 @@ type MFAVerifyRequest struct {
 	Code       string `json:"code" validate:"required_if=Method totp"`
 	RememberMe bool   `json:"remember_me"`
 }
+
+// PasswordResetRequest represents the payload for requesting a password reset.
+type PasswordResetRequest struct {
+	Email string `json:"email" validate:"required,email"`
+}
+
+// PasswordResetConfirmRequest represents the payload for confirming a password reset.
+type PasswordResetConfirmRequest struct {
+	Token                string `json:"token" validate:"required"`
+	Password             string `json:"password" validate:"required"`
+	PasswordConfirmation string `json:"password_confirmation" validate:"required,eqfield=Password"`
+}
