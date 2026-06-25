@@ -12,6 +12,8 @@ This plan outlines the implementation of Self-Service Password Reset.
 
 **Phase 2 (TSK-PR-002 — ✅ Done)**: Define `PasswordResetRequest` and `PasswordResetConfirmRequest` DTOs with validation tags and update the OpenAPI contract.
 
+**Phase 3 (TSK-PR-003 — ✅ Done)**: Implement the Redis cache for password reset tokens (`RedisPasswordResetCache`) with a strict 60-minute TTL.
+
 ## Technical Context
 
 **Language/Version**: Go 1.23+
