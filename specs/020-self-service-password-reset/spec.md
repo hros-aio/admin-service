@@ -28,7 +28,7 @@ As a developer, I want to define the cache interface `PasswordResetCache` to sto
 
 ### User Story 2 - Define API Contracts and HTTP DTOs for Password Reset (Priority: P1)
 
-As a front-end developer or API consumer, I want the password reset endpoints (`POST /auth/password-reset/request` and `POST /auth/password-reset/confirm`) documented in the OpenAPI spec and defined in HTTP DTOs, so that we can implement the password reset UI and clients correctly.
+As a front-end developer or API consumer, I want the password reset endpoints (`POST /v1/auth/password-reset/request` and `POST /v1/auth/password-reset/confirm`) documented in the OpenAPI spec and defined in HTTP DTOs, so that we can implement the password reset UI and clients correctly.
 
 **Why this priority**: Prerequisite for implementing the password reset HTTP handlers.
 

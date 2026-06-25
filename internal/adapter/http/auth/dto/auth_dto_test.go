@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/go-playground/validator/v10"
@@ -288,4 +289,40 @@ func TestPasswordResetConfirmRequest_Validation(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPasswordResetDTOs_JSONMapping(t *testing.T) {
+	t.Run("PasswordResetRequest JSON mapping", func(t *testing.T) {
+		req := PasswordResetRequest{
+			Email: "admin@hros.com",
+		}
+		data, err := json.Marshal(req)
+		assert.NoError(t, err)
+		assert.Contains(t, string(data), `"email":"admin@hros.com"`)
+
+		var unmarshaled PasswordResetRequest
+		err = json.Unmarshal(data, &unmarshaled)
+		assert.NoError(t, err)
+		assert.Equal(t, req.Email, unmarshaled.Email)
+	})
+
+	t.Run("PasswordResetConfirmRequest JSON mapping", func(t *testing.T) {
+		req := PasswordResetConfirmRequest{
+			Token:                "token_123",
+			Password:             "SecurePass1!",
+			PasswordConfirmation: "SecurePass1!",
+		}
+		data, err := json.Marshal(req)
+		assert.NoError(t, err)
+		assert.Contains(t, string(data), `"token":"token_123"`)
+		assert.Contains(t, string(data), `"password":"SecurePass1!"`)
+		assert.Contains(t, string(data), `"password_confirmation":"SecurePass1!"`)
+
+		var unmarshaled PasswordResetConfirmRequest
+		err = json.Unmarshal(data, &unmarshaled)
+		assert.NoError(t, err)
+		assert.Equal(t, req.Token, unmarshaled.Token)
+		assert.Equal(t, req.Password, unmarshaled.Password)
+		assert.Equal(t, req.PasswordConfirmation, unmarshaled.PasswordConfirmation)
+	})
 }
