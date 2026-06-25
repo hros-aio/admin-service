@@ -14,6 +14,8 @@ This plan outlines the implementation of Self-Service Password Reset.
 
 **Phase 3 (TSK-PR-003 — ✅ Done)**: Implement the Redis cache for password reset tokens (`RedisPasswordResetCache`) with a strict 60-minute TTL.
 
+**Phase 4 (TSK-PR-004 — ✅ Done)**: Implement the Kafka producer event payload mapping for the `email.send` event containing the secure single-use reset link.
+
 ## Technical Context
 
 **Language/Version**: Go 1.23+

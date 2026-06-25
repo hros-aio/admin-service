@@ -121,6 +121,52 @@ func (p *EmailKafkaProducer) PublishLockoutEmail(ctx context.Context, event even
 	return nil
 }
 
+// PublishPasswordResetEmail wraps event in a standard EventEnvelope and publishes it to
+// the email.send.v1 Kafka topic. The message key is the recipient email address,
+// which guarantees per-user ordering across partitions.
+//
+// Returns a validation error immediately if event.To is empty.
+// Returns a wrapped error if Sarama fails to deliver the message.
+// On success, logs the published event at Info level.
+func (p *EmailKafkaProducer) PublishPasswordResetEmail(ctx context.Context, event events.EmailSendEvent) error {
+	if event.To == "" {
+		return fmt.Errorf("recipient email must not be empty")
+	}
+
+	envelope := EventEnvelope[events.EmailSendEvent]{
+		ID:            newUUID(),
+		Type:          emailSendEventType,
+		Source:        p.source,
+		Version:       envelopeVersion,
+		CorrelationID: correlationIDFromContext(ctx),
+		OccurredAt:    time.Now().UTC(),
+		Data:          event,
+	}
+
+	payload, err := json.Marshal(envelope)
+	if err != nil {
+		return fmt.Errorf("marshal password reset email envelope: %w", err)
+	}
+
+	msg := &sarama.ProducerMessage{
+		Topic: emailSendTopic,
+		Key:   sarama.StringEncoder(event.To),
+		Value: sarama.ByteEncoder(payload),
+	}
+
+	if _, _, err := p.producer.SendMessage(msg); err != nil {
+		return fmt.Errorf("publish password reset email: %w", err)
+	}
+
+	p.logger.InfoContext(ctx, "password reset email event published to Kafka",
+		slog.String("event", "kafka.email_send.published"),
+		slog.String("topic", emailSendTopic),
+		slog.String("key_masked", maskEmail(event.To)),
+	)
+
+	return nil
+}
+
 // correlationIDFromContext extracts a correlation ID from context if available,
 // returning an empty string when none is set.
 // This is a lightweight convention; a proper tracing integration would use

@@ -117,6 +117,81 @@ func TestEmailKafkaProducer_PublishLockoutEmail_EmptyRecipient(t *testing.T) {
 	require.NoError(t, mock.Close())
 }
 
+func TestEmailKafkaProducer_PublishPasswordResetEmail_HappyPath(t *testing.T) {
+	mock := mocks.NewSyncProducer(t, nil)
+	mock.ExpectSendMessageAndSucceed()
+
+	producer := NewEmailKafkaProducer(mock, newTestLogger())
+
+	event := newValidEvent()
+	err := producer.PublishPasswordResetEmail(context.Background(), event)
+	require.NoError(t, err)
+
+	require.NoError(t, mock.Close())
+}
+
+func TestEmailKafkaProducer_PublishPasswordResetEmail_EnvelopeShape(t *testing.T) {
+	var capturedMsg []byte
+
+	mock := mocks.NewSyncProducer(t, nil)
+	mock.ExpectSendMessageWithCheckerFunctionAndSucceed(func(msg []byte) error {
+		capturedMsg = msg
+		return nil
+	})
+
+	producer := NewEmailKafkaProducer(mock, newTestLogger())
+
+	event := newValidEvent()
+	err := producer.PublishPasswordResetEmail(context.Background(), event)
+	require.NoError(t, err)
+	require.NoError(t, mock.Close())
+
+	var envelope EventEnvelope[events.EmailSendEvent]
+	err = json.Unmarshal(capturedMsg, &envelope)
+	require.NoError(t, err)
+
+	assert.NotEmpty(t, envelope.ID)
+	assert.Equal(t, emailSendEventType, envelope.Type)
+	assert.Equal(t, defaultSource, envelope.Source)
+	assert.Equal(t, envelopeVersion, envelope.Version)
+	assert.False(t, envelope.OccurredAt.IsZero())
+
+	assert.Equal(t, event.To, envelope.Data.To)
+	assert.Equal(t, event.Subject, envelope.Data.Subject)
+	assert.Equal(t, event.Template, envelope.Data.Template)
+}
+
+func TestEmailKafkaProducer_PublishPasswordResetEmail_SaramaError(t *testing.T) {
+	brokerErr := errors.New("broker unavailable")
+
+	mock := mocks.NewSyncProducer(t, nil)
+	mock.ExpectSendMessageAndFail(brokerErr)
+
+	producer := NewEmailKafkaProducer(mock, newTestLogger())
+
+	err := producer.PublishPasswordResetEmail(context.Background(), newValidEvent())
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "publish password reset email")
+	assert.ErrorContains(t, err, "broker unavailable")
+
+	require.NoError(t, mock.Close())
+}
+
+func TestEmailKafkaProducer_PublishPasswordResetEmail_EmptyRecipient(t *testing.T) {
+	mock := mocks.NewSyncProducer(t, nil)
+
+	producer := NewEmailKafkaProducer(mock, newTestLogger())
+
+	event := newValidEvent()
+	event.To = ""
+
+	err := producer.PublishPasswordResetEmail(context.Background(), event)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "recipient email must not be empty")
+
+	require.NoError(t, mock.Close())
+}
+
 func TestMaskEmail(t *testing.T) {
 	tests := []struct {
 		name  string

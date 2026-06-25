@@ -39,3 +39,11 @@
 - [x] T008 [P] [US3] Implement `RedisPasswordResetCache` in `internal/infrastructure/cache/password_reset_redis.go` using Redis client connection and key prefix `auth:reset_token:{token}` with a strict 60-minute TTL.
 - [x] T009 [P] [US3] Implement unit tests in `internal/infrastructure/cache/password_reset_redis_test.go` using `miniredis` to verify cache operations and strict expiration.
 
+---
+
+## Phase 4: Kafka Event Producer (TSK-PR-004)
+
+- [x] T010 [P] [US4] Update `internal/adapter/kafka/producer/email_events.go` to add `PublishPasswordResetEmail` method on `EmailKafkaProducer` dispatching `events.EmailSendEvent` to topic `email.send.v1`.
+- [x] T011 [P] [US4] Update `internal/adapter/kafka/producer/email_events_test.go` to test `PublishPasswordResetEmail` serialization, formatting, and dispatching.
+
+
