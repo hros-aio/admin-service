@@ -152,4 +152,25 @@ func TestSlogAuditLogger(t *testing.T) {
 		assert.Equal(t, "Mozilla/5.0", logMap["user_agent"])
 		assert.Equal(t, "[REDACTED]", logMap["token"])
 	})
+
+	t.Run("LogPasswordResetCompleted", func(t *testing.T) {
+		buf.Reset()
+		event := events.PasswordResetCompletedEvent{
+			Email:      "complete@example.com",
+			IPAddress:  "10.0.0.1",
+			UserAgent:  "Firefox",
+			OccurredAt: time.Now(),
+		}
+		auditLogger.LogPasswordResetCompleted(ctx, event)
+
+		var logMap map[string]interface{}
+		err := json.Unmarshal(buf.Bytes(), &logMap)
+		assert.NoError(t, err)
+
+		assert.Equal(t, "password reset completed", logMap["msg"])
+		assert.Equal(t, "password.reset_completed", logMap["event"])
+		assert.Equal(t, "complete@example.com", logMap["email"])
+		assert.Equal(t, "10.0.0.1", logMap["ip_address"])
+		assert.Equal(t, "Firefox", logMap["user_agent"])
+	})
 }

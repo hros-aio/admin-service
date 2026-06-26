@@ -134,6 +134,9 @@ func (m *mockAuditLogger) LogMFAFailed(ctx context.Context, email string, reason
 func (m *mockAuditLogger) LogPasswordResetRequested(ctx context.Context, event events.PasswordResetRequestedEvent) {
 	m.Called(ctx, event)
 }
+func (m *mockAuditLogger) LogPasswordResetCompleted(ctx context.Context, event events.PasswordResetCompletedEvent) {
+	m.Called(ctx, event)
+}
 
 type mockBruteForceCache struct{ mock.Mock }
 

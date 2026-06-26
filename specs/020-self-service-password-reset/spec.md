@@ -55,6 +55,20 @@ As a user who forgot my password, I want to request a password reset by providin
 2. **Given** a password reset request with an unregistered email, **When** processed by `RequestPasswordResetUseCase`, **Then** the usecase returns success immediately without storing a token or publishing any events.
 3. **Given** a database error occurs during user lookup, **When** processed, **Then** the usecase propagates the database error.
 
+### User Story 4 - Confirm Password Reset UseCase (Priority: P1)
+
+As a user who has requested a password reset, I want to confirm my password reset by providing the token and my new password, so that my password is securely updated and I can log in.
+
+**Why this priority**: Core workflow enabling actual password updates and account recovery.
+
+**Independent Test**: The usecase validates password complexity rules, verifies the reset token from the cache, hashes the password, persists it, invalidates the reset token and all active sessions for the user, and logs the audit event.
+
+**Acceptance Scenarios**:
+
+1. **Given** a valid token and a password meeting complexity constraints, **When** confirmed, **Then** the new password is hashed (bcrypt cost 12) and saved, all existing sessions for the user are deleted, the cache token is cleared, a `password.reset_completed` audit log is emitted, and success is returned.
+2. **Given** a weak password (not meeting complexity: min 10 chars, 1 upper, 1 number, 1 special), **When** confirmed, **Then** the usecase returns `ErrPasswordWeak`.
+3. **Given** a token that is missing or expired in the cache, **When** confirmed, **Then** the usecase returns `ErrTokenExpired`.
+
 ## Edge Cases
 
 - **Token Replay**: A token must be single-use. Once verified, it should be deleted/marked as used. `ErrTokenUsed` is returned if the token has already been consumed.
@@ -89,6 +103,13 @@ As a user who forgot my password, I want to request a password reset by providin
 - **FR-016**: Store the token in `PasswordResetCache` associated with the admin user's ID for a strict 60-minute TTL.
 - **FR-017**: Emit the `password.reset_requested` audit log using the Audit Log interface.
 - **FR-018**: Publish the `email.send` Kafka event via `PasswordResetNotifier` using the `events.EmailSendEvent` payload with template `password_reset_request`. The `events.EmailSendEvent.TemplateData` map MUST explicitly include `email` and `token` keys.
+- **FR-019**: Implement `ConfirmPasswordResetUseCase` accepting `ConfirmPasswordResetInput` containing the token, new password, IPAddress, and UserAgent.
+- **FR-020**: Validate that the password meets complexity constraints (minimum 10 characters, at least 1 uppercase letter, 1 number, and 1 special character) or return `ErrPasswordWeak`.
+- **FR-021**: Retrieve the admin user's ID associated with the token from `PasswordResetCache`. If the token is missing or expired, return `ErrTokenExpired`.
+- **FR-022**: Hash the new password with bcrypt at cost 12 and update it via `AdminUserRepository.UpdatePassword`.
+- **FR-023**: Invalidate/delete the token from the cache via `PasswordResetCache.DeleteToken`.
+- **FR-024**: Delete all active sessions for the user in `session_tokens` via `SessionTokenRepository.DeleteAllByAdminID` to force re-authentication.
+- **FR-025**: Emit the `password.reset_completed` audit log using `AuditLogger` with the `events.PasswordResetCompletedEvent` payload.
 
 ### Key Entities
 
@@ -112,6 +133,7 @@ As a user who forgot my password, I want to request a password reset by providin
 - **SC-007**: 100% test coverage for `RedisPasswordResetCache` using `miniredis`.
 - **SC-008**: 100% test coverage for `PublishPasswordResetEmail` using Sarama mocks.
 - **SC-009**: 100% unit test coverage for `RequestPasswordResetUseCase` asserting that registered emails generate tokens and dispatch events, unregistered emails return success without side-effects, and database errors are propagated.
+- **SC-010**: 100% unit test coverage for `ConfirmPasswordResetUseCase` asserting password strength rules, token checks, session cleanup, database persistence, and audit logging.
 
 ## Assumptions
 

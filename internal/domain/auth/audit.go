@@ -22,4 +22,6 @@ type AuditLogger interface {
 	LogMFAFailed(ctx context.Context, email string, reason string)
 	// LogPasswordResetRequested records a password reset request.
 	LogPasswordResetRequested(ctx context.Context, event events.PasswordResetRequestedEvent)
+	// LogPasswordResetCompleted records a completed password reset.
+	LogPasswordResetCompleted(ctx context.Context, event events.PasswordResetCompletedEvent)
 }

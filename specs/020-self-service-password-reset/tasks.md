@@ -67,3 +67,12 @@
 - [x] T021 [P] [US3] Implement unit tests for `RequestPasswordResetUseCase` in `internal/application/usecase/request_password_reset_usecase_test.go`.
 - [x] T022 [P] [US3] Update `AuditLogger` interface in `internal/domain/auth/audit.go` to support `LogPasswordResetRequested`.
 - [x] T023 [P] [US3] Implement `LogPasswordResetRequested` in `internal/infrastructure/auth/audit_logger.go` and add unit tests in `internal/infrastructure/auth/audit_logger_test.go`.
+
+---
+
+## Phase 7: Confirm Password Reset Usecase (TSK-PR-007)
+
+- [ ] T024 [P] [US4] Implement `ConfirmPasswordResetUseCase` in `internal/application/usecase/confirm_password_reset_usecase.go`.
+- [ ] T025 [P] [US4] Implement unit tests for `ConfirmPasswordResetUseCase` in `internal/application/usecase/confirm_password_reset_usecase_test.go`.
+- [ ] T026 [P] [US4] Update `AuditLogger` interface in `internal/domain/auth/audit.go` and `SlogAuditLogger` in `internal/infrastructure/auth/audit_logger.go` to support `LogPasswordResetCompleted`.
+- [ ] T027 [P] [US4] Update unit tests in `internal/infrastructure/auth/audit_logger_test.go` for `LogPasswordResetCompleted`.

@@ -18,7 +18,9 @@ This plan outlines the implementation of Self-Service Password Reset.
 
 **Phase 5 (TSK-PR-005 — ✅ Done)**: Update repositories (`AdminUserRepository`, `SessionTokenRepository`) to support password updates and session revocation.
 
-**Phase 6 (TSK-PR-006 — In Progress)**: Implement the `RequestPasswordResetUseCase` application service.
+**Phase 6 (TSK-PR-006 — ✅ Done)**: Implement the `RequestPasswordResetUseCase` application service.
+
+**Phase 7 (TSK-PR-007 — In Progress)**: Implement the `ConfirmPasswordResetUseCase` application service.
 
 ## Technical Context
 
@@ -63,7 +65,9 @@ internal/
 │   │   └── password_reset_notifier.go   # Interface for password reset Kafka publisher
 │   └── usecase/
 │       ├── request_password_reset_usecase.go  # Request password reset usecase
-│       └── request_password_reset_usecase_test.go # Tests for request password reset usecase
+│       ├── request_password_reset_usecase_test.go # Tests for request password reset usecase
+│       ├── confirm_password_reset_usecase.go  # Confirm password reset usecase
+│       └── confirm_password_reset_usecase_test.go # Tests for confirm password reset usecase
 ├── domain/
 │   ├── errors/
 │   │   └── auth_errors.go               # Add ErrTokenExpired, ErrTokenUsed, ErrPasswordWeak
