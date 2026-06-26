@@ -89,5 +89,5 @@
 
 ## Phase 9: Integration Tests (TSK-PR-009)
 
-- [ ] T031 [P] [US6] Create integration test `TestPasswordResetFlow` in `test/integration/password_reset_flow_test.go` utilizing actual PostgreSQL and Redis docker containers.
-- [ ] T032 [P] [US6] Verify the successful password reset flow, database updates, active session wipe, and token expiration rejection behavior.
+- [x] T031 [P] [US6] Create integration test `TestPasswordResetFlow` in `test/integration/password_reset_flow_test.go` utilizing actual PostgreSQL and Redis docker containers.
+- [x] T032 [P] [US6] Verify the successful password reset flow, database updates, active session wipe, and token expiration rejection behavior.

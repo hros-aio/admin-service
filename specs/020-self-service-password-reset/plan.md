@@ -24,7 +24,7 @@ This plan outlines the implementation of Self-Service Password Reset.
 
 **Phase 8 (TSK-PR-008 — ✅ Done)**: Implement the password reset HTTP handlers and wire them in Echo/Fx.
 
-**Phase 9 (TSK-PR-009 — In Progress)**: Implement the full flow integration tests.
+**Phase 9 (TSK-PR-009 — ✅ Done)**: Implement the full flow integration tests.
 
 ## Technical Context
 
