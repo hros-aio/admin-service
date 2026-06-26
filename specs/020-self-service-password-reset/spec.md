@@ -87,6 +87,20 @@ As a client application, I want to submit password reset requests and confirmati
 5. **Given** a confirmation request with a weak password, **When** posted, **Then** the handler returns HTTP 422 with a structured error `PASSWORD_WEAK`.
 6. **Given** request binding or validation fails on either endpoint, **When** posted, **Then** the handler returns HTTP 400 with a validation error description.
 
+### User Story 6 - Self-Service Password Reset Integration Test (Priority: P1)
+
+As a developer, I want to execute a full integration test of the password reset flow using actual PostgreSQL and Redis instances, so that I can verify end-to-end correctness of token generation, caching, DB mutation, and session deletion.
+
+**Why this priority**: Confirms correctness and security properties in a production-like database/cache context.
+
+**Independent Test**: The integration test `TestPasswordResetFlow` runs against real container dependencies, executes request and confirm phases, asserts updates in the user table, wipes sessions, and validates token expiration bounds.
+
+**Acceptance Scenarios**:
+
+1. **Given** a seeded admin user, **When** requesting a password reset via `POST /v1/auth/password-reset/request`, **Then** a token is generated and cached in Redis.
+2. **Given** the generated token, **When** confirming the reset via `POST /v1/auth/password-reset/confirm` with a strong password, **Then** the database updates the password hash, deletes active sessions, and returns success.
+3. **Given** a confirmation with an expired token, **When** posted, **Then** it returns 400 `TOKEN_EXPIRED` and does not update the password.
+4. **Given** a confirmation with an already consumed token, **When** posted, **Then** it returns 400 `TOKEN_USED` and does not update the password.
 
 ## Edge Cases
 
@@ -137,6 +151,11 @@ As a client application, I want to submit password reset requests and confirmati
   - Map `ErrTokenUsed` to HTTP 400 with error code `TOKEN_USED`.
   - Map `ErrPasswordWeak` to HTTP 422 with error code `PASSWORD_WEAK`.
 - **FR-030**: Register the routes and handlers with the Echo framework and wire via Uber Fx.
+- **FR-031**: Implement integration test `TestPasswordResetFlow` in `test/integration/password_reset_flow_test.go` using PostgreSQL and Redis containers via `testcontainers`.
+- **FR-032**: Seed an admin user in GORM database, request a reset link via `POST /v1/auth/password-reset/request`, and verify the token is written to Redis.
+- **FR-033**: Call `POST /v1/auth/password-reset/confirm` using the valid token and a strong password, and assert that the user password hash has changed in PostgreSQL.
+- **FR-034**: Seed active user sessions in the database before password reset confirmation, and assert that they are wiped from `session_tokens` after reset confirmation.
+
 
 
 ### Key Entities
@@ -164,6 +183,8 @@ As a client application, I want to submit password reset requests and confirmati
 - **SC-010**: 100% unit test coverage for `ConfirmPasswordResetUseCase` asserting password strength rules, token checks, session cleanup, database persistence, and audit logging.
 - **SC-011**: 100% unit test coverage for `RequestPasswordReset` and `ConfirmPasswordReset` HTTP handlers, asserting correct HTTP status mappings, validation errors, and JSON response payloads.
 - **SC-012**: Request password reset and confirm password reset endpoints are successfully registered with the Echo router and wired via Fx bootstrap.
+- **SC-013**: Integration tests in `test/integration/password_reset_flow_test.go` pass reliably using actual container instances.
+- **SC-014**: Verification tests for token expiration return HTTP 400 `TOKEN_EXPIRED` as expected.
 
 ## Assumptions
 
