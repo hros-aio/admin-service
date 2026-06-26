@@ -41,6 +41,20 @@ As a front-end developer or API consumer, I want the password reset endpoints (`
 3. **Given** structural validation constraints are violated (e.g. missing fields, mismatched confirmation, invalid email), **When** parsed by the handler, **Then** validation fails with a bad request response.
 4. **Given** a password reset attempt fails due to business rules, **When** returning errors, **Then** `api/openapi.yaml` documents `400` errors for `TOKEN_EXPIRED` and `TOKEN_USED`, and `422` error for `PASSWORD_WEAK`.
 
+### User Story 3 - Request Password Reset UseCase (Priority: P1)
+
+As a user who forgot my password, I want to request a password reset by providing my email address, so that I can receive a secure reset link via email.
+
+**Why this priority**: Essential application logic to enable users to trigger a password reset flow.
+
+**Independent Test**: The usecase handles both existing and unregistered emails, returning success immediately without disclosing whether the email exists. For existing emails, it generates a secure token, saves it to the cache, emits the audit log, and publishes the email send Kafka event.
+
+**Acceptance Scenarios**:
+
+1. **Given** a password reset request with a registered email, **When** processed by `RequestPasswordResetUseCase`, **Then** a secure token is generated and cached, a `password.reset_requested` audit log is emitted, an `email.send` Kafka event is published, and success is returned.
+2. **Given** a password reset request with an unregistered email, **When** processed by `RequestPasswordResetUseCase`, **Then** the usecase returns success immediately without storing a token or publishing any events.
+3. **Given** a database error occurs during user lookup, **When** processed, **Then** the usecase propagates the database error.
+
 ## Edge Cases
 
 - **Token Replay**: A token must be single-use. Once verified, it should be deleted/marked as used. `ErrTokenUsed` is returned if the token has already been consumed.
@@ -68,6 +82,13 @@ As a front-end developer or API consumer, I want the password reset endpoints (`
 - **FR-009**: The key format stored in Redis MUST be `auth:reset_token:{token}` and it MUST enforce a strict 60-minute TTL (or the duration passed by the caller).
 - **FR-010**: All logs from the Redis cache implementation must redact the token portion of the key (e.g., logging `auth:reset_token:[REDACTED]`) to prevent leaking raw tokens.
 - **FR-011**: The `EmailKafkaProducer` MUST implement a method `PublishPasswordResetEmail` to serialize and publish `EmailSendEvent` to topic `email.send.v1`.
+- **FR-012**: Implement `RequestPasswordResetUseCase` accepting `RequestPasswordResetInput` containing the email.
+- **FR-013**: Use `AdminUserRepository` to look up the user by email.
+- **FR-014**: If the user is not found, return success (nil error) immediately to prevent email enumeration.
+- **FR-015**: If the user is found, generate a cryptographically secure 32-byte (256-bit) single-use token and encode it as hex.
+- **FR-016**: Store the token in `PasswordResetCache` associated with the admin user's ID for a strict 60-minute TTL.
+- **FR-017**: Emit the `password.reset_requested` audit log using the Audit Log interface.
+- **FR-018**: Publish the `email.send` Kafka event via `PasswordResetNotifier` using the `events.EmailSendEvent` payload with template `password_reset_request`.
 
 ### Key Entities
 
@@ -90,6 +111,7 @@ As a front-end developer or API consumer, I want the password reset endpoints (`
 - **SC-006**: Redis cache store, retrieve, and delete operations complete successfully.
 - **SC-007**: 100% test coverage for `RedisPasswordResetCache` using `miniredis`.
 - **SC-008**: 100% test coverage for `PublishPasswordResetEmail` using Sarama mocks.
+- **SC-009**: 100% unit test coverage for `RequestPasswordResetUseCase` asserting that registered emails generate tokens and dispatch events, unregistered emails return success without side-effects, and database errors are propagated.
 
 ## Assumptions
 

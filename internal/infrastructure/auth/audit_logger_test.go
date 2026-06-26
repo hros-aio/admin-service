@@ -127,4 +127,17 @@ func TestSlogAuditLogger(t *testing.T) {
 		assert.Equal(t, "test@example.com", logMap["email"])
 		assert.Equal(t, "invalid code", logMap["reason"])
 	})
+
+	t.Run("LogPasswordResetRequested", func(t *testing.T) {
+		buf.Reset()
+		auditLogger.LogPasswordResetRequested(ctx, "reset@example.com")
+
+		var logMap map[string]interface{}
+		err := json.Unmarshal(buf.Bytes(), &logMap)
+		assert.NoError(t, err)
+
+		assert.Equal(t, "password reset requested", logMap["msg"])
+		assert.Equal(t, "password.reset_requested", logMap["event"])
+		assert.Equal(t, "reset@example.com", logMap["email"])
+	})
 }

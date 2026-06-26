@@ -131,6 +131,9 @@ func (m *mockAuditLogger) LogMFASuccess(ctx context.Context, userID string, emai
 func (m *mockAuditLogger) LogMFAFailed(ctx context.Context, email string, reason string) {
 	m.Called(ctx, email, reason)
 }
+func (m *mockAuditLogger) LogPasswordResetRequested(ctx context.Context, email string) {
+	m.Called(ctx, email)
+}
 
 type mockBruteForceCache struct{ mock.Mock }
 

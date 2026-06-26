@@ -16,4 +16,6 @@ type AuditLogger interface {
 	LogMFASuccess(ctx context.Context, userID string, email string)
 	// LogMFAFailed records that a user failed the second factor authentication.
 	LogMFAFailed(ctx context.Context, email string, reason string)
+	// LogPasswordResetRequested records a password reset request.
+	LogPasswordResetRequested(ctx context.Context, email string)
 }

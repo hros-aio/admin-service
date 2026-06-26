@@ -16,15 +16,19 @@ This plan outlines the implementation of Self-Service Password Reset.
 
 **Phase 4 (TSK-PR-004 — ✅ Done)**: Implement the Kafka producer event payload mapping for the `email.send` event containing the secure single-use reset link.
 
+**Phase 5 (TSK-PR-005 — ✅ Done)**: Update repositories (`AdminUserRepository`, `SessionTokenRepository`) to support password updates and session revocation.
+
+**Phase 6 (TSK-PR-006 — In Progress)**: Implement the `RequestPasswordResetUseCase` application service.
+
 ## Technical Context
 
 **Language/Version**: Go 1.23+
 
 **Primary Dependencies**: None (Standard Go modules).
 
-**Storage**: Memory cache interfaces in domain.
+**Storage**: Redis (for token caching), PostgreSQL (for user lookup).
 
-**Testing**: Unit tests verifying serialization and compilation of structures.
+**Testing**: Unit tests verifying use case behavior with mock implementations of cache, repository, audit log, and notifier.
 
 ## Constitution Check
 
@@ -32,11 +36,11 @@ This plan outlines the implementation of Self-Service Password Reset.
 
 | Principle | Status | Evidence |
 |-----------|--------|---------|
-| **I. Clean Architecture & Strict Boundaries** | ✅ PASS | Only defining interfaces, errors, and event payload structures in domain and application interface boundaries. |
-| **II. Documentation-First & OpenAPI-Driven** | ✅ PASS | Creating specification files before writing code. |
-| **III. Unit-Test-Per-File (NON-NEGOTIABLE)** | ✅ PASS | All domain code updates will be covered by matching `_test.go` unit tests. |
-| **IV. Task-Driven & Atomic Implementation** | ✅ PASS | TSK-PR-001 maps to Domain Primitive implementation. |
-| **V. Observability & Structured Logging** | ✅ PASS | Log formats and events are defined in domain event models. |
+| **I. Clean Architecture & Strict Boundaries** | ✅ PASS | Usecase interacts with repository, cache, audit logger, and notifier via clean domain and application interfaces. |
+| **II. Documentation-First & OpenAPI-Driven** | ✅ PASS | Updating specifications and plan prior to implementing the code. |
+| **III. Unit-Test-Per-File (NON-NEGOTIABLE)** | ✅ PASS | All updates and new files are covered by matching `_test.go` unit tests. |
+| **IV. Task-Driven & Atomic Implementation** | ✅ PASS | Implementing TSK-PR-006 incrementally. |
+| **V. Observability & Structured Logging** | ✅ PASS | Log formats and events are emitted using slog structured logging conventions. |
 
 ## Project Structure
 
@@ -54,8 +58,12 @@ specs/020-self-service-password-reset/
 ```text
 internal/
 ├── application/
-│   └── interfaces/
-│       └── password_reset_cache.go      # Interface for password reset cache
+│   ├── interfaces/
+│   │   ├── password_reset_cache.go      # Interface for password reset cache
+│   │   └── password_reset_notifier.go   # Interface for password reset Kafka publisher
+│   └── usecase/
+│       ├── request_password_reset_usecase.go  # Request password reset usecase
+│       └── request_password_reset_usecase_test.go # Tests for request password reset usecase
 ├── domain/
 │   ├── errors/
 │   │   └── auth_errors.go               # Add ErrTokenExpired, ErrTokenUsed, ErrPasswordWeak

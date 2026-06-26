@@ -87,3 +87,12 @@ func (l *SlogAuditLogger) LogMFAFailed(ctx context.Context, email string, reason
 		slog.String("reason", reason),
 	)
 }
+
+// LogPasswordResetRequested logs a password reset request event.
+func (l *SlogAuditLogger) LogPasswordResetRequested(ctx context.Context, email string) {
+	l.logger.InfoContext(ctx, "password reset requested",
+		slog.String("event", "password.reset_requested"),
+		slog.String("email", email),
+	)
+}
+
