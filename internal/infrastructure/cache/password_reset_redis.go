@@ -107,3 +107,23 @@ func (r *RedisPasswordResetCache) ConsumeToken(ctx context.Context, token string
 		return status, nil
 	}
 }
+
+// DeleteToken invalidates/removes the cached reset token.
+func (r *RedisPasswordResetCache) DeleteToken(ctx context.Context, token string) error {
+	key := passwordResetKeyPrefix + token
+	err := r.client.Del(ctx, key).Err()
+	if err != nil {
+		r.logger.ErrorContext(ctx, "failed to delete password reset token from Redis",
+			slog.String("event", "password_reset_cache_redis.delete_failed"),
+			slog.String("key", "auth:reset_token:[REDACTED]"),
+			slog.Any("error", err),
+		)
+		return fmt.Errorf("redis del: %w", err)
+	}
+
+	r.logger.InfoContext(ctx, "successfully deleted password reset token from Redis",
+		slog.String("event", "password_reset_cache_redis.delete_success"),
+		slog.String("key", "auth:reset_token:[REDACTED]"),
+	)
+	return nil
+}

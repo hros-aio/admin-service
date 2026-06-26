@@ -27,6 +27,10 @@ func (m *mockPasswordResetCache) ConsumeToken(ctx context.Context, token string)
 	return args.String(0), args.Error(1)
 }
 
+func (m *mockPasswordResetCache) DeleteToken(ctx context.Context, token string) error {
+	return m.Called(ctx, token).Error(0)
+}
+
 type mockPasswordResetNotifier struct {
 	mock.Mock
 }
@@ -133,7 +137,7 @@ func TestRequestPasswordResetUseCase_Execute(t *testing.T) {
 			expectedError: "store reset token: redis error",
 		},
 		{
-			name: "Notifier Publish Error - Propagates Kafka publisher failure and rolls back token in cache",
+			name: "Notifier Publish Error - Propagates Kafka publisher failure and rolls back token in cache successfully",
 			input: RequestPasswordResetInput{
 				Email:     registeredEmail,
 				IPAddress: "192.168.1.1",
@@ -156,12 +160,43 @@ func TestRequestPasswordResetUseCase_Execute(t *testing.T) {
 				notifier.On("PublishPasswordResetEmail", ctx, mock.Anything).
 					Return(errors.New("kafka connection reset")).Once()
 
-				// Verify compensation consume is called
-				cache.On("ConsumeToken", ctx, mock.MatchedBy(func(token string) bool {
+				// Verify compensation delete is called
+				cache.On("DeleteToken", ctx, mock.MatchedBy(func(token string) bool {
 					return token == capturedToken
-				})).Return("", nil).Once()
+				})).Return(nil).Once()
 			},
 			expectedError: "publish password reset email: kafka connection reset",
+		},
+		{
+			name: "Notifier Publish Error - Propagates Kafka publisher failure and rollback also fails, surfacing both errors",
+			input: RequestPasswordResetInput{
+				Email:     registeredEmail,
+				IPAddress: "192.168.1.1",
+				UserAgent: "Safari",
+			},
+			setupMocks: func(ur *mockUserRepo, cache *mockPasswordResetCache, audit *mockAuditLogger, notifier *mockPasswordResetNotifier) {
+				ctx := mock.Anything
+				ur.On("FindByEmail", ctx, registeredEmail).Return(mockAdminUser, nil).Once()
+
+				var capturedToken string
+				cache.On("StoreToken", ctx, mock.MatchedBy(func(token string) bool {
+					capturedToken = token
+					return len(token) == 64
+				}), mockAdminUser.ID, 60*time.Minute).Return(nil).Once()
+
+				audit.On("LogPasswordResetRequested", ctx, mock.MatchedBy(func(e events.PasswordResetRequestedEvent) bool {
+					return e.Email == registeredEmail && e.Token == capturedToken
+				})).Once()
+
+				notifier.On("PublishPasswordResetEmail", ctx, mock.Anything).
+					Return(errors.New("kafka connection reset")).Once()
+
+				// Verify compensation delete is called and returns error
+				cache.On("DeleteToken", ctx, mock.MatchedBy(func(token string) bool {
+					return token == capturedToken
+				})).Return(errors.New("redis disconnect error")).Once()
+			},
+			expectedError: "publish password reset email: kafka connection reset (rollback error: redis disconnect error)",
 		},
 	}
 

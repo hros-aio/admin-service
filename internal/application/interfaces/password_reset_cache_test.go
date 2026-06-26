@@ -27,6 +27,7 @@ func (f *fakePasswordResetCache) StoreToken(ctx context.Context, token string, a
 		return err
 	}
 	f.store[token] = adminID
+	delete(f.used, token)
 	return nil
 }
 
@@ -44,6 +45,15 @@ func (f *fakePasswordResetCache) ConsumeToken(ctx context.Context, token string)
 	f.used[token] = true
 	delete(f.store, token)
 	return adminID, nil
+}
+
+func (f *fakePasswordResetCache) DeleteToken(ctx context.Context, token string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	delete(f.store, token)
+	delete(f.used, token)
+	return nil
 }
 
 func TestPasswordResetCache_Workflow(t *testing.T) {
@@ -65,7 +75,24 @@ func TestPasswordResetCache_Workflow(t *testing.T) {
 	_, err = cache.ConsumeToken(ctx, token)
 	assert.ErrorIs(t, err, domainErrors.ErrTokenUsed)
 
-	// 4. Consume nonexistent -> ErrTokenExpired
+	// 4. Re-store same token -> should clear used state and allow consumption
+	err = cache.StoreToken(ctx, token, adminID, 60*time.Minute)
+	assert.NoError(t, err)
+	retrieved2, err := cache.ConsumeToken(ctx, token)
+	assert.NoError(t, err)
+	assert.Equal(t, adminID, retrieved2)
+
+	// 5. Delete token
+	err = cache.StoreToken(ctx, token, adminID, 60*time.Minute)
+	assert.NoError(t, err)
+	err = cache.DeleteToken(ctx, token)
+	assert.NoError(t, err)
+
+	// 6. Consume after delete -> ErrTokenExpired
+	_, err = cache.ConsumeToken(ctx, token)
+	assert.ErrorIs(t, err, domainErrors.ErrTokenExpired)
+
+	// 7. Consume nonexistent -> ErrTokenExpired
 	_, err = cache.ConsumeToken(ctx, "nonexistent")
 	assert.ErrorIs(t, err, domainErrors.ErrTokenExpired)
 }
@@ -81,5 +108,8 @@ func TestPasswordResetCache_ContextCancellation(t *testing.T) {
 	assert.ErrorIs(t, err, context.Canceled)
 
 	_, err = cache.ConsumeToken(ctx, token)
+	assert.ErrorIs(t, err, context.Canceled)
+
+	err = cache.DeleteToken(ctx, token)
 	assert.ErrorIs(t, err, context.Canceled)
 }

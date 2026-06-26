@@ -141,6 +141,68 @@ func TestRedisPasswordResetCache_ConsumeToken(t *testing.T) {
 		assert.NotErrorIs(t, err, domainErrors.ErrTokenExpired)
 		assert.NotErrorIs(t, err, domainErrors.ErrTokenUsed)
 	})
+
+	t.Run("successfully stores token, consumes it, re-stores it, and consumes it again", func(t *testing.T) {
+		token := "reset_token_re_store"
+		adminID := "admin_user_uuid_123"
+
+		err := cache.StoreToken(ctx, token, adminID, 0)
+		require.NoError(t, err)
+
+		val, err := cache.ConsumeToken(ctx, token)
+		require.NoError(t, err)
+		assert.Equal(t, adminID, val)
+
+		_, err = cache.ConsumeToken(ctx, token)
+		assert.ErrorIs(t, err, domainErrors.ErrTokenUsed)
+
+		err = cache.StoreToken(ctx, token, adminID, 0)
+		require.NoError(t, err)
+
+		val2, err := cache.ConsumeToken(ctx, token)
+		require.NoError(t, err)
+		assert.Equal(t, adminID, val2)
+	})
+}
+
+func TestRedisPasswordResetCache_DeleteToken(t *testing.T) {
+	mr, err := miniredis.Run()
+	require.NoError(t, err)
+	defer mr.Close()
+
+	client := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	defer func() { _ = client.Close() }()
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	cache := NewRedisPasswordResetCache(client, logger)
+
+	ctx := context.Background()
+
+	t.Run("successfully deletes token from Redis", func(t *testing.T) {
+		token := "reset_token_delete"
+		adminID := "admin_user_delete"
+		mr.Set("auth:reset_token:"+token, adminID)
+
+		err := cache.DeleteToken(ctx, token)
+		require.NoError(t, err)
+
+		exists := mr.Exists("auth:reset_token:" + token)
+		assert.False(t, exists)
+	})
+
+	t.Run("returns error when client fails", func(t *testing.T) {
+		badClient := redis.NewClient(&redis.Options{
+			Addr:        getClosedAddrForReset(t),
+			MaxRetries:  -1,
+			DialTimeout: 10 * time.Millisecond,
+		})
+		defer func() { _ = badClient.Close() }()
+
+		badCache := NewRedisPasswordResetCache(badClient, logger)
+
+		err := badCache.DeleteToken(ctx, "token")
+		assert.Error(t, err)
+	})
 }
 
 func getClosedAddrForReset(t *testing.T) string {

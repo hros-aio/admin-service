@@ -14,4 +14,7 @@ type PasswordResetCache interface {
 	// It returns ErrTokenExpired if the token is not found or has expired.
 	// It returns ErrTokenUsed if the token has already been consumed.
 	ConsumeToken(ctx context.Context, token string) (string, error)
+
+	// DeleteToken invalidates/removes the cached reset token without marking it as used (used for rollback/cleanup).
+	DeleteToken(ctx context.Context, token string) error
 }

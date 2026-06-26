@@ -80,7 +80,7 @@ As a user who has requested a password reset, I want to confirm my password rese
 
 ### Functional Requirements
 
-- **FR-001**: Define the `PasswordResetCache` interface with methods: `StoreToken(ctx context.Context, token string, adminID string, ttl time.Duration) error`, and `ConsumeToken(ctx context.Context, token string) (string, error)`.
+- **FR-001**: Define the `PasswordResetCache` interface with methods: `StoreToken(ctx context.Context, token string, adminID string, ttl time.Duration) error`, `ConsumeToken(ctx context.Context, token string) (string, error)`, and `DeleteToken(ctx context.Context, token string) error`.
 - **FR-002**: Define the specific domain errors:
   - `ErrTokenExpired` = `errors.New("reset token has expired")`
   - `ErrTokenUsed` = `errors.New("reset token has already been used")`
@@ -108,7 +108,7 @@ As a user who has requested a password reset, I want to confirm my password rese
 - **FR-020**: Validate that the password meets complexity constraints (minimum 10 characters, at least 1 uppercase letter, 1 number, and 1 special character) or return `ErrPasswordWeak`.
 - **FR-021**: Retrieve the admin user's ID associated with the token by atomically consuming it from `PasswordResetCache` (marking it as used). If the token is missing or expired, return `ErrTokenExpired`. If the token is already consumed, return `ErrTokenUsed`.
 - **FR-022**: Hash the new password with bcrypt at cost 12 and update it via `AdminUserRepository.UpdatePassword`.
-- **FR-023**: (Removed / Merged into FR-021) Token consumption is handled atomically before mutation.
+- **FR-023**: Invalidate/delete the token from the cache on publication failure via `PasswordResetCache.DeleteToken`.
 - **FR-024**: Delete all active sessions for the user in `session_tokens` via `SessionTokenRepository.DeleteAllByAdminID` to force re-authentication.
 - **FR-025**: Emit the `password.reset_completed` audit log using `AuditLogger` with the `events.PasswordResetCompletedEvent` payload.
 
