@@ -20,7 +20,9 @@ This plan outlines the implementation of Self-Service Password Reset.
 
 **Phase 6 (TSK-PR-006 — ✅ Done)**: Implement the `RequestPasswordResetUseCase` application service.
 
-**Phase 7 (TSK-PR-007 — In Progress)**: Implement the `ConfirmPasswordResetUseCase` application service.
+**Phase 7 (TSK-PR-007 — ✅ Done)**: Implement the `ConfirmPasswordResetUseCase` application service.
+
+**Phase 8 (TSK-PR-008 — ✅ Done)**: Implement the password reset HTTP handlers and wire them in Echo/Fx.
 
 ## Technical Context
 
@@ -59,6 +61,10 @@ specs/020-self-service-password-reset/
 
 ```text
 internal/
+├── adapter/
+│   └── http/
+│       ├── auth_handler.go              # Map POST /v1/auth/password-reset/request and confirm
+│       └── auth_handler_test.go         # Test HTTP handlers, binding, and error mapping
 ├── application/
 │   ├── interfaces/
 │   │   ├── password_reset_cache.go      # Interface for password reset cache

@@ -141,6 +141,7 @@ func TestBruteForceFlow(t *testing.T) {
 		fx.Provide(authCache.NewRedisTokenBlacklist),
 		fx.Provide(authCache.NewRedisBruteForceCache),
 		fx.Provide(authCache.NewRedisMFACache),
+		fx.Provide(authCache.NewRedisPasswordResetCache),
 		fx.Provide(func() (sarama.SyncProducer, error) {
 			return mockProducer, nil
 		}),
@@ -151,6 +152,7 @@ func TestBruteForceFlow(t *testing.T) {
 		application.Module,
 		kafkaProducer.Module,
 		fx.Provide(func(p *kafkaProducer.EmailKafkaProducer) interfaces.LockoutNotifier { return p }),
+		fx.Provide(func(p *kafkaProducer.EmailKafkaProducer) interfaces.PasswordResetNotifier { return p }),
 		fx.Provide(httpPlatform.NewHealthHandler),
 		fx.Provide(httpPlatform.NewServer),
 		adapterHttp.Module,

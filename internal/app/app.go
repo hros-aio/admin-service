@@ -40,6 +40,7 @@ var Module = fx.Options(
 	fx.Provide(cache.NewRedisTokenBlacklist),
 	fx.Provide(cache.NewRedisBruteForceCache),
 	fx.Provide(cache.NewRedisMFACache),
+	fx.Provide(cache.NewRedisPasswordResetCache),
 	fx.Provide(kafka.NewKafkaProducer),
 	fx.Provide(kafka.NewKafkaConsumerGroup),
 	authInfra.Module,
@@ -55,6 +56,8 @@ var Module = fx.Options(
 
 	// Bind *EmailKafkaProducer as interfaces.LockoutNotifier for LoginUseCase injection.
 	fx.Provide(func(p *kafkaProducer.EmailKafkaProducer) interfaces.LockoutNotifier { return p }),
+	// Bind *EmailKafkaProducer as interfaces.PasswordResetNotifier for RequestPasswordResetUseCase injection.
+	fx.Provide(func(p *kafkaProducer.EmailKafkaProducer) interfaces.PasswordResetNotifier { return p }),
 
 	// Invokes
 	fx.Invoke(func(_ *echo.Echo) {}),
