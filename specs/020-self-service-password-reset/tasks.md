@@ -58,5 +58,12 @@
 - [x] T017 [P] [US5] Implement unit tests for `DeleteAllByAdminID` in `internal/infrastructure/repository/auth/session_token_repository_test.go` using `sqlmock`.
 - [x] T018 [P] [US5] Update test mocks in `internal/adapter/http/auth_handler_test.go` and `internal/application/usecase/login_usecase_test.go`.
 
+---
 
+## Phase 6: Usecase Implementation (TSK-PR-006)
 
+- [x] T019 [P] [US3] Define `PasswordResetNotifier` interface in `internal/application/interfaces/password_reset_notifier.go` and compliance tests in `internal/application/interfaces/password_reset_notifier_test.go`.
+- [x] T020 [P] [US3] Implement `RequestPasswordResetUseCase` in `internal/application/usecase/request_password_reset_usecase.go`.
+- [x] T021 [P] [US3] Implement unit tests for `RequestPasswordResetUseCase` in `internal/application/usecase/request_password_reset_usecase_test.go`.
+- [x] T022 [P] [US3] Update `AuditLogger` interface in `internal/domain/auth/audit.go` to support `LogPasswordResetRequested`.
+- [x] T023 [P] [US3] Implement `LogPasswordResetRequested` in `internal/infrastructure/auth/audit_logger.go` and add unit tests in `internal/infrastructure/auth/audit_logger_test.go`.

@@ -1,6 +1,10 @@
 package auth
 
-import "context"
+import (
+	"context"
+
+	"github.com/hros/admin-service/internal/domain/events"
+)
 
 // AuditLogger defines the interface for logging security-relevant events.
 type AuditLogger interface {
@@ -16,4 +20,6 @@ type AuditLogger interface {
 	LogMFASuccess(ctx context.Context, userID string, email string)
 	// LogMFAFailed records that a user failed the second factor authentication.
 	LogMFAFailed(ctx context.Context, email string, reason string)
+	// LogPasswordResetRequested records a password reset request.
+	LogPasswordResetRequested(ctx context.Context, event events.PasswordResetRequestedEvent)
 }

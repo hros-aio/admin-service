@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/hros/admin-service/internal/domain/auth"
+	"github.com/hros/admin-service/internal/domain/events"
 )
 
 // SlogAuditLogger implements the AuditLogger interface using slog.
@@ -87,3 +88,15 @@ func (l *SlogAuditLogger) LogMFAFailed(ctx context.Context, email string, reason
 		slog.String("reason", reason),
 	)
 }
+
+// LogPasswordResetRequested logs a password reset request event.
+func (l *SlogAuditLogger) LogPasswordResetRequested(ctx context.Context, event events.PasswordResetRequestedEvent) {
+	l.logger.InfoContext(ctx, "password reset requested",
+		slog.String("event", "password.reset_requested"),
+		slog.String("email", event.Email),
+		slog.String("ip_address", event.IPAddress),
+		slog.String("user_agent", event.UserAgent),
+		slog.String("token", "[REDACTED]"), // Redact token for security
+	)
+}
+
