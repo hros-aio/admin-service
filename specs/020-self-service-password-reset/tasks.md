@@ -72,7 +72,15 @@
 
 ## Phase 7: Confirm Password Reset Usecase (TSK-PR-007)
 
-- [ ] T024 [P] [US4] Implement `ConfirmPasswordResetUseCase` in `internal/application/usecase/confirm_password_reset_usecase.go`.
-- [ ] T025 [P] [US4] Implement unit tests for `ConfirmPasswordResetUseCase` in `internal/application/usecase/confirm_password_reset_usecase_test.go`.
-- [ ] T026 [P] [US4] Update `AuditLogger` interface in `internal/domain/auth/audit.go` and `SlogAuditLogger` in `internal/infrastructure/auth/audit_logger.go` to support `LogPasswordResetCompleted`.
-- [ ] T027 [P] [US4] Update unit tests in `internal/infrastructure/auth/audit_logger_test.go` for `LogPasswordResetCompleted`.
+- [x] T024 [P] [US4] Implement `ConfirmPasswordResetUseCase` in `internal/application/usecase/confirm_password_reset_usecase.go`.
+- [x] T025 [P] [US4] Implement unit tests for `ConfirmPasswordResetUseCase` in `internal/application/usecase/confirm_password_reset_usecase_test.go`.
+- [x] T026 [P] [US4] Update `AuditLogger` interface in `internal/domain/auth/audit.go` and `SlogAuditLogger` in `internal/infrastructure/auth/audit_logger.go` to support `LogPasswordResetCompleted`.
+- [x] T027 [P] [US4] Update unit tests in `internal/infrastructure/auth/audit_logger_test.go` for `LogPasswordResetCompleted`.
+
+---
+
+## Phase 8: HTTP Handlers (TSK-PR-008)
+
+- [ ] T028 [P] [US5] Implement HTTP handler `RequestPasswordReset` and `ConfirmPasswordReset` in `internal/adapter/http/auth_handler.go`.
+- [ ] T029 [P] [US5] Implement unit tests in `internal/adapter/http/auth_handler_test.go` to assert correct HTTP mappings and validation errors.
+- [ ] T030 [P] [US5] Wire new usecases and map handlers to Echo routes in `internal/adapter/http/auth_handler.go` (and wire via Fx modules).

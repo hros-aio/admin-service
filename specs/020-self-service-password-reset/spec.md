@@ -70,6 +70,24 @@ As a user who has requested a password reset, I want to confirm my password rese
 3. **Given** a token that is missing or expired in the cache, **When** confirmed, **Then** the usecase returns `ErrTokenExpired`.
 4. **Given** a token that has already been consumed/used, **When** confirmed, **Then** the usecase returns `ErrTokenUsed`.
 
+### User Story 5 - Password Reset HTTP Handlers (Priority: P1)
+
+As a client application, I want to submit password reset requests and confirmations via HTTP endpoints, so that the backend can invoke the corresponding business logic and return appropriate HTTP status codes and payloads.
+
+**Why this priority**: Core HTTP interface for self-service password reset.
+
+**Independent Test**: The Echo handlers bind incoming payloads, validate request structures, execute the use cases, and return mapped HTTP status codes matching the API contracts.
+
+**Acceptance Scenarios**:
+
+1. **Given** a valid password reset request (email), **When** posted to `/v1/auth/password-reset/request`, **Then** the handler triggers `RequestPasswordResetUseCase` and returns HTTP 200.
+2. **Given** a valid password reset confirmation (token and new password), **When** posted to `/v1/auth/password-reset/confirm`, **Then** the handler triggers `ConfirmPasswordResetUseCase` and returns HTTP 200.
+3. **Given** a confirmation request with an expired or missing token, **When** posted, **Then** the handler returns HTTP 400 with a structured error `TOKEN_EXPIRED`.
+4. **Given** a confirmation request with an already consumed token, **When** posted, **Then** the handler returns HTTP 400 with a structured error `TOKEN_USED`.
+5. **Given** a confirmation request with a weak password, **When** posted, **Then** the handler returns HTTP 422 with a structured error `PASSWORD_WEAK`.
+6. **Given** request binding or validation fails on either endpoint, **When** posted, **Then** the handler returns HTTP 400 with a validation error description.
+
+
 ## Edge Cases
 
 - **Token Replay**: A token must be single-use. Once verified, it should be deleted/marked as used. `ErrTokenUsed` is returned if the token has already been consumed.
@@ -111,6 +129,15 @@ As a user who has requested a password reset, I want to confirm my password rese
 - **FR-023**: Invalidate/delete the token from the cache on publication failure via `PasswordResetCache.DeleteToken`.
 - **FR-024**: Delete all active sessions for the user in `session_tokens` via `SessionTokenRepository.DeleteAllByAdminID` to force re-authentication.
 - **FR-025**: Emit the `password.reset_completed` audit log using `AuditLogger` with the `events.PasswordResetCompletedEvent` payload.
+- **FR-026**: Implement `RequestPasswordReset` HTTP handler mapped to route `POST /v1/auth/password-reset/request`.
+- **FR-027**: Implement `ConfirmPasswordReset` HTTP handler mapped to route `POST /v1/auth/password-reset/confirm`.
+- **FR-028**: Bind incoming requests to DTOs `PasswordResetRequest` and `PasswordResetConfirmRequest` and validate them at the HTTP boundary.
+- **FR-029**: Map use-case errors to HTTP responses:
+  - Map `ErrTokenExpired` to HTTP 400 with error code `TOKEN_EXPIRED`.
+  - Map `ErrTokenUsed` to HTTP 400 with error code `TOKEN_USED`.
+  - Map `ErrPasswordWeak` to HTTP 422 with error code `PASSWORD_WEAK`.
+- **FR-030**: Register the routes and handlers with the Echo framework and wire via Uber Fx.
+
 
 ### Key Entities
 
@@ -135,6 +162,8 @@ As a user who has requested a password reset, I want to confirm my password rese
 - **SC-008**: 100% test coverage for `PublishPasswordResetEmail` using Sarama mocks.
 - **SC-009**: 100% unit test coverage for `RequestPasswordResetUseCase` asserting that registered emails generate tokens and dispatch events, unregistered emails return success without side-effects, and database errors are propagated.
 - **SC-010**: 100% unit test coverage for `ConfirmPasswordResetUseCase` asserting password strength rules, token checks, session cleanup, database persistence, and audit logging.
+- **SC-011**: 100% unit test coverage for `RequestPasswordReset` and `ConfirmPasswordReset` HTTP handlers, asserting correct HTTP status mappings, validation errors, and JSON response payloads.
+- **SC-012**: Request password reset and confirm password reset endpoints are successfully registered with the Echo router and wired via Fx bootstrap.
 
 ## Assumptions
 

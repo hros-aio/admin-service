@@ -16,11 +16,13 @@ import (
 
 // AuthHandler handles authentication HTTP requests.
 type AuthHandler struct {
-	loginUC     *usecase.LoginUseCase
-	logoutUC    *usecase.LogoutUseCase
-	refreshUC   *usecase.RefreshSessionUseCase
-	verifyMfaUC *usecase.VerifyMFAUseCase
-	validate    *validator.Validate
+	loginUC                *usecase.LoginUseCase
+	logoutUC               *usecase.LogoutUseCase
+	refreshUC              *usecase.RefreshSessionUseCase
+	verifyMfaUC            *usecase.VerifyMFAUseCase
+	requestPasswordResetUC *usecase.RequestPasswordResetUseCase
+	confirmPasswordResetUC *usecase.ConfirmPasswordResetUseCase
+	validate               *validator.Validate
 }
 
 // NewAuthHandler creates a new AuthHandler.
@@ -29,13 +31,17 @@ func NewAuthHandler(
 	logoutUC *usecase.LogoutUseCase,
 	refreshUC *usecase.RefreshSessionUseCase,
 	verifyMfaUC *usecase.VerifyMFAUseCase,
+	requestPasswordResetUC *usecase.RequestPasswordResetUseCase,
+	confirmPasswordResetUC *usecase.ConfirmPasswordResetUseCase,
 ) *AuthHandler {
 	return &AuthHandler{
-		loginUC:     loginUC,
-		logoutUC:    logoutUC,
-		refreshUC:   refreshUC,
-		verifyMfaUC: verifyMfaUC,
-		validate:    validator.New(),
+		loginUC:                loginUC,
+		logoutUC:               logoutUC,
+		refreshUC:              refreshUC,
+		verifyMfaUC:            verifyMfaUC,
+		requestPasswordResetUC: requestPasswordResetUC,
+		confirmPasswordResetUC: confirmPasswordResetUC,
+		validate:               validator.New(),
 	}
 }
 
@@ -45,6 +51,8 @@ func RegisterRoutes(e *echo.Echo, h *AuthHandler) {
 	e.DELETE("/v1/auth/session", h.Logout)
 	e.POST("/v1/auth/refresh", h.Refresh)
 	e.POST("/v1/auth/mfa/verify", h.VerifyMFA)
+	e.POST("/v1/auth/password-reset/request", h.RequestPasswordReset)
+	e.POST("/v1/auth/password-reset/confirm", h.ConfirmPasswordReset)
 }
 
 // Login handles the admin login request.
@@ -257,4 +265,79 @@ func (h *AuthHandler) VerifyMFA(c echo.Context) error {
 		RefreshToken: output.RefreshToken,
 	}
 	return c.JSON(http.StatusOK, resp)
+}
+
+// RequestPasswordReset handles the request to trigger a password reset.
+func (h *AuthHandler) RequestPasswordReset(c echo.Context) error {
+	var req dto.PasswordResetRequest
+	if err := c.Bind(&req); err != nil {
+		traceID := c.Response().Header().Get(echo.HeaderXRequestID)
+		resp := sharedErrors.NewErrorResponse("bad_request", "Invalid request body", err.Error(), traceID)
+		return c.JSON(http.StatusBadRequest, resp)
+	}
+
+	if err := h.validate.Struct(&req); err != nil {
+		traceID := c.Response().Header().Get(echo.HeaderXRequestID)
+		resp := sharedErrors.NewErrorResponse("validation_error", "Request validation failed", err.Error(), traceID)
+		return c.JSON(http.StatusBadRequest, resp)
+	}
+
+	input := usecase.RequestPasswordResetInput{
+		Email:     req.Email,
+		IPAddress: c.RealIP(),
+		UserAgent: c.Request().UserAgent(),
+	}
+
+	if err := h.requestPasswordResetUC.Execute(c.Request().Context(), input); err != nil {
+		traceID := c.Response().Header().Get(echo.HeaderXRequestID)
+		resp := sharedErrors.NewErrorResponse("internal_error", "Internal server error", nil, traceID)
+		return c.JSON(http.StatusInternalServerError, resp)
+	}
+
+	return c.JSON(http.StatusOK, echo.Map{"message": "If an account exists for that email, a reset link has been sent."})
+}
+
+// ConfirmPasswordReset handles the request to confirm the password reset.
+func (h *AuthHandler) ConfirmPasswordReset(c echo.Context) error {
+	var req dto.PasswordResetConfirmRequest
+	if err := c.Bind(&req); err != nil {
+		traceID := c.Response().Header().Get(echo.HeaderXRequestID)
+		resp := sharedErrors.NewErrorResponse("bad_request", "Invalid request body", err.Error(), traceID)
+		return c.JSON(http.StatusBadRequest, resp)
+	}
+
+	if err := h.validate.Struct(&req); err != nil {
+		traceID := c.Response().Header().Get(echo.HeaderXRequestID)
+		resp := sharedErrors.NewErrorResponse("validation_error", "Request validation failed", err.Error(), traceID)
+		return c.JSON(http.StatusBadRequest, resp)
+	}
+
+	input := usecase.ConfirmPasswordResetInput{
+		Token:     req.Token,
+		Password:  req.Password,
+		IPAddress: c.RealIP(),
+		UserAgent: c.Request().UserAgent(),
+	}
+
+	if err := h.confirmPasswordResetUC.Execute(c.Request().Context(), input); err != nil {
+		traceID := c.Response().Header().Get(echo.HeaderXRequestID)
+
+		if errors.Is(err, domainErrors.ErrTokenExpired) {
+			resp := sharedErrors.NewErrorResponse("TOKEN_EXPIRED", "Reset token has expired", nil, traceID)
+			return c.JSON(http.StatusBadRequest, resp)
+		}
+		if errors.Is(err, domainErrors.ErrTokenUsed) {
+			resp := sharedErrors.NewErrorResponse("TOKEN_USED", "Reset token has already been used", nil, traceID)
+			return c.JSON(http.StatusBadRequest, resp)
+		}
+		if errors.Is(err, domainErrors.ErrPasswordWeak) {
+			resp := sharedErrors.NewErrorResponse("PASSWORD_WEAK", "Password does not meet complexity requirements", nil, traceID)
+			return c.JSON(http.StatusUnprocessableEntity, resp)
+		}
+
+		resp := sharedErrors.NewErrorResponse("internal_error", "Internal server error", nil, traceID)
+		return c.JSON(http.StatusInternalServerError, resp)
+	}
+
+	return c.JSON(http.StatusOK, echo.Map{"message": "Password updated successfully."})
 }

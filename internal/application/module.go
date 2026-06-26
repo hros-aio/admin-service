@@ -12,5 +12,7 @@ var Module = fx.Module("application",
 		usecase.NewLogoutUseCase,
 		usecase.NewRefreshSessionUseCase,
 		usecase.NewVerifyMFAUseCase,
+		usecase.NewRequestPasswordResetUseCase,
+		usecase.NewConfirmPasswordResetUseCase,
 	),
 )
