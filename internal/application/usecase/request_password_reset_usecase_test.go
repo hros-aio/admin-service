@@ -22,13 +22,9 @@ func (m *mockPasswordResetCache) StoreToken(ctx context.Context, token string, a
 	return m.Called(ctx, token, adminID, ttl).Error(0)
 }
 
-func (m *mockPasswordResetCache) GetAdminID(ctx context.Context, token string) (string, error) {
+func (m *mockPasswordResetCache) ConsumeToken(ctx context.Context, token string) (string, error) {
 	args := m.Called(ctx, token)
 	return args.String(0), args.Error(1)
-}
-
-func (m *mockPasswordResetCache) DeleteToken(ctx context.Context, token string) error {
-	return m.Called(ctx, token).Error(0)
 }
 
 type mockPasswordResetNotifier struct {
@@ -106,9 +102,10 @@ func TestRequestPasswordResetUseCase_Execute(t *testing.T) {
 			expectedError: "",
 		},
 		{
-			name:          "Empty Email Input - Returns error",
-			input:         RequestPasswordResetInput{Email: ""},
-			setupMocks:    func(ur *mockUserRepo, cache *mockPasswordResetCache, audit *mockAuditLogger, notifier *mockPasswordResetNotifier) {},
+			name:  "Empty Email Input - Returns error",
+			input: RequestPasswordResetInput{Email: ""},
+			setupMocks: func(ur *mockUserRepo, cache *mockPasswordResetCache, audit *mockAuditLogger, notifier *mockPasswordResetNotifier) {
+			},
 			expectedError: "email cannot be empty",
 		},
 		{
@@ -159,10 +156,10 @@ func TestRequestPasswordResetUseCase_Execute(t *testing.T) {
 				notifier.On("PublishPasswordResetEmail", ctx, mock.Anything).
 					Return(errors.New("kafka connection reset")).Once()
 
-				// Verify compensation delete is called
-				cache.On("DeleteToken", ctx, mock.MatchedBy(func(token string) bool {
+				// Verify compensation consume is called
+				cache.On("ConsumeToken", ctx, mock.MatchedBy(func(token string) bool {
 					return token == capturedToken
-				})).Return(nil).Once()
+				})).Return("", nil).Once()
 			},
 			expectedError: "publish password reset email: kafka connection reset",
 		},

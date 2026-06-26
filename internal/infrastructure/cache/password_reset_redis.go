@@ -3,7 +3,6 @@ package cache
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -29,6 +28,18 @@ func NewRedisPasswordResetCache(client *redis.Client, logger *slog.Logger) inter
 
 const (
 	passwordResetKeyPrefix = "auth:reset_token:"
+
+	consumeTokenScript = `
+local val = redis.call('GET', KEYS[1])
+if not val then
+    return 'expired'
+elseif val == 'used' then
+    return 'used'
+else
+    redis.call('SET', KEYS[1], 'used', 'EX', 300)
+    return val
+end
+`
 )
 
 // StoreToken associates a reset token with an admin's ID for a specific TTL.
@@ -57,50 +68,42 @@ func (r *RedisPasswordResetCache) StoreToken(ctx context.Context, token string, 
 	return nil
 }
 
-// GetAdminID retrieves the cached admin ID associated with the reset token.
-// It returns domainErrors.ErrTokenExpired if the token is not found or has expired.
-func (r *RedisPasswordResetCache) GetAdminID(ctx context.Context, token string) (string, error) {
+// ConsumeToken atomically retrieves the cached admin ID associated with the reset token and marks it as used.
+func (r *RedisPasswordResetCache) ConsumeToken(ctx context.Context, token string) (string, error) {
 	key := passwordResetKeyPrefix + token
-	adminID, err := r.client.Get(ctx, key).Result()
+	res, err := r.client.Eval(ctx, consumeTokenScript, []string{key}).Result()
 	if err != nil {
-		if errors.Is(err, redis.Nil) {
-			r.logger.WarnContext(ctx, "password reset token not found or expired in Redis",
-				slog.String("event", "password_reset_cache_redis.get_expired"),
-				slog.String("key", "auth:reset_token:[REDACTED]"),
-			)
-			return "", domainErrors.ErrTokenExpired
-		}
-		r.logger.ErrorContext(ctx, "failed to retrieve password reset token from Redis",
-			slog.String("event", "password_reset_cache_redis.get_failed"),
+		r.logger.ErrorContext(ctx, "failed to consume password reset token from Redis",
+			slog.String("event", "password_reset_cache_redis.consume_failed"),
 			slog.String("key", "auth:reset_token:[REDACTED]"),
 			slog.Any("error", err),
 		)
-		return "", fmt.Errorf("redis get: %w", err)
+		return "", fmt.Errorf("redis eval: %w", err)
 	}
 
-	r.logger.InfoContext(ctx, "successfully retrieved password reset token from Redis",
-		slog.String("event", "password_reset_cache_redis.get_success"),
-		slog.String("key", "auth:reset_token:[REDACTED]"),
-	)
-	return adminID, nil
-}
+	status, ok := res.(string)
+	if !ok {
+		return "", fmt.Errorf("unexpected Redis response type: %T", res)
+	}
 
-// DeleteToken invalidates/removes the cached reset token.
-func (r *RedisPasswordResetCache) DeleteToken(ctx context.Context, token string) error {
-	key := passwordResetKeyPrefix + token
-	err := r.client.Del(ctx, key).Err()
-	if err != nil {
-		r.logger.ErrorContext(ctx, "failed to delete password reset token from Redis",
-			slog.String("event", "password_reset_cache_redis.delete_failed"),
+	switch status {
+	case "expired":
+		r.logger.WarnContext(ctx, "password reset token not found or expired in Redis",
+			slog.String("event", "password_reset_cache_redis.consume_expired"),
 			slog.String("key", "auth:reset_token:[REDACTED]"),
-			slog.Any("error", err),
 		)
-		return fmt.Errorf("redis del: %w", err)
+		return "", domainErrors.ErrTokenExpired
+	case "used":
+		r.logger.WarnContext(ctx, "password reset token already consumed in Redis",
+			slog.String("event", "password_reset_cache_redis.consume_used"),
+			slog.String("key", "auth:reset_token:[REDACTED]"),
+		)
+		return "", domainErrors.ErrTokenUsed
+	default:
+		r.logger.InfoContext(ctx, "successfully consumed password reset token from Redis",
+			slog.String("event", "password_reset_cache_redis.consume_success"),
+			slog.String("key", "auth:reset_token:[REDACTED]"),
+		)
+		return status, nil
 	}
-
-	r.logger.InfoContext(ctx, "successfully deleted password reset token from Redis",
-		slog.String("event", "password_reset_cache_redis.delete_success"),
-		slog.String("key", "auth:reset_token:[REDACTED]"),
-	)
-	return nil
 }

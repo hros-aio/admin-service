@@ -36,7 +36,7 @@ func TestConfirmPasswordResetUseCase_Execute(t *testing.T) {
 		expectedError string
 	}{
 		{
-			name: "Happy Path - Successfully resets password, clears token and active sessions",
+			name: "Happy Path - Atomically consumes token, resets password, and wipes sessions",
 			input: ConfirmPasswordResetInput{
 				Token:     token,
 				Password:  validPassword,
@@ -45,21 +45,18 @@ func TestConfirmPasswordResetUseCase_Execute(t *testing.T) {
 			},
 			setupMocks: func(ur *mockUserRepo, sr *mockSessionRepo, cache *mockPasswordResetCache, audit *mockAuditLogger) {
 				ctx := mock.Anything
-				cache.On("GetAdminID", ctx, token).Return(adminID, nil).Once()
+				// Atomically consume token
+				cache.On("ConsumeToken", ctx, token).Return(adminID, nil).Once()
 				ur.On("FindByID", ctx, adminID).Return(mockUser, nil).Once()
 
 				// Expect password update with bcrypt cost 12
 				ur.On("UpdatePassword", ctx, adminID, mock.MatchedBy(func(hash string) bool {
-					// Verify standard bcrypt header $2a$12$ for cost 12
 					cost, err := bcrypt.Cost([]byte(hash))
 					return err == nil && cost == 12 && strings.HasPrefix(hash, "$2a$12$")
 				})).Return(nil).Once()
 
 				// Expect all sessions deleted
 				sr.On("DeleteAllByAdminID", ctx, adminID).Return(nil).Once()
-
-				// Expect reset token deleted from cache
-				cache.On("DeleteToken", ctx, token).Return(nil).Once()
 
 				// Expect audit log
 				audit.On("LogPasswordResetCompleted", ctx, mock.MatchedBy(func(e events.PasswordResetCompletedEvent) bool {
@@ -98,6 +95,33 @@ func TestConfirmPasswordResetUseCase_Execute(t *testing.T) {
 			expectedError: domainErrors.ErrPasswordWeak.Error(),
 		},
 		{
+			name: "Weak Password - Multibyte Unicode runes (8 runes but 23 bytes) is rejected as weak",
+			input: ConfirmPasswordResetInput{
+				Token:    token,
+				Password: "🔑🔑🔑🔑🔑A1!", // 5 emojis + 3 characters = 8 runes (23 bytes)
+			},
+			setupMocks:    func(ur *mockUserRepo, sr *mockSessionRepo, cache *mockPasswordResetCache, audit *mockAuditLogger) {},
+			expectedError: domainErrors.ErrPasswordWeak.Error(),
+		},
+		{
+			name: "Strong Password - Multibyte Unicode runes (10 runes, 28 bytes) is accepted",
+			input: ConfirmPasswordResetInput{
+				Token:     token,
+				Password:  "🔑🔑🔑🔑🔑🔑🔑A1!", // 7 emojis + 3 characters = 10 runes (31 bytes)
+				IPAddress: "127.0.0.1",
+				UserAgent: "Mozilla/5.0",
+			},
+			setupMocks: func(ur *mockUserRepo, sr *mockSessionRepo, cache *mockPasswordResetCache, audit *mockAuditLogger) {
+				ctx := mock.Anything
+				cache.On("ConsumeToken", ctx, token).Return(adminID, nil).Once()
+				ur.On("FindByID", ctx, adminID).Return(mockUser, nil).Once()
+				ur.On("UpdatePassword", ctx, adminID, mock.Anything).Return(nil).Once()
+				sr.On("DeleteAllByAdminID", ctx, adminID).Return(nil).Once()
+				audit.On("LogPasswordResetCompleted", ctx, mock.Anything).Once()
+			},
+			expectedError: "",
+		},
+		{
 			name: "Weak Password - No Uppercase",
 			input: ConfirmPasswordResetInput{
 				Token:    token,
@@ -125,16 +149,40 @@ func TestConfirmPasswordResetUseCase_Execute(t *testing.T) {
 			expectedError: domainErrors.ErrPasswordWeak.Error(),
 		},
 		{
-			name: "Missing/Expired Token in Cache - Returns ErrTokenExpired",
+			name: "Expired/Missing Token in Cache - Returns ErrTokenExpired",
 			input: ConfirmPasswordResetInput{
 				Token:    token,
 				Password: validPassword,
 			},
 			setupMocks: func(ur *mockUserRepo, sr *mockSessionRepo, cache *mockPasswordResetCache, audit *mockAuditLogger) {
 				ctx := mock.Anything
-				cache.On("GetAdminID", ctx, token).Return("", domainErrors.ErrTokenExpired).Once()
+				cache.On("ConsumeToken", ctx, token).Return("", domainErrors.ErrTokenExpired).Once()
 			},
 			expectedError: domainErrors.ErrTokenExpired.Error(),
+		},
+		{
+			name: "Already Used Token - Returns ErrTokenUsed",
+			input: ConfirmPasswordResetInput{
+				Token:    token,
+				Password: validPassword,
+			},
+			setupMocks: func(ur *mockUserRepo, sr *mockSessionRepo, cache *mockPasswordResetCache, audit *mockAuditLogger) {
+				ctx := mock.Anything
+				cache.On("ConsumeToken", ctx, token).Return("", domainErrors.ErrTokenUsed).Once()
+			},
+			expectedError: domainErrors.ErrTokenUsed.Error(),
+		},
+		{
+			name: "Unexpected Cache Failure - Returns wrapped error and original err",
+			input: ConfirmPasswordResetInput{
+				Token:    token,
+				Password: validPassword,
+			},
+			setupMocks: func(ur *mockUserRepo, sr *mockSessionRepo, cache *mockPasswordResetCache, audit *mockAuditLogger) {
+				ctx := mock.Anything
+				cache.On("ConsumeToken", ctx, token).Return("", errors.New("redis down connection timeout")).Once()
+			},
+			expectedError: "consume reset token: redis down connection timeout",
 		},
 		{
 			name: "User Repo FindByID Error - Propagates failure",
@@ -144,7 +192,7 @@ func TestConfirmPasswordResetUseCase_Execute(t *testing.T) {
 			},
 			setupMocks: func(ur *mockUserRepo, sr *mockSessionRepo, cache *mockPasswordResetCache, audit *mockAuditLogger) {
 				ctx := mock.Anything
-				cache.On("GetAdminID", ctx, token).Return(adminID, nil).Once()
+				cache.On("ConsumeToken", ctx, token).Return(adminID, nil).Once()
 				ur.On("FindByID", ctx, adminID).Return(nil, errors.New("database failure")).Once()
 			},
 			expectedError: "find user: database failure",
@@ -157,7 +205,7 @@ func TestConfirmPasswordResetUseCase_Execute(t *testing.T) {
 			},
 			setupMocks: func(ur *mockUserRepo, sr *mockSessionRepo, cache *mockPasswordResetCache, audit *mockAuditLogger) {
 				ctx := mock.Anything
-				cache.On("GetAdminID", ctx, token).Return(adminID, nil).Once()
+				cache.On("ConsumeToken", ctx, token).Return(adminID, nil).Once()
 				ur.On("FindByID", ctx, adminID).Return(mockUser, nil).Once()
 				ur.On("UpdatePassword", ctx, adminID, mock.Anything).Return(errors.New("write failure")).Once()
 			},
@@ -171,28 +219,12 @@ func TestConfirmPasswordResetUseCase_Execute(t *testing.T) {
 			},
 			setupMocks: func(ur *mockUserRepo, sr *mockSessionRepo, cache *mockPasswordResetCache, audit *mockAuditLogger) {
 				ctx := mock.Anything
-				cache.On("GetAdminID", ctx, token).Return(adminID, nil).Once()
+				cache.On("ConsumeToken", ctx, token).Return(adminID, nil).Once()
 				ur.On("FindByID", ctx, adminID).Return(mockUser, nil).Once()
 				ur.On("UpdatePassword", ctx, adminID, mock.Anything).Return(nil).Once()
 				sr.On("DeleteAllByAdminID", ctx, adminID).Return(errors.New("db session wipe failure")).Once()
 			},
 			expectedError: "delete session tokens: db session wipe failure",
-		},
-		{
-			name: "Cache DeleteToken Error - Propagates failure",
-			input: ConfirmPasswordResetInput{
-				Token:    token,
-				Password: validPassword,
-			},
-			setupMocks: func(ur *mockUserRepo, sr *mockSessionRepo, cache *mockPasswordResetCache, audit *mockAuditLogger) {
-				ctx := mock.Anything
-				cache.On("GetAdminID", ctx, token).Return(adminID, nil).Once()
-				ur.On("FindByID", ctx, adminID).Return(mockUser, nil).Once()
-				ur.On("UpdatePassword", ctx, adminID, mock.Anything).Return(nil).Once()
-				sr.On("DeleteAllByAdminID", ctx, adminID).Return(nil).Once()
-				cache.On("DeleteToken", ctx, token).Return(errors.New("redis delete failure")).Once()
-			},
-			expectedError: "delete reset token: redis delete failure",
 		},
 	}
 

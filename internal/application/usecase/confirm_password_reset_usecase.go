@@ -6,13 +6,14 @@ import (
 	"fmt"
 	"time"
 	"unicode"
+	"unicode/utf8"
 
-	"golang.org/x/crypto/bcrypt"
 	"github.com/hros/admin-service/internal/application/interfaces"
 	"github.com/hros/admin-service/internal/domain"
 	authDomain "github.com/hros/admin-service/internal/domain/auth"
 	domainErrors "github.com/hros/admin-service/internal/domain/errors"
 	"github.com/hros/admin-service/internal/domain/events"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // ConfirmPasswordResetInput represents the input for confirming a password reset.
@@ -56,15 +57,21 @@ func (uc *ConfirmPasswordResetUseCase) Execute(ctx context.Context, input Confir
 	}
 
 	// 1. Validate password meets complexity constraints (min 10 chars, 1 upper, 1 number, 1 special).
+	// Use utf8.RuneCountInString to count runes (characters) rather than bytes.
 	if !validatePasswordComplexity(input.Password) {
 		return domainErrors.ErrPasswordWeak
 	}
 
-	// 2. Fetch admin user ID from cache associated with the token.
-	adminID, err := uc.resetCache.GetAdminID(ctx, input.Token)
+	// 2. Atomically consume the token from cache before any account mutation.
+	adminID, err := uc.resetCache.ConsumeToken(ctx, input.Token)
 	if err != nil {
-		// Map any token not found or expired errors to ErrTokenExpired.
-		return domainErrors.ErrTokenExpired
+		if errors.Is(err, domainErrors.ErrTokenExpired) {
+			return domainErrors.ErrTokenExpired
+		}
+		if errors.Is(err, domainErrors.ErrTokenUsed) {
+			return domainErrors.ErrTokenUsed
+		}
+		return fmt.Errorf("consume reset token: %w", err)
 	}
 
 	// 3. Find the admin user to get the email address for audit logging.
@@ -90,12 +97,7 @@ func (uc *ConfirmPasswordResetUseCase) Execute(ctx context.Context, input Confir
 		return fmt.Errorf("delete session tokens: %w", err)
 	}
 
-	// 7. Delete the single-use reset token from the cache.
-	if err := uc.resetCache.DeleteToken(ctx, input.Token); err != nil {
-		return fmt.Errorf("delete reset token: %w", err)
-	}
-
-	// 8. Emit password.reset_completed to the audit log.
+	// 7. Emit password.reset_completed to the audit log.
 	completedEvent := events.PasswordResetCompletedEvent{
 		Email:      user.Email,
 		IPAddress:  input.IPAddress,
@@ -108,12 +110,12 @@ func (uc *ConfirmPasswordResetUseCase) Execute(ctx context.Context, input Confir
 }
 
 // validatePasswordComplexity checks if the password meets:
-// - minimum 10 characters
+// - minimum 10 characters (runes)
 // - at least 1 uppercase letter
 // - at least 1 digit
 // - at least 1 special character
 func validatePasswordComplexity(password string) bool {
-	if len(password) < 10 {
+	if utf8.RuneCountInString(password) < 10 {
 		return false
 	}
 	var hasUpper, hasDigit, hasSpecial bool

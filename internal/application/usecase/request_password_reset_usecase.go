@@ -96,7 +96,7 @@ func (uc *RequestPasswordResetUseCase) Execute(ctx context.Context, input Reques
 	}
 	if err := uc.notifier.PublishPasswordResetEmail(ctx, emailEvent); err != nil {
 		// Rollback stored token from cache on failure to publish event.
-		_ = uc.resetCache.DeleteToken(ctx, token)
+		_, _ = uc.resetCache.ConsumeToken(ctx, token)
 		return fmt.Errorf("publish password reset email: %w", err)
 	}
 

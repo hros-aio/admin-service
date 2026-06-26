@@ -109,5 +109,3 @@ func (l *SlogAuditLogger) LogPasswordResetCompleted(ctx context.Context, event e
 		slog.String("user_agent", event.UserAgent),
 	)
 }
-
-

@@ -76,7 +76,7 @@ func TestRedisPasswordResetCache_StoreToken(t *testing.T) {
 	})
 }
 
-func TestRedisPasswordResetCache_GetAdminID(t *testing.T) {
+func TestRedisPasswordResetCache_ConsumeToken(t *testing.T) {
 	mr, err := miniredis.Run()
 	require.NoError(t, err)
 	defer mr.Close()
@@ -89,20 +89,40 @@ func TestRedisPasswordResetCache_GetAdminID(t *testing.T) {
 
 	ctx := context.Background()
 
-	t.Run("successfully retrieves admin ID for valid token", func(t *testing.T) {
+	t.Run("successfully consumes valid token and sets state to used with 5m TTL", func(t *testing.T) {
 		token := "reset_token_123"
 		adminID := "admin_user_uuid_123"
-		mr.Set("auth:reset_token:"+token, adminID)
+		key := "auth:reset_token:" + token
+		mr.Set(key, adminID)
+		mr.SetTTL(key, 60*time.Minute)
 
-		retrievedID, err := cache.GetAdminID(ctx, token)
+		retrievedID, err := cache.ConsumeToken(ctx, token)
 		require.NoError(t, err)
 		assert.Equal(t, adminID, retrievedID)
+
+		// Assert value is now "used"
+		val, err := mr.Get(key)
+		require.NoError(t, err)
+		assert.Equal(t, "used", val)
+
+		// Assert TTL is 5m (300s)
+		ttl := mr.TTL(key)
+		assert.True(t, ttl > 4*time.Minute && ttl <= 5*time.Minute)
+	})
+
+	t.Run("returns ErrTokenUsed when token is already consumed", func(t *testing.T) {
+		token := "reset_token_already_used"
+		key := "auth:reset_token:" + token
+		mr.Set(key, "used")
+
+		_, err := cache.ConsumeToken(ctx, token)
+		assert.ErrorIs(t, err, domainErrors.ErrTokenUsed)
 	})
 
 	t.Run("returns ErrTokenExpired for non-existent or expired token", func(t *testing.T) {
 		token := "expired_or_missing_token"
 
-		_, err := cache.GetAdminID(ctx, token)
+		_, err := cache.ConsumeToken(ctx, token)
 		assert.ErrorIs(t, err, domainErrors.ErrTokenExpired)
 	})
 
@@ -116,49 +136,10 @@ func TestRedisPasswordResetCache_GetAdminID(t *testing.T) {
 
 		badCache := NewRedisPasswordResetCache(badClient, logger)
 
-		_, err := badCache.GetAdminID(ctx, "token")
+		_, err := badCache.ConsumeToken(ctx, "token")
 		assert.Error(t, err)
 		assert.NotErrorIs(t, err, domainErrors.ErrTokenExpired)
-	})
-}
-
-func TestRedisPasswordResetCache_DeleteToken(t *testing.T) {
-	mr, err := miniredis.Run()
-	require.NoError(t, err)
-	defer mr.Close()
-
-	client := redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	defer func() { _ = client.Close() }()
-
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	cache := NewRedisPasswordResetCache(client, logger)
-
-	ctx := context.Background()
-
-	t.Run("successfully deletes token from Redis", func(t *testing.T) {
-		token := "reset_token_123"
-		adminID := "admin_user_uuid_123"
-		mr.Set("auth:reset_token:"+token, adminID)
-
-		err := cache.DeleteToken(ctx, token)
-		require.NoError(t, err)
-
-		exists := mr.Exists("auth:reset_token:" + token)
-		assert.False(t, exists)
-	})
-
-	t.Run("error when client fails", func(t *testing.T) {
-		badClient := redis.NewClient(&redis.Options{
-			Addr:        getClosedAddrForReset(t),
-			MaxRetries:  -1,
-			DialTimeout: 10 * time.Millisecond,
-		})
-		defer func() { _ = badClient.Close() }()
-
-		badCache := NewRedisPasswordResetCache(badClient, logger)
-
-		err := badCache.DeleteToken(ctx, "token")
-		assert.Error(t, err)
+		assert.NotErrorIs(t, err, domainErrors.ErrTokenUsed)
 	})
 }
 

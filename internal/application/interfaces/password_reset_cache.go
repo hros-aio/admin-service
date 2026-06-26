@@ -10,10 +10,8 @@ type PasswordResetCache interface {
 	// StoreToken associates a reset token with an admin's ID for a specific TTL.
 	StoreToken(ctx context.Context, token string, adminID string, ttl time.Duration) error
 
-	// GetAdminID retrieves the cached admin ID associated with the reset token.
+	// ConsumeToken atomically retrieves the cached admin ID associated with the reset token and marks it as used.
 	// It returns ErrTokenExpired if the token is not found or has expired.
-	GetAdminID(ctx context.Context, token string) (string, error)
-
-	// DeleteToken invalidates/removes the cached reset token.
-	DeleteToken(ctx context.Context, token string) error
+	// It returns ErrTokenUsed if the token has already been consumed.
+	ConsumeToken(ctx context.Context, token string) (string, error)
 }
