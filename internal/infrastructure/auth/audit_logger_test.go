@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"log/slog"
 	"testing"
+	"time"
 
+	"github.com/hros/admin-service/internal/domain/events"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -130,7 +132,14 @@ func TestSlogAuditLogger(t *testing.T) {
 
 	t.Run("LogPasswordResetRequested", func(t *testing.T) {
 		buf.Reset()
-		auditLogger.LogPasswordResetRequested(ctx, "reset@example.com")
+		event := events.PasswordResetRequestedEvent{
+			Email:      "reset@example.com",
+			Token:      "secure-token",
+			IPAddress:  "127.0.0.1",
+			UserAgent:  "Mozilla/5.0",
+			OccurredAt: time.Now(),
+		}
+		auditLogger.LogPasswordResetRequested(ctx, event)
 
 		var logMap map[string]interface{}
 		err := json.Unmarshal(buf.Bytes(), &logMap)
@@ -139,5 +148,8 @@ func TestSlogAuditLogger(t *testing.T) {
 		assert.Equal(t, "password reset requested", logMap["msg"])
 		assert.Equal(t, "password.reset_requested", logMap["event"])
 		assert.Equal(t, "reset@example.com", logMap["email"])
+		assert.Equal(t, "127.0.0.1", logMap["ip_address"])
+		assert.Equal(t, "Mozilla/5.0", logMap["user_agent"])
+		assert.Equal(t, "[REDACTED]", logMap["token"])
 	})
 }

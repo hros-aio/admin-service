@@ -88,7 +88,7 @@ As a user who forgot my password, I want to request a password reset by providin
 - **FR-015**: If the user is found, generate a cryptographically secure 32-byte (256-bit) single-use token and encode it as hex.
 - **FR-016**: Store the token in `PasswordResetCache` associated with the admin user's ID for a strict 60-minute TTL.
 - **FR-017**: Emit the `password.reset_requested` audit log using the Audit Log interface.
-- **FR-018**: Publish the `email.send` Kafka event via `PasswordResetNotifier` using the `events.EmailSendEvent` payload with template `password_reset_request`.
+- **FR-018**: Publish the `email.send` Kafka event via `PasswordResetNotifier` using the `events.EmailSendEvent` payload with template `password_reset_request`. The `events.EmailSendEvent.TemplateData` map MUST explicitly include `email` and `token` keys.
 
 ### Key Entities
 

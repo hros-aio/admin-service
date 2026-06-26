@@ -59,26 +59,35 @@ func TestRequestPasswordResetUseCase_Execute(t *testing.T) {
 		{
 			name: "Happy Path - Registered Email triggers reset flow",
 			input: RequestPasswordResetInput{
-				Email: registeredEmail,
+				Email:     registeredEmail,
+				IPAddress: "127.0.0.1",
+				UserAgent: "Mozilla/5.0",
 			},
 			setupMocks: func(ur *mockUserRepo, cache *mockPasswordResetCache, audit *mockAuditLogger, notifier *mockPasswordResetNotifier) {
 				ctx := mock.Anything
 				ur.On("FindByEmail", ctx, registeredEmail).Return(mockAdminUser, nil).Once()
 
+				var capturedToken string
 				// Cache token expectation: length 64 hex, matching user ID, 60m TTL
 				cache.On("StoreToken", ctx, mock.MatchedBy(func(token string) bool {
+					capturedToken = token
 					return len(token) == 64
 				}), mockAdminUser.ID, 60*time.Minute).Return(nil).Once()
 
 				// Audit log expectation
-				audit.On("LogPasswordResetRequested", ctx, registeredEmail).Once()
+				audit.On("LogPasswordResetRequested", ctx, mock.MatchedBy(func(e events.PasswordResetRequestedEvent) bool {
+					return e.Email == registeredEmail &&
+						e.Token == capturedToken &&
+						e.IPAddress == "127.0.0.1" &&
+						e.UserAgent == "Mozilla/5.0"
+				})).Once()
 
 				// Notifier expectation
 				notifier.On("PublishPasswordResetEmail", ctx, mock.MatchedBy(func(event events.EmailSendEvent) bool {
 					return event.To == registeredEmail &&
 						event.Subject == "Reset your password" &&
 						event.Template == "password_reset_request" &&
-						len(event.TemplateData["token"].(string)) == 64 &&
+						event.TemplateData["token"] == capturedToken &&
 						event.TemplateData["email"] == registeredEmail
 				})).Return(nil).Once()
 			},
@@ -127,17 +136,33 @@ func TestRequestPasswordResetUseCase_Execute(t *testing.T) {
 			expectedError: "store reset token: redis error",
 		},
 		{
-			name: "Notifier Publish Error - Propagates Kafka publisher failure",
+			name: "Notifier Publish Error - Propagates Kafka publisher failure and rolls back token in cache",
 			input: RequestPasswordResetInput{
-				Email: registeredEmail,
+				Email:     registeredEmail,
+				IPAddress: "192.168.1.1",
+				UserAgent: "Safari",
 			},
 			setupMocks: func(ur *mockUserRepo, cache *mockPasswordResetCache, audit *mockAuditLogger, notifier *mockPasswordResetNotifier) {
 				ctx := mock.Anything
 				ur.On("FindByEmail", ctx, registeredEmail).Return(mockAdminUser, nil).Once()
-				cache.On("StoreToken", ctx, mock.Anything, mockAdminUser.ID, 60*time.Minute).Return(nil).Once()
-				audit.On("LogPasswordResetRequested", ctx, registeredEmail).Once()
+
+				var capturedToken string
+				cache.On("StoreToken", ctx, mock.MatchedBy(func(token string) bool {
+					capturedToken = token
+					return len(token) == 64
+				}), mockAdminUser.ID, 60*time.Minute).Return(nil).Once()
+
+				audit.On("LogPasswordResetRequested", ctx, mock.MatchedBy(func(e events.PasswordResetRequestedEvent) bool {
+					return e.Email == registeredEmail && e.Token == capturedToken
+				})).Once()
+
 				notifier.On("PublishPasswordResetEmail", ctx, mock.Anything).
 					Return(errors.New("kafka connection reset")).Once()
+
+				// Verify compensation delete is called
+				cache.On("DeleteToken", ctx, mock.MatchedBy(func(token string) bool {
+					return token == capturedToken
+				})).Return(nil).Once()
 			},
 			expectedError: "publish password reset email: kafka connection reset",
 		},

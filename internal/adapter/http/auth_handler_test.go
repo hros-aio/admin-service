@@ -173,8 +173,8 @@ func (m *mockAuditLogger) LogMFAFailed(ctx context.Context, email string, reason
 	m.Called(ctx, email, reason)
 }
 
-func (m *mockAuditLogger) LogPasswordResetRequested(ctx context.Context, email string) {
-	m.Called(ctx, email)
+func (m *mockAuditLogger) LogPasswordResetRequested(ctx context.Context, event events.PasswordResetRequestedEvent) {
+	m.Called(ctx, event)
 }
 
 // nopBruteForceCache is a no-op implementation of interfaces.BruteForceCache

@@ -17,7 +17,9 @@ import (
 
 // RequestPasswordResetInput represents the input for requesting a password reset.
 type RequestPasswordResetInput struct {
-	Email string
+	Email     string
+	IPAddress string
+	UserAgent string
 }
 
 // RequestPasswordResetUseCase orchestrates the workflow for requesting a self-service password reset.
@@ -73,7 +75,14 @@ func (uc *RequestPasswordResetUseCase) Execute(ctx context.Context, input Reques
 	}
 
 	// 4. Emit password.reset_requested to the audit log.
-	uc.audit.LogPasswordResetRequested(ctx, user.Email)
+	auditEvent := events.PasswordResetRequestedEvent{
+		Email:      user.Email,
+		Token:      token,
+		IPAddress:  input.IPAddress,
+		UserAgent:  input.UserAgent,
+		OccurredAt: time.Now().UTC(),
+	}
+	uc.audit.LogPasswordResetRequested(ctx, auditEvent)
 
 	// 5. Publish the email.send Kafka event.
 	emailEvent := events.EmailSendEvent{
@@ -86,6 +95,8 @@ func (uc *RequestPasswordResetUseCase) Execute(ctx context.Context, input Reques
 		},
 	}
 	if err := uc.notifier.PublishPasswordResetEmail(ctx, emailEvent); err != nil {
+		// Rollback stored token from cache on failure to publish event.
+		_ = uc.resetCache.DeleteToken(ctx, token)
 		return fmt.Errorf("publish password reset email: %w", err)
 	}
 
