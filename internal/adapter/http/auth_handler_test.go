@@ -177,6 +177,10 @@ func (m *mockAuditLogger) LogPasswordResetRequested(ctx context.Context, event e
 	m.Called(ctx, event)
 }
 
+func (m *mockAuditLogger) LogPasswordResetCompleted(ctx context.Context, event events.PasswordResetCompletedEvent) {
+	m.Called(ctx, event)
+}
+
 // nopBruteForceCache is a no-op implementation of interfaces.BruteForceCache
 // used in handler tests where brute-force state is not under test.
 type nopBruteForceCache struct{}

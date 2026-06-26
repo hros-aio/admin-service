@@ -100,3 +100,12 @@ func (l *SlogAuditLogger) LogPasswordResetRequested(ctx context.Context, event e
 	)
 }
 
+// LogPasswordResetCompleted logs a completed password reset event.
+func (l *SlogAuditLogger) LogPasswordResetCompleted(ctx context.Context, event events.PasswordResetCompletedEvent) {
+	l.logger.InfoContext(ctx, "password reset completed",
+		slog.String("event", "password.reset_completed"),
+		slog.String("email", event.Email),
+		slog.String("ip_address", event.IPAddress),
+		slog.String("user_agent", event.UserAgent),
+	)
+}
