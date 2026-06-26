@@ -24,6 +24,8 @@ This plan outlines the implementation of Self-Service Password Reset.
 
 **Phase 8 (TSK-PR-008 — ✅ Done)**: Implement the password reset HTTP handlers and wire them in Echo/Fx.
 
+**Phase 9 (TSK-PR-009 — ✅ Done)**: Implement the full flow integration tests.
+
 ## Technical Context
 
 **Language/Version**: Go 1.23+
@@ -79,4 +81,7 @@ internal/
 │   │   └── auth_errors.go               # Add ErrTokenExpired, ErrTokenUsed, ErrPasswordWeak
 │   └── events/
 │       └── auth_events.go               # Add PasswordResetRequestedEvent, PasswordResetCompletedEvent
+test/
+└── integration/
+    └── password_reset_flow_test.go      # Full flow integration test using testcontainers
 ```
