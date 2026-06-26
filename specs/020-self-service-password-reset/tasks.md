@@ -81,6 +81,6 @@
 
 ## Phase 8: HTTP Handlers (TSK-PR-008)
 
-- [ ] T028 [P] [US5] Implement HTTP handler `RequestPasswordReset` and `ConfirmPasswordReset` in `internal/adapter/http/auth_handler.go`.
-- [ ] T029 [P] [US5] Implement unit tests in `internal/adapter/http/auth_handler_test.go` to assert correct HTTP mappings and validation errors.
-- [ ] T030 [P] [US5] Wire new usecases and map handlers to Echo routes in `internal/adapter/http/auth_handler.go` (and wire via Fx modules).
+- [x] T028 [P] [US5] Implement HTTP handler `RequestPasswordReset` and `ConfirmPasswordReset` in `internal/adapter/http/auth_handler.go`.
+- [x] T029 [P] [US5] Implement unit tests in `internal/adapter/http/auth_handler_test.go` to assert correct HTTP mappings and validation errors.
+- [x] T030 [P] [US5] Wire new usecases and map handlers to Echo routes in `internal/adapter/http/auth_handler.go` (and wire via Fx modules).

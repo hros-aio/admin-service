@@ -22,7 +22,7 @@ This plan outlines the implementation of Self-Service Password Reset.
 
 **Phase 7 (TSK-PR-007 — ✅ Done)**: Implement the `ConfirmPasswordResetUseCase` application service.
 
-**Phase 8 (TSK-PR-008 — In Progress)**: Implement the password reset HTTP handlers and wire them in Echo/Fx.
+**Phase 8 (TSK-PR-008 — ✅ Done)**: Implement the password reset HTTP handlers and wire them in Echo/Fx.
 
 ## Technical Context
 
