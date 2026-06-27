@@ -65,6 +65,18 @@
 - [x] T017 [P] [US1] Implement `AcceptInviteUseCase` in `internal/application/usecase/accept_invite_usecase.go` with full workflow: password validation, token fetch, bcrypt hashing, `ActivateAccount`, `Consume`, audit events, and Kafka notification.
 - [x] T018 [P] [US1] Add unit tests for all success and error branches in `internal/application/usecase/accept_invite_usecase_test.go`.
 
+---
+
+## Phase 7: HTTP Handler Layer (TSK-ACT-007)
+
+- [x] T019 [P] [US2] Wire `AcceptInviteUseCase` into `AuthHandler` struct and `NewAuthHandler` constructor in `internal/adapter/http/auth_handler.go`. Replace stub body of `AcceptInvite` with: bind → validate → `usecase.AcceptInviteInput{Token, Password}` → `acceptInviteUC.Execute` → map errors.
+- [x] T020 [P] [US2] Add domain-error-to-HTTP mapping in the `AcceptInvite` handler in `internal/adapter/http/auth_handler.go`:
+  - `ErrInviteExpired` → 400 `INVITE_EXPIRED`
+  - `ErrInviteUsed` → 400 `INVITE_USED`
+  - `ErrPasswordWeak` → 422 `PASSWORD_WEAK`
+  - catch-all → 500 `internal_error`
+- [x] T021 [P] [US2] Add unit tests for `AcceptInvite` handler in `internal/adapter/http/auth_handler_test.go` using `httptest.NewRecorder` and a mock `AcceptInviteUseCase`. Tests MUST cover: success 200, bind failure 400, validation failure 400, `ErrInviteExpired` 400, `ErrInviteUsed` 400, `ErrPasswordWeak` 422, internal error 500.
+
 
 
 
