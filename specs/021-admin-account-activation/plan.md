@@ -22,11 +22,13 @@ This plan outlines the implementation of Admin Account Activation (Accept Invite
 
 **Phase 7 (TSK-ACT-007 — ✅ Done)**: Wire `AcceptInviteUseCase` into `AuthHandler` in `internal/adapter/http/auth_handler.go`. Replace the stub `AcceptInvite` handler body with: bind → validate → invoke use case → map `ErrInviteExpired`/`ErrInviteUsed` → 400, `ErrPasswordWeak` → 422, catch-all → 500; success → 200 OK. Add unit tests in `internal/adapter/http/auth_handler_test.go` covering all HTTP mapping branches using `httptest`.
 
+**Phase 8 (TSK-ACT-008 — ✅ Done)**: Wire missing components (`AcceptInviteUseCase` and `NotificationKafkaProducer`) into Fx modules (`internal/application/module.go`, `internal/adapter/kafka/producer/module.go`, and `internal/app/app.go`). Implement an end-to-end integration test in `test/integration/accept_invite_flow_test.go` using `testcontainers` for PostgreSQL and a mock Sarama producer to verify the full activation flow and error handling.
+
 ## Technical Context
 
 **Language/Version**: Go 1.23+
 
-**Primary Dependencies**: None (Standard Go modules).
+**Primary Dependencies**: Testcontainers for Go (PostgreSQL), testify, miniredis, Sarama mock sync producer.
 
 **Storage**: PostgreSQL (for invite tokens and admin users).
 
@@ -34,11 +36,11 @@ This plan outlines the implementation of Admin Account Activation (Accept Invite
 
 | Principle | Status | Evidence |
 |-----------|--------|---------|
-| **I. Clean Architecture & Strict Boundaries** | ✅ PASS | Repository implementation implements domain interfaces using GORM. |
+| **I. Clean Architecture & Strict Boundaries** | ✅ PASS | Integration test proves the end-to-end flow without breaking architecture boundaries. |
 | **II. Documentation-First & OpenAPI-Driven** | ✅ PASS | Updating planning and task files prior to coding. |
-| **III. Unit-Test-Per-File (NON-NEGOTIABLE)** | ✅ PASS | Adding test cases to repository unit tests. |
-| **IV. Task-Driven & Atomic Implementation** | ✅ PASS | Focusing solely on task TSK-ACT-004. |
-| **V. Observability & Structured Logging** | ✅ PASS | Errors from GORM execution mapped to appropriate domain errors. |
+| **III. Unit-Test-Per-File (NON-NEGOTIABLE)** | ✅ PASS | Handled in previous phases. Integration test checks multi-component interactions. |
+| **IV. Task-Driven & Atomic Implementation** | ✅ PASS | Focusing solely on task TSK-ACT-008. |
+| **V. Observability & Structured Logging** | ✅ PASS | End-to-end flow verified including events fired to Kafka and database mutations. |
 
 ## Project Structure
 
@@ -57,31 +59,41 @@ specs/021-admin-account-activation/
 api/
 └── openapi.yaml                 # OpenAPI contract documentation
 internal/
+├── app/
+│   └── app.go                   # Bind NotificationKafkaProducer as NotificationPublisher
 ├── adapter/
+│   ├── http/
+│   │   ├── auth_handler.go      # AcceptInvite handler
+│   │   └── auth_handler_test.go # Unit tests for AcceptInvite handler
+│   ├── kafka/
+│   │   └── producer/
+│   │       ├── module.go        # Register NewNotificationKafkaProducer
+│   │       └── notification_events.go # NotificationKafkaProducer implementation
 │   └── http/
-│       ├── auth_handler.go      # AcceptInvite handler — wire AcceptInviteUseCase, map errors
-│       ├── auth_handler_test.go # Unit tests for AcceptInvite handler (httptest)
 │       └── auth/
 │           └── dto/
-│               ├── auth_dto.go  # Add AcceptInviteRequest DTO
+│               ├── auth_dto.go  # AcceptInviteRequest DTO
 │               └── auth_dto_test.go # Test AcceptInviteRequest validation
+├── application/
+│   ├── module.go                # Register NewAcceptInviteUseCase
+│   └── usecase/
+│       ├── accept_invite_usecase.go # AcceptInviteUseCase implementation
+│       └── accept_invite_usecase_test.go # Unit tests for AcceptInviteUseCase
 ├── domain/
 │   ├── invite_token.go          # InviteToken entity & repository interface
-│   ├── invite_token_test.go     # Tests for InviteToken entity methods
 │   ├── errors/
-│   │   ├── auth_errors.go       # Add ErrInviteExpired, ErrInviteUsed
-│   │   └── auth_errors_test.go  # Test coverage for errors
+│   │   └── auth_errors.go       # ErrInviteExpired, ErrInviteUsed
 │   └── events/
-│       ├── auth_events.go       # Add AdminActivatedEvent, InviteAcceptedEvent, NotificationSendEvent
-│       └── auth_events_test.go  # Test coverage for events
+│       └── auth_events.go       # Event payload structs
 ├── infrastructure/
 │   └── repository/
 │       └── auth/
-│           ├── invite_token_repository.go # GORM InviteTokenRepository implementation
-│           ├── invite_token_repository_test.go # Unit tests for GORM InviteTokenRepository
-│           ├── repository.go            # Update GormAdminUserRepository with ActivateAccount
-│           └── repository_test.go       # Update unit tests for GormAdminUserRepository
+│           ├── invite_token_repository.go # GORM InviteTokenRepository
+│           └── repository.go            # GormAdminUserRepository update
 migrations/
-├── 000004_create_invite_tokens.up.sql   # SQL script to create invite_tokens table
-└── 000004_create_invite_tokens.down.sql # SQL script to drop invite_tokens table
+├── 000004_create_invite_tokens.up.sql   # UP migration
+└── 000004_create_invite_tokens.down.sql # DOWN migration
+test/
+└── integration/
+    └── accept_invite_flow_test.go       # E2E activation flow integration test (TSK-ACT-008)
 ```

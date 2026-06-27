@@ -15,10 +15,10 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// acceptInviteExecutor is the handler-layer interface satisfied by *usecase.AcceptInviteUseCase.
+// AcceptInviteExecutor is the handler-layer interface satisfied by *usecase.AcceptInviteUseCase.
 // Declaring it here keeps the handler decoupled from the concrete use-case type and
 // allows straightforward mock injection in unit tests.
-type acceptInviteExecutor interface {
+type AcceptInviteExecutor interface {
 	Execute(ctx context.Context, input usecase.AcceptInviteInput) error
 }
 
@@ -30,7 +30,7 @@ type AuthHandler struct {
 	verifyMfaUC            *usecase.VerifyMFAUseCase
 	requestPasswordResetUC *usecase.RequestPasswordResetUseCase
 	confirmPasswordResetUC *usecase.ConfirmPasswordResetUseCase
-	acceptInviteUC         acceptInviteExecutor
+	acceptInviteUC         AcceptInviteExecutor
 	validate               *validator.Validate
 }
 
@@ -42,7 +42,7 @@ func NewAuthHandler(
 	verifyMfaUC *usecase.VerifyMFAUseCase,
 	requestPasswordResetUC *usecase.RequestPasswordResetUseCase,
 	confirmPasswordResetUC *usecase.ConfirmPasswordResetUseCase,
-	acceptInviteUC acceptInviteExecutor,
+	acceptInviteUC AcceptInviteExecutor,
 ) *AuthHandler {
 	return &AuthHandler{
 		loginUC:                loginUC,
