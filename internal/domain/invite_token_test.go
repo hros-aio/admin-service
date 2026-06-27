@@ -19,6 +19,7 @@ func TestInviteToken_IsExpired(t *testing.T) {
 	}{
 		{"not expired", future, false},
 		{"expired", past, true},
+		{"expired at boundary", now, true},
 	}
 
 	for _, tt := range tests {
@@ -59,4 +60,14 @@ func TestInviteToken_Consume(t *testing.T) {
 	assert.True(t, token.IsUsed())
 	assert.NotNil(t, token.UsedAt)
 	assert.WithinDuration(t, time.Now(), *token.UsedAt, time.Second)
+}
+
+func TestInviteToken_Consume_Idempotent(t *testing.T) {
+	originalTime := time.Now().Add(-5 * time.Minute)
+	token := &InviteToken{
+		UsedAt: &originalTime,
+	}
+
+	token.Consume()
+	assert.Equal(t, &originalTime, token.UsedAt) // Should not overwrite
 }
