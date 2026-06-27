@@ -37,3 +37,6 @@ Thumbs.db
 specs/*/research.md
 specs/*/data-model.md
 specs/*/quickstart.md
+
+# Draft prompts
+prompt/
