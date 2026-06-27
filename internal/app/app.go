@@ -8,6 +8,7 @@ import (
 	kafkaProducer "github.com/hros/admin-service/internal/adapter/kafka/producer"
 	"github.com/hros/admin-service/internal/application"
 	"github.com/hros/admin-service/internal/application/interfaces"
+	"github.com/hros/admin-service/internal/application/usecase"
 	"github.com/hros/admin-service/internal/config"
 	authInfra "github.com/hros/admin-service/internal/infrastructure/auth"
 	"github.com/hros/admin-service/internal/infrastructure/cache"
@@ -59,6 +60,8 @@ var Module = fx.Options(
 	fx.Provide(func(p *kafkaProducer.EmailKafkaProducer) interfaces.LockoutNotifier { return p }),
 	// Bind *EmailKafkaProducer as interfaces.PasswordResetNotifier for RequestPasswordResetUseCase injection.
 	fx.Provide(func(p *kafkaProducer.EmailKafkaProducer) interfaces.PasswordResetNotifier { return p }),
+	// Bind *NotificationKafkaProducer as usecase.NotificationPublisher for AcceptInviteUseCase injection.
+	fx.Provide(func(p *kafkaProducer.NotificationKafkaProducer) usecase.NotificationPublisher { return p }),
 
 	// Invokes
 	fx.Invoke(func(_ *echo.Echo) {}),

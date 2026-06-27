@@ -77,7 +77,27 @@
   - catch-all → 500 `internal_error`
 - [x] T021 [P] [US2] Add unit tests for `AcceptInvite` handler in `internal/adapter/http/auth_handler_test.go` using `httptest.NewRecorder` and a mock `AcceptInviteUseCase`. Tests MUST cover: success 200, bind failure 400, validation failure 400, `ErrInviteExpired` 400, `ErrInviteUsed` 400, `ErrPasswordWeak` 422, internal error 500.
 
+---
 
+## Phase 8: Integration Test (TSK-ACT-008)
 
-
+- [x] T022 [P] [US3] Register `usecase.NewAcceptInviteUseCase` and `kafkaProducer.NewNotificationKafkaProducer` in the appropriate Fx modules so the full dependency graph resolves for integration tests:
+  - Add `usecase.NewAcceptInviteUseCase` to `internal/application/module.go`.
+  - Add `NewNotificationKafkaProducer` to `internal/adapter/kafka/producer/module.go`.
+  - Bind `*kafkaProducer.NotificationKafkaProducer` as `usecase.NotificationPublisher` in `internal/app/app.go`.
+- [x] T023 [P] [US3] Implement `TestAcceptInviteFlow` in `test/integration/accept_invite_flow_test.go`:
+  - Start a `testcontainers` PostgreSQL instance.
+  - Run migrations `000001` through `000004`.
+  - Seed a `pending` admin user (with role) and a valid, non-expired `invite_tokens` row using raw GORM inserts.
+  - Bootstrap Fx with all required providers (postgres, miniredis, mock Sarama producer expecting exactly one message).
+  - POST `{ "token": "...", "password": "...", "password_confirmation": "..." }` to `POST /v1/auth/accept-invite`.
+  - Assert HTTP `200 OK` and `{ "message": "Account activated successfully." }`.
+  - Query DB and assert: `admin_users.status = 'active'`, `admin_users.password_hash` changed, `bcrypt.CompareHashAndPassword` succeeds.
+  - Query DB and assert: `invite_tokens.consumed_at IS NOT NULL`.
+  - Assert mock Sarama producer expectations (1 message sent).
+- [x] T024 [P] [US3] Implement `TestAcceptInviteFlow_ExpiredToken` sub-case (or separate table-driven test) in `test/integration/accept_invite_flow_test.go`:
+  - Seed a token with `expires_at = NOW() - 1 hour` (already expired).
+  - POST to `POST /v1/auth/accept-invite` with a valid password.
+  - Assert HTTP `400 Bad Request` with `code: "INVITE_EXPIRED"`.
+  - Query DB and assert: `admin_users.status` remains `pending`; `invite_tokens.consumed_at` remains null.
 

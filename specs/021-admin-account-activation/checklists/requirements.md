@@ -1,10 +1,8 @@
-# Specification Quality Checklist: Admin Account Activation — Handler Layer (TSK-ACT-007)
+# Specification Quality Checklist: Admin Account Activation — Integration Test Layer (TSK-ACT-008)
 
-**Purpose**: Validate specification completeness and quality before proceeding to implementation  
-**Created**: 2026-06-27  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2026-06-27
 **Feature**: [spec.md](../spec.md)
-
----
 
 ## Content Quality
 
@@ -33,7 +31,7 @@
 
 ## Notes
 
-- All items pass. Spec is ready for `/speckit-implement` (TSK-ACT-007).
-- Scope is strictly bounded to the HTTP handler layer; no business logic requirements added.
-- FR-007 maps exactly to the task's Definition of Done.
-- SC-004 added to make handler correctness measurable.
+- All items pass. Spec is ready for `/speckit-plan` or `/speckit-implement` (TSK-ACT-008).
+- Scope is strictly bounded to the integration test flow; no changes to core business rules.
+- FR-008 maps exactly to the integration test requirements.
+- SC-005 added to measure integration test suite stability.
