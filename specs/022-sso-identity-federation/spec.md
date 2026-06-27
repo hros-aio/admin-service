@@ -4,9 +4,9 @@
 
 **Created**: 2026-06-27
 
-**Status**: Approved (TSK-SSO-005)
+**Status**: Approved (TSK-SSO-006)
 
-**Input**: User description: "Define the `SSOStateCache` interface required by the application layer to temporarily hold OAuth/OIDC state and nonce parameters to prevent CSRF. Define specific domain errors `ErrNoAccountLinked` and `ErrInvalidSSOState`. Define the event payload structs for the `login.sso_success` and `login.sso_failed` audit events. Create up/down SQL migration scripts to add SSO mapping fields to the `admin_users` table. Add an `sso_identity_id` (VARCHAR, UNIQUE) and `sso_provider` (VARCHAR) column to reliably map IdP assertions to admin accounts beyond just email matching. Define the HTTP request and response DTOs for the SSO endpoints (e.g., `SSOCallbackRequest` containing `code` and `state`). Update the OpenAPI contract `api/openapi.yaml` to document the `GET /auth/sso/initiate` and `GET /auth/sso/callback` endpoints. Implement the `SSOStateCache` interface using Redis. Implement `StoreState(ctx, state, nonce)` mapping the state string with a short TTL (e.g., 10 minutes). Implement `VerifyAndConsumeState(ctx, state)` to fetch the nonce and delete the key atomically, preventing CSRF replay attacks. Update `AdminUserRepository` with a `FindByEmailOrSSO(ctx, email, ssoID)` method. This enables the use case to look up an internal admin account using either the exact `sso_identity_id` returned by the IdP or matching their work email."
+**Input**: User description: "Define the `SSOStateCache` interface required by the application layer to temporarily hold OAuth/OIDC state and nonce parameters to prevent CSRF. Define specific domain errors `ErrNoAccountLinked` and `ErrInvalidSSOState`. Define the event payload structs for the `login.sso_success` and `login.sso_failed` audit events. Create up/down SQL migration scripts to add SSO mapping fields to the `admin_users` table. Add an `sso_identity_id` (VARCHAR, UNIQUE) and `sso_provider` (VARCHAR) column to reliably map IdP assertions to admin accounts beyond just email matching. Define the HTTP request and response DTOs for the SSO endpoints (e.g., `SSOCallbackRequest` containing `code` and `state`). Update the OpenAPI contract `api/openapi.yaml` to document the `GET /auth/sso/initiate` and `GET /auth/sso/callback` endpoints. Implement the `SSOStateCache` interface using Redis. Implement `StoreState(ctx, state, nonce)` mapping the state string with a short TTL (e.g., 10 minutes). Implement `VerifyAndConsumeState(ctx, state)` to fetch the nonce and delete the key atomically, preventing CSRF replay attacks. Update `AdminUserRepository` with a `FindByEmailOrSSO(ctx, email, ssoID)` method. This enables the use case to look up an internal admin account using either the exact `sso_identity_id` returned by the IdP or matching their work email. Implement `InitiateSSOUseCase`. Workflow: Generate a secure random `state` and `nonce`. Store them in Redis via `SSOStateCache.StoreState()`. Construct and return the fully formatted authorization redirect URL for the configured Identity Provider (SAML/OIDC)."
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -91,6 +91,21 @@ Implement a secure lookup capability in the admin user repository to fetch an ad
 
 ---
 
+### User Story 6 - SSO Initiation (Priority: P1)
+
+Implement the SSO initiation use case to securely generate state variables, register them in the state cache, and build the redirect authorization URL.
+
+**Why this priority**: Business logic must govern the secure generation of CSRF parameters and authorization redirect parameters to protect the system boundary.
+
+**Independent Test**: Unit tests using mocked state cache and provider configurations verifying correct redirect URL generation.
+
+**Acceptance Scenarios**:
+
+1. **Given** a request to initiate SSO for a supported provider, **When** execution runs, **Then** generate a random state/nonce, cache them, and construct the correct redirect URL containing these parameters.
+2. **Given** an unsupported provider name, **When** execution runs, **Then** return an error.
+
+---
+
 ### Edge Cases
 
 - **State Expiry / Tampering**: The `SSOStateCache` contract must allow storing state parameters with a short TTL to prevent replay attacks and CSRF.
@@ -99,6 +114,7 @@ Implement a secure lookup capability in the admin user repository to fetch an ad
 - **DTO Validation**: The callback request MUST validate that both `code` and `state` parameters are present and non-empty.
 - **Atomic Deletion / Replay Protection**: To prevent state reuse, state parameters must be deleted from Redis immediately upon validation.
 - **SSO Identity and Email Discrepancies**: If a user is registered with a different SSO ID than email, the lookup MUST still resolve the user correctly, returning a conflict error if they point to different accounts.
+- **Provider Misconfiguration**: If client configuration parameters are missing or invalid, the initiation request must gracefully return a clear, structured configuration error instead of generating malformed redirect URLs.
 
 ## Requirements *(mandatory)*
 
@@ -118,6 +134,9 @@ Implement a secure lookup capability in the admin user repository to fetch an ad
 - **FR-012**: Retrieval MUST verify and support deletion of the state parameter.
 - **FR-013**: System MUST update the admin user repository to support lookup by either email or SSO provider and SSO identity ID.
 - **FR-014**: The repository lookup MUST participate correctly in the active transaction context.
+- **FR-015**: System MUST implement `InitiateSSOUseCase` to generate state/nonce, cache them, and construct the redirect URL.
+- **FR-016**: State and nonce parameters MUST be generated using a cryptographically secure random source.
+- **FR-017**: The constructed redirect URL MUST include client ID, redirect URI, response type, scope, state, and nonce parameters.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -140,9 +159,9 @@ Implement a secure lookup capability in the admin user repository to fetch an ad
 - **SC-006**: Unit tests verify validation tags on the `SSOCallbackRequest` DTO structure.
 - **SC-007**: Unit tests verify Redis state caching, TTL, and deletion workflow with a mocked Redis client.
 - **SC-008**: Unit tests verify that lookup by email or SSO resolves the correct record or returns conflict/not-found results appropriately.
+- **SC-009**: Unit tests verify correct generation of state/nonce, caching, and redirect URL construction for configured providers.
 
 ## Assumptions
 
 - Redis will be the eventual provider for `SSOStateCache` in the infrastructure layer, but the interface definition must remain implementation-agnostic.
 - Audit event payloads will be serialized to JSON and published to Kafka, requiring appropriate JSON tags.
-

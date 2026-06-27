@@ -6,7 +6,7 @@
 
 ## Summary
 
-This plan outlines the implementation of the Domain and Application Interface definitions, database schema updates, DTO/API contract design, Redis cache layer, and user repository lookup for the SSO Identity Federation.
+This plan outlines the implementation of the Domain and Application Interface definitions, database schema updates, DTO/API contract design, Redis cache layer, user repository lookup, and SSO initiation logic for the SSO Identity Federation.
 
 **Phase 1 (TSK-SSO-001)**: Define `SSOStateCache` interface in `internal/application/interfaces/sso_state_cache.go`. Define domain errors `ErrNoAccountLinked` and `ErrInvalidSSOState` in `internal/domain/errors/auth_errors.go`. Define event payload structs for the `login.sso_success` and `login.sso_failed` audit events in `internal/domain/events/auth_events.go`.
 
@@ -16,7 +16,9 @@ This plan outlines the implementation of the Domain and Application Interface de
 
 **Phase 4 (TSK-SSO-004)**: Implement `SSOStateCache` using Redis in `internal/infrastructure/cache/sso_state_redis.go`. Implement unit tests with a mocked Redis client in `internal/infrastructure/cache/sso_state_redis_test.go`.
 
-**Phase 5 (TSK-SSO-005)**: Define `FindByEmailOrSSO(ctx, email, ssoID)` in the `AdminUserRepository` domain interface. Implement the method in `GormAdminUserRepository` inside `internal/infrastructure/repository/auth/repository.go`. Add unit tests in `internal/infrastructure/repository/auth/repository_test.go`.
+**Phase 5 (TSK-SSO-005)**: Define `FindByEmailOrSSO` in the `AdminUserRepository` domain interface. Implement the method in `GormAdminUserRepository` inside `internal/infrastructure/repository/auth/repository.go`. Add unit tests in `internal/infrastructure/repository/auth/repository_test.go`.
+
+**Phase 6 (TSK-SSO-006)**: Implement `InitiateSSOUseCase` in `internal/application/usecase/initiate_sso_usecase.go`. Add unit tests in `internal/application/usecase/initiate_sso_usecase_test.go`.
 
 ## Technical Context
 
@@ -30,11 +32,11 @@ This plan outlines the implementation of the Domain and Application Interface de
 
 | Principle | Status | Evidence |
 |-----------|--------|---------|
-| **I. Clean Architecture & Strict Boundaries** | ✅ PASS | Repository interface is defined in `internal/domain/` and implemented in `internal/infrastructure/repository/auth/`. |
+| **I. Clean Architecture & Strict Boundaries** | ✅ PASS | Use cases govern application workflow; configuration parameters are loaded via configuration mappings. |
 | **II. Documentation-First & OpenAPI-Driven** | ✅ PASS | Specs and plans updated prior to code modification. |
-| **III. Unit-Test-Per-File (NON-NEGOTIABLE)** | ✅ PASS | Added repository unit tests utilizing `sqlmock`. |
-| **IV. Task-Driven & Atomic Implementation** | ✅ PASS | Focusing only on task TSK-SSO-005. |
-| **V. Observability & Structured Logging** | ✅ PASS | SSO IDs are queried correctly to facilitate structured trace-linking. |
+| **III. Unit-Test-Per-File (NON-NEGOTIABLE)** | ✅ PASS | Added `initiate_sso_usecase_test.go` with 100% coverage. |
+| **IV. Task-Driven & Atomic Implementation** | ✅ PASS | Focusing only on task TSK-SSO-006. |
+| **V. Observability & Structured Logging** | ✅ PASS | Proper error categorization ensures log trace links persist correctly. |
 
 ## Project Structure
 
@@ -62,9 +64,12 @@ internal/
 │               ├── auth_dto.go  # DTO structs including SSOCallbackRequest
 │               └── auth_dto_test.go # DTO validation unit tests
 ├── application/
-│   └── interfaces/
-│       ├── sso_state_cache.go      # SSOStateCache interface
-│       └── sso_state_cache_test.go # Unit tests/verifications for SSOStateCache interface
+│   ├── interfaces/
+│   │   ├── sso_state_cache.go      # SSOStateCache interface
+│   │   └── sso_state_cache_test.go # Unit tests/verifications for SSOStateCache interface
+│   └── usecase/
+│       ├── initiate_sso_usecase.go  # InitiateSSOUseCase business logic
+│       └── initiate_sso_usecase_test.go # Unit tests for InitiateSSOUseCase
 ├── domain/
 │   ├── admin_user.go               # AdminUserRepository domain interface update
 │   ├── errors/
@@ -89,4 +94,4 @@ test/
     └── sso_migration_test.go       # Integration test for the database migration
 ```
 
-**Structure Decision**: Clean Architecture database repository and cache layers.
+**Structure Decision**: Clean Architecture database repository, cache, and application use case layers.

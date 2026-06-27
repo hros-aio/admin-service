@@ -15,5 +15,6 @@ var Module = fx.Module("application",
 		usecase.NewRequestPasswordResetUseCase,
 		usecase.NewConfirmPasswordResetUseCase,
 		usecase.NewAcceptInviteUseCase,
+		usecase.NewInitiateSSOUseCase,
 	),
 )

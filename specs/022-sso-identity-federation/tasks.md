@@ -4,7 +4,7 @@
 
 **Prerequisites**: plan.md ✅, spec.md ✅
 
-**Scope**: Define the `SSOStateCache` interface, specific domain errors, and event payload structs. Create migration scripts, define request DTOs, update OpenAPI contracts, implement Redis cache, and implement DB lookup query.
+**Scope**: Define the `SSOStateCache` interface, specific domain errors, and event payload structs. Create migration scripts, define request DTOs, update OpenAPI contracts, implement Redis cache, implement DB lookup query, and implement SSO initiation logic.
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -55,3 +55,10 @@
 - [x] T014 [P] [US5] Add `FindByEmailOrSSO(ctx, email, ssoID)` method to `AdminUserRepository` interface in `internal/domain/admin_user.go`.
 - [x] T015 [P] [US5] Implement `FindByEmailOrSSO` in `GormAdminUserRepository` inside `internal/infrastructure/repository/auth/repository.go`.
 - [x] T016 [P] [US5] Implement unit tests for `FindByEmailOrSSO` in `internal/infrastructure/repository/auth/repository_test.go` using `sqlmock`.
+
+---
+
+## Phase 6: SSO Initiation Use Case (TSK-SSO-006)
+
+- [x] T017 [P] [US6] Implement `InitiateSSOUseCase` in `internal/application/usecase/initiate_sso_usecase.go`.
+- [x] T018 [P] [US6] Implement unit tests for `InitiateSSOUseCase` in `internal/application/usecase/initiate_sso_usecase_test.go`.

@@ -44,6 +44,16 @@ var Module = fx.Options(
 	fx.Provide(cache.NewRedisMFACache),
 	fx.Provide(cache.NewRedisPasswordResetCache),
 	fx.Provide(cache.NewRedisSSOStateCache),
+	fx.Provide(func(cfg *config.Config) map[string]usecase.SSOProviderConfig {
+		return map[string]usecase.SSOProviderConfig{
+			"google": {
+				ClientID:    "dummy-google-client-id",
+				RedirectURL: "https://example.com/v1/auth/sso/callback",
+				AuthURL:     "https://accounts.google.com/o/oauth2/v2/auth",
+				Scopes:      []string{"openid", "email", "profile"},
+			},
+		}
+	}),
 	fx.Provide(kafka.NewKafkaProducer),
 	fx.Provide(kafka.NewKafkaConsumerGroup),
 	authInfra.Module,
