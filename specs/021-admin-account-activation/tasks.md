@@ -57,6 +57,15 @@
 - [x] T014 [P] [US1] Implement `NotificationKafkaProducer` with `PublishInviteAcceptedNotification` in `internal/adapter/kafka/producer/notification_events.go`.
 - [x] T015 [P] [US1] Add unit tests using Sarama mocks to verify envelope shape, happy path, Sarama errors, and empty recipient guard in `internal/adapter/kafka/producer/notification_events_test.go`.
 
+---
+
+## Phase 6: UseCase Layer (TSK-ACT-006)
+
+- [x] T016 [P] [US1] Extend `AuditLogger` interface in `internal/domain/auth/audit.go` with `LogInviteAccepted` and `LogAdminActivated` methods.
+- [x] T017 [P] [US1] Implement `AcceptInviteUseCase` in `internal/application/usecase/accept_invite_usecase.go` with full workflow: password validation, token fetch, bcrypt hashing, `ActivateAccount`, `Consume`, audit events, and Kafka notification.
+- [x] T018 [P] [US1] Add unit tests for all success and error branches in `internal/application/usecase/accept_invite_usecase_test.go`.
+
+
 
 
 
