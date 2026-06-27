@@ -140,6 +140,12 @@ func (m *mockAuditLogger) LogPasswordResetRequested(ctx context.Context, event e
 func (m *mockAuditLogger) LogPasswordResetCompleted(ctx context.Context, event events.PasswordResetCompletedEvent) {
 	m.Called(ctx, event)
 }
+func (m *mockAuditLogger) LogInviteAccepted(ctx context.Context, event events.InviteAcceptedEvent) {
+	m.Called(ctx, event)
+}
+func (m *mockAuditLogger) LogAdminActivated(ctx context.Context, event events.AdminActivatedEvent) {
+	m.Called(ctx, event)
+}
 
 type mockBruteForceCache struct{ mock.Mock }
 
