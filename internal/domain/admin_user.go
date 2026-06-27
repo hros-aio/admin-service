@@ -85,5 +85,5 @@ type AdminUserRepository interface {
 	GetRoleCodeByID(ctx context.Context, roleID string) (string, error)
 	UpdatePassword(ctx context.Context, id string, newHash string) error
 	ActivateAccount(ctx context.Context, adminID string, newHash string) error
-	FindByEmailOrSSO(ctx context.Context, email string, ssoID string) (*AdminUser, error)
+	FindByEmailOrSSO(ctx context.Context, email string, ssoProvider string, ssoID string) (*AdminUser, error)
 }

@@ -63,4 +63,7 @@ var (
 
 	// ErrInvalidSSOState is returned when the SSO state or nonce is invalid or expired.
 	ErrInvalidSSOState = errors.New("invalid SSO state")
+
+	// ErrIdentityConflict is returned when SSO identity and email resolve to different admin users.
+	ErrIdentityConflict = errors.New("identity conflict: email and SSO ID map to different users")
 )

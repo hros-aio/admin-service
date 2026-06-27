@@ -77,16 +77,17 @@ Implement the `SSOStateCache` using Redis to store transient state parameters du
 
 ### User Story 5 - Database Lookup for Federated Identity (Priority: P1)
 
-Implement database lookup in the `AdminUserRepository` to fetch an admin account using either the exact SSO identity ID or their work email.
+Implement a secure lookup capability in the admin user repository to fetch an admin account using either the exact SSO identity ID (scoped by provider) or their work email.
 
 **Why this priority**: Correctly looking up user records is essential for verifying authorization assertions during the SSO callback.
 
-**Independent Test**: Unit tests against a mocked GORM connection verifying the query execution structure and GORM mapping.
+**Independent Test**: Unit tests against a mocked database verifying query logic and mapping.
 
 **Acceptance Scenarios**:
 
-1. **Given** a federated identity ID and email, **When** queried using `FindByEmailOrSSO`, **Then** retrieve the matching `AdminUser` if either the `email` or `sso_identity_id` matches.
-2. **Given** no matching record in the database, **When** queried using `FindByEmailOrSSO`, **Then** return `ErrUserNotFound` error.
+1. **Given** a federated identity ID and email, **When** the account is looked up, **Then** retrieve the matching admin user if either the email or SSO identity (scoped by provider) matches.
+2. **Given** no matching record exists, **When** looked up, **Then** return a not found error.
+3. **Given** the email and SSO identity point to different users, **When** looked up, **Then** return a conflict error.
 
 ---
 
@@ -97,7 +98,7 @@ Implement database lookup in the `AdminUserRepository` to fetch an admin account
 - **Migration Idempotency**: Migration scripts must handle columns that already exist/do not exist gracefully to avoid failing if run repeatedly.
 - **DTO Validation**: The callback request MUST validate that both `code` and `state` parameters are present and non-empty.
 - **Atomic Deletion / Replay Protection**: To prevent state reuse, state parameters must be deleted from Redis immediately upon validation.
-- **SSO Identity and Email Discrepancies**: If a user is registered with a different SSO ID than email, the repository MUST still resolve the user row correctly using the `OR` condition.
+- **SSO Identity and Email Discrepancies**: If a user is registered with a different SSO ID than email, the lookup MUST still resolve the user correctly, returning a conflict error if they point to different accounts.
 
 ## Requirements *(mandatory)*
 
@@ -115,8 +116,8 @@ Implement database lookup in the `AdminUserRepository` to fetch an admin account
 - **FR-010**: System MUST implement `SSOStateCache` interface using Redis (`internal/infrastructure/cache/sso_state_redis.go`).
 - **FR-011**: `StoreState` MUST map the state string to the nonce with a 10-minute TTL.
 - **FR-012**: Retrieval MUST verify and support deletion of the state parameter.
-- **FR-013**: System MUST update `AdminUserRepository` interface with `FindByEmailOrSSO(ctx, email, ssoID)` method.
-- **FR-014**: Gorm implementation MUST query using `email = ? OR sso_identity_id = ?` under transaction context if active.
+- **FR-013**: System MUST update the admin user repository to support lookup by either email or SSO provider and SSO identity ID.
+- **FR-014**: The repository lookup MUST participate correctly in the active transaction context.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -124,7 +125,7 @@ Implement database lookup in the `AdminUserRepository` to fetch an admin account
   - State (string): Cryptographically secure random identifier.
   - Value/Metadata: Nonce or transient authentication parameters.
 - **AdminUser**: Database model representing admin account. Added fields:
-  - `sso_identity_id` (string, unique): Maps federated ID.
+  - `sso_identity_id` (string): Maps federated ID.
   - `sso_provider` (string): Records IdP name.
 
 ## Success Criteria *(mandatory)*
@@ -138,9 +139,10 @@ Implement database lookup in the `AdminUserRepository` to fetch an admin account
 - **SC-005**: OpenAPI specification `api/openapi.yaml` compiles and validates successfully with Swagger/OpenAPI tools.
 - **SC-006**: Unit tests verify validation tags on the `SSOCallbackRequest` DTO structure.
 - **SC-007**: Unit tests verify Redis state caching, TTL, and deletion workflow with a mocked Redis client.
-- **SC-008**: Unit tests verify `FindByEmailOrSSO` GORM query statement and mapping with `sqlmock`.
+- **SC-008**: Unit tests verify that lookup by email or SSO resolves the correct record or returns conflict/not-found results appropriately.
 
 ## Assumptions
 
 - Redis will be the eventual provider for `SSOStateCache` in the infrastructure layer, but the interface definition must remain implementation-agnostic.
 - Audit event payloads will be serialized to JSON and published to Kafka, requiring appropriate JSON tags.
+

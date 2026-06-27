@@ -27,4 +27,5 @@ func TestAuthErrors(t *testing.T) {
 	assert.Equal(t, "invite token has already been used", ErrInviteUsed.Error())
 	assert.Equal(t, "no admin account linked to this identity", ErrNoAccountLinked.Error())
 	assert.Equal(t, "invalid SSO state", ErrInvalidSSOState.Error())
+	assert.Equal(t, "identity conflict: email and SSO ID map to different users", ErrIdentityConflict.Error())
 }

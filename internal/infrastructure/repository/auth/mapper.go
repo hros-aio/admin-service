@@ -21,8 +21,8 @@ func (m adminUserModel) toDomain() *domain.AdminUser {
 		FailCount:           m.FailCount,
 		LockedUntil:         m.LockedUntil,
 		InvitedBy:           m.InvitedBy,
-		SSOIdentityID:       m.SSOIdentityID,
-		SSOProvider:         m.SSOProvider,
+		SSOIdentityID:       getStringVal(m.SSOIdentityID),
+		SSOProvider:         getStringVal(m.SSOProvider),
 		CreatedAt:           m.CreatedAt,
 		UpdatedAt:           m.UpdatedAt,
 	}
@@ -44,8 +44,8 @@ func fromDomain(u *domain.AdminUser) *adminUserModel {
 		FailCount:           u.FailCount,
 		LockedUntil:         u.LockedUntil,
 		InvitedBy:           u.InvitedBy,
-		SSOIdentityID:       u.SSOIdentityID,
-		SSOProvider:         u.SSOProvider,
+		SSOIdentityID:       getPointerVal(u.SSOIdentityID),
+		SSOProvider:         getPointerVal(u.SSOProvider),
 		CreatedAt:           u.CreatedAt,
 		UpdatedAt:           u.UpdatedAt,
 	}
@@ -116,3 +116,18 @@ func fromInviteTokenDomain(t *domain.InviteToken) *inviteTokenModel {
 		CreatedAt:  t.CreatedAt,
 	}
 }
+
+func getStringVal(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+func getPointerVal(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
