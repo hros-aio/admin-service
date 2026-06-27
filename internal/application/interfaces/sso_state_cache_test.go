@@ -27,7 +27,7 @@ func (f *fakeSSOStateCache) StoreState(ctx context.Context, state string, nonce 
 	return nil
 }
 
-func (f *fakeSSOStateCache) GetState(ctx context.Context, state string) (string, error) {
+func (f *fakeSSOStateCache) VerifyAndConsumeState(ctx context.Context, state string) (string, error) {
 	if err := ctx.Err(); err != nil {
 		return "", err
 	}
@@ -35,15 +35,8 @@ func (f *fakeSSOStateCache) GetState(ctx context.Context, state string) (string,
 	if !exists {
 		return "", domainErrors.ErrInvalidSSOState
 	}
-	return nonce, nil
-}
-
-func (f *fakeSSOStateCache) DeleteState(ctx context.Context, state string) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
 	delete(f.store, state)
-	return nil
+	return nonce, nil
 }
 
 func TestSSOStateCache_Workflow(t *testing.T) {
@@ -56,17 +49,13 @@ func TestSSOStateCache_Workflow(t *testing.T) {
 	err := cache.StoreState(ctx, state, nonce, 5*time.Minute)
 	assert.NoError(t, err)
 
-	// 2. Get State
-	retrieved, err := cache.GetState(ctx, state)
+	// 2. Verify and Consume State
+	retrieved, err := cache.VerifyAndConsumeState(ctx, state)
 	assert.NoError(t, err)
 	assert.Equal(t, nonce, retrieved)
 
-	// 3. Delete State
-	err = cache.DeleteState(ctx, state)
-	assert.NoError(t, err)
-
-	// 4. Get after delete should return ErrInvalidSSOState
-	_, err = cache.GetState(ctx, state)
+	// 3. Second consume should fail with ErrInvalidSSOState
+	_, err = cache.VerifyAndConsumeState(ctx, state)
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, domainErrors.ErrInvalidSSOState)
 }
@@ -81,9 +70,6 @@ func TestSSOStateCache_ContextCancellation(t *testing.T) {
 	err := cache.StoreState(ctx, state, nonce, 5*time.Minute)
 	assert.ErrorIs(t, err, context.Canceled)
 
-	_, err = cache.GetState(ctx, state)
-	assert.ErrorIs(t, err, context.Canceled)
-
-	err = cache.DeleteState(ctx, state)
+	_, err = cache.VerifyAndConsumeState(ctx, state)
 	assert.ErrorIs(t, err, context.Canceled)
 }

@@ -6,31 +6,33 @@
 
 ## Summary
 
-This plan outlines the implementation of the Domain and Application Interface definitions, database schema updates, and DTO/API contract design for the SSO Identity Federation.
+This plan outlines the implementation of the Domain and Application Interface definitions, database schema updates, DTO/API contract design, and Redis cache layer for the SSO Identity Federation.
 
 **Phase 1 (TSK-SSO-001)**: Define `SSOStateCache` interface in `internal/application/interfaces/sso_state_cache.go`. Define domain errors `ErrNoAccountLinked` and `ErrInvalidSSOState` in `internal/domain/errors/auth_errors.go`. Define event payload structs for the `login.sso_success` and `login.sso_failed` audit events in `internal/domain/events/auth_events.go`.
 
 **Phase 2 (TSK-SSO-002)**: Create SQL migration scripts `migrations/000005_add_sso_to_admin_users.up.sql` and `migrations/000005_add_sso_to_admin_users.down.sql` to add SSO mapping fields (`sso_identity_id`, `sso_provider`) to `admin_users` table.
 
-**Phase 3 (TSK-SSO-003)**: Define `SSOCallbackRequest` DTO in `internal/adapter/http/dto/auth_dto.go` (or `internal/adapter/http/auth/dto/auth_dto.go` depending on layout). Update `api/openapi.yaml` to document SSO initiation and callback endpoints.
+**Phase 3 (TSK-SSO-003)**: Define `SSOCallbackRequest` DTO in `internal/adapter/http/auth/dto/auth_dto.go`. Update `api/openapi.yaml` to document SSO initiation and callback endpoints.
+
+**Phase 4 (TSK-SSO-004)**: Implement `SSOStateCache` using Redis in `internal/infrastructure/cache/sso_state_redis.go`. Implement unit tests with a mocked Redis client in `internal/infrastructure/cache/sso_state_redis_test.go`.
 
 ## Technical Context
 
 **Language/Version**: Go 1.23+
 
-**Primary Dependencies**: None (pure Go standard library for domain layer).
+**Primary Dependencies**: go-redis (for cache implementation).
 
-**Storage**: PostgreSQL (migration adds columns to `admin_users` table).
+**Storage**: PostgreSQL (admin_users mapping), Redis (temporary state cache).
 
 ## Constitution Check
 
 | Principle | Status | Evidence |
 |-----------|--------|---------|
-| **I. Clean Architecture & Strict Boundaries** | ✅ PASS | DTO files are contained strictly within the adapter/http layer; API contracts map strictly to HTTP layer. |
-| **II. Documentation-First & OpenAPI-Driven** | ✅ PASS | Endpoints are defined in `openapi.yaml` and plan is updated prior to implementation. |
-| **III. Unit-Test-Per-File (NON-NEGOTIABLE)** | ✅ PASS | DTO validation logic is covered by a corresponding unit test file. |
-| **IV. Task-Driven & Atomic Implementation** | ✅ PASS | Focusing only on task TSK-SSO-003. |
-| **V. Observability & Structured Logging** | ✅ PASS | Logging and error envelopes are documented consistently with global REST guidelines. |
+| **I. Clean Architecture & Strict Boundaries** | ✅ PASS | Redis cache adapter implements `interfaces.SSOStateCache` without leaking infrastructure details to use cases. |
+| **II. Documentation-First & OpenAPI-Driven** | ✅ PASS | Specs and plans updated prior to code modification. |
+| **III. Unit-Test-Per-File (NON-NEGOTIABLE)** | ✅ PASS | `sso_state_redis.go` is covered by `sso_state_redis_test.go` using a mock Redis client. |
+| **IV. Task-Driven & Atomic Implementation** | ✅ PASS | Focusing only on task TSK-SSO-004. |
+| **V. Observability & Structured Logging** | ✅ PASS | Errors returned from cache match domain error types to enable clear structured logs. |
 
 ## Project Structure
 
@@ -68,6 +70,10 @@ internal/
 │   └── events/
 │       ├── auth_events.go          # Event payload structs for SSO success/failure
 │       └── auth_events_test.go     # Unit tests for event payloads
+├── infrastructure/
+│   └── cache/
+│       ├── sso_state_redis.go      # Redis implementation of SSOStateCache
+│       └── sso_state_redis_test.go # Unit tests for Redis cache implementation
 migrations/
 ├── 000005_add_sso_to_admin_users.up.sql   # SQL migration up script
 └── 000005_add_sso_to_admin_users.down.sql # SQL migration down script
@@ -76,4 +82,4 @@ test/
     └── sso_migration_test.go       # Integration test for the database migration
 ```
 
-**Structure Decision**: Clean Architecture database migration and REST adapter layers.
+**Structure Decision**: Clean Architecture Redis cache and database adapter layers.

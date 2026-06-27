@@ -4,7 +4,7 @@
 
 **Prerequisites**: plan.md ✅, spec.md ✅
 
-**Scope**: Define the `SSOStateCache` interface, specific domain errors, and event payload structs. Create migration scripts, define request DTOs, and update OpenAPI contracts.
+**Scope**: Define the `SSOStateCache` interface, specific domain errors, and event payload structs. Create migration scripts, define request DTOs, update OpenAPI contracts, and implement Redis cache.
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -39,3 +39,11 @@
 - [x] T008 [P] [US3] Define `SSOCallbackRequest` DTO in `internal/adapter/http/auth/dto/auth_dto.go` with validation tags.
 - [x] T009 [P] [US3] Add unit tests for `SSOCallbackRequest` validation in `internal/adapter/http/auth/dto/auth_dto_test.go`.
 - [x] T010 [P] [US3] Document `GET /auth/sso/initiate` and `GET /auth/sso/callback` endpoints in `api/openapi.yaml`.
+
+---
+
+## Phase 4: Redis Cache Layer (TSK-SSO-004)
+
+- [x] T011 [P] [US4] Implement `RedisSSOStateCache` in `internal/infrastructure/cache/sso_state_redis.go` conforming to the `interfaces.SSOStateCache` interface.
+- [x] T012 [P] [US4] Implement unit tests using `go-redis` mock (like `redismock`) in `internal/infrastructure/cache/sso_state_redis_test.go`.
+- [x] T013 [P] [US4] Register `RedisSSOStateCache` in the Uber Fx dependency injection module if required.
