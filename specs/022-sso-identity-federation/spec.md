@@ -4,9 +4,9 @@
 
 **Created**: 2026-06-27
 
-**Status**: Approved (TSK-SSO-003)
+**Status**: Approved (TSK-SSO-004)
 
-**Input**: User description: "Define the `SSOStateCache` interface required by the application layer to temporarily hold OAuth/OIDC state and nonce parameters to prevent CSRF. Define specific domain errors `ErrNoAccountLinked` and `ErrInvalidSSOState`. Define the event payload structs for the `login.sso_success` and `login.sso_failed` audit events. Create up/down SQL migration scripts to add SSO mapping fields to the `admin_users` table. Add an `sso_identity_id` (VARCHAR, UNIQUE) and `sso_provider` (VARCHAR) column to reliably map IdP assertions to admin accounts beyond just email matching. Define the HTTP request and response DTOs for the SSO endpoints (e.g., `SSOCallbackRequest` containing `code` and `state`). Update the OpenAPI contract `api/openapi.yaml` to document the `GET /auth/sso/initiate` and `GET /auth/sso/callback` endpoints."
+**Input**: User description: "Define the `SSOStateCache` interface required by the application layer to temporarily hold OAuth/OIDC state and nonce parameters to prevent CSRF. Define specific domain errors `ErrNoAccountLinked` and `ErrInvalidSSOState`. Define the event payload structs for the `login.sso_success` and `login.sso_failed` audit events. Create up/down SQL migration scripts to add SSO mapping fields to the `admin_users` table. Add an `sso_identity_id` (VARCHAR, UNIQUE) and `sso_provider` (VARCHAR) column to reliably map IdP assertions to admin accounts beyond just email matching. Define the HTTP request and response DTOs for the SSO endpoints (e.g., `SSOCallbackRequest` containing `code` and `state`). Update the OpenAPI contract `api/openapi.yaml` to document the `GET /auth/sso/initiate` and `GET /auth/sso/callback` endpoints. Implement the `SSOStateCache` interface using Redis. Implement `StoreState(ctx, state, nonce)` mapping the state string with a short TTL (e.g., 10 minutes). Implement `VerifyAndConsumeState(ctx, state)` to fetch the nonce and delete the key atomically, preventing CSRF replay attacks."
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -59,12 +59,29 @@ Document endpoints and declare request/response DTO structures for initiating SS
 
 ---
 
+### User Story 4 - Redis State Caching for SSO (Priority: P1)
+
+Implement the `SSOStateCache` using Redis to store transient state parameters during the authorization flow.
+
+**Why this priority**: Storing state parameters with a short TTL prevents CSRF and replay attacks during the authentication flow.
+
+**Independent Test**: Unit tests against a mocked Redis client verifying state storing, retrieving, and atomic deletion.
+
+**Acceptance Scenarios**:
+
+1. **Given** an active Redis client, **When** storing state and nonce with `StoreState`, **Then** the value is successfully cached in Redis with a 10-minute TTL.
+2. **Given** a cached state, **When** verifying with `GetState`, **Then** the nonce is returned.
+3. **Given** a cached state, **When** state is deleted with `DeleteState` or consumed, **Then** it is removed from Redis so that subsequent gets return `ErrInvalidSSOState`.
+
+---
+
 ### Edge Cases
 
 - **State Expiry / Tampering**: The `SSOStateCache` contract must allow storing state parameters with a short TTL to prevent replay attacks and CSRF.
 - **Serialization Safety**: Audit events must define struct tags that permit safe, clean JSON serialization for logging or streaming to Kafka.
 - **Migration Idempotency**: Migration scripts must handle columns that already exist/do not exist gracefully to avoid failing if run repeatedly.
 - **DTO Validation**: The callback request MUST validate that both `code` and `state` parameters are present and non-empty.
+- **Atomic Deletion / Replay Protection**: To prevent state reuse, state parameters must be deleted from Redis immediately upon validation.
 
 ## Requirements *(mandatory)*
 
@@ -79,6 +96,9 @@ Document endpoints and declare request/response DTO structures for initiating SS
 - **FR-007**: Down migration MUST drop `sso_identity_id` and `sso_provider` from `admin_users` table.
 - **FR-008**: System MUST document `GET /auth/sso/initiate` and `GET /auth/sso/callback` in `api/openapi.yaml`.
 - **FR-009**: System MUST define `SSOCallbackRequest` DTO containing `code` and `state` query parameters with validation tags.
+- **FR-010**: System MUST implement `SSOStateCache` interface using Redis (`internal/infrastructure/cache/sso_state_redis.go`).
+- **FR-011**: `StoreState` MUST map the state string to the nonce with a 10-minute TTL.
+- **FR-012**: Retrieval MUST verify and support deletion of the state parameter.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -99,6 +119,7 @@ Document endpoints and declare request/response DTO structures for initiating SS
 - **SC-004**: Migration SQL executes successfully forward and backward without errors.
 - **SC-005**: OpenAPI specification `api/openapi.yaml` compiles and validates successfully with Swagger/OpenAPI tools.
 - **SC-006**: Unit tests verify validation tags on the `SSOCallbackRequest` DTO structure.
+- **SC-007**: Unit tests verify Redis state caching, TTL, and deletion workflow with a mocked Redis client.
 
 ## Assumptions
 
