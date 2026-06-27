@@ -135,13 +135,30 @@ func TestInitiateSSOUseCase_Execute(t *testing.T) {
 		cache := new(mockSSOStateCache)
 		uc := NewInitiateSSOUseCase(cache, providers)
 
-		cache.On("StoreState", ctx, mock.Anything, mock.Anything, 10*time.Minute).Return(nil).Once()
-
 		input := InitiateSSOInput{Provider: "malformed"}
 		_, err := uc.Execute(ctx, input)
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "parse provider auth url")
+		cache.AssertExpectations(t)
+	})
+
+	t.Run("failure - malformed provider redirect URL", func(t *testing.T) {
+		cache := new(mockSSOStateCache)
+		badProviders := map[string]SSOProviderConfig{
+			"bad-redirect": {
+				ClientID:    "client-id",
+				RedirectURL: "://invalid-redirect-url",
+				AuthURL:     "https://example.com/auth",
+			},
+		}
+		uc := NewInitiateSSOUseCase(cache, badProviders)
+
+		input := InitiateSSOInput{Provider: "bad-redirect"}
+		_, err := uc.Execute(ctx, input)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "parse provider redirect url")
 		cache.AssertExpectations(t)
 	})
 

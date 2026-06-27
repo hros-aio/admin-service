@@ -64,6 +64,16 @@ func (uc *InitiateSSOUseCase) Execute(ctx context.Context, input InitiateSSOInpu
 		return InitiateSSOOutput{}, fmt.Errorf("invalid configuration for provider %s: missing ClientID, RedirectURL, or AuthURL", input.Provider)
 	}
 
+	// Validate URLs
+	authURL, err := url.Parse(providerConfig.AuthURL)
+	if err != nil {
+		return InitiateSSOOutput{}, fmt.Errorf("parse provider auth url: %w", err)
+	}
+	_, err = url.Parse(providerConfig.RedirectURL)
+	if err != nil {
+		return InitiateSSOOutput{}, fmt.Errorf("parse provider redirect url: %w", err)
+	}
+
 	// Generate state (32 bytes of entropy)
 	stateBytes := make([]byte, 32)
 	if _, err := rand.Read(stateBytes); err != nil {
@@ -85,12 +95,7 @@ func (uc *InitiateSSOUseCase) Execute(ctx context.Context, input InitiateSSOInpu
 	}
 
 	// Construct redirect URL
-	u, err := url.Parse(providerConfig.AuthURL)
-	if err != nil {
-		return InitiateSSOOutput{}, fmt.Errorf("parse provider auth url: %w", err)
-	}
-
-	q := u.Query()
+	q := authURL.Query()
 	q.Set("client_id", providerConfig.ClientID)
 	q.Set("redirect_uri", providerConfig.RedirectURL)
 	q.Set("response_type", "code")
@@ -102,9 +107,9 @@ func (uc *InitiateSSOUseCase) Execute(ctx context.Context, input InitiateSSOInpu
 	q.Set("state", state)
 	q.Set("nonce", nonce)
 
-	u.RawQuery = q.Encode()
+	authURL.RawQuery = q.Encode()
 
 	return InitiateSSOOutput{
-		RedirectURL: u.String(),
+		RedirectURL: authURL.String(),
 	}, nil
 }

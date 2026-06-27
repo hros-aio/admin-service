@@ -17,6 +17,9 @@ type Config struct {
 	KafkaBrokers  []string `env:"KAFKA_BROKERS,required"`
 	LogLevel      string   `env:"LOG_LEVEL" envDefault:"info"`
 	JWTPrivateKey string   `env:"JWT_PRIVATE_KEY,required"`
+	SSOGoogleClientID    string `env:"SSO_GOOGLE_CLIENT_ID"`
+	SSOGoogleRedirectURL string `env:"SSO_GOOGLE_REDIRECT_URL"`
+	SSOGoogleAuthURL     string `env:"SSO_GOOGLE_AUTH_URL"`
 }
 
 // Load loads the configuration from environment variables.
