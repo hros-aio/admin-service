@@ -86,3 +86,29 @@ func fromSessionTokenDomain(t *domain.SessionToken) *sessionTokenModel {
 		RevokeReason: reason,
 	}
 }
+
+// toInviteTokenDomain converts the GORM model to a domain entity.
+func (m inviteTokenModel) toDomain() *domain.InviteToken {
+	return &domain.InviteToken{
+		ID:        m.ID,
+		AdminID:   m.AdminID,
+		Token:     m.Token,
+		ExpiresAt: m.ExpiresAt,
+		UsedAt:    m.ConsumedAt,
+		CreatedBy: m.InviterID,
+		CreatedAt: m.CreatedAt,
+	}
+}
+
+// fromInviteTokenDomain converts a domain entity to a GORM model.
+func fromInviteTokenDomain(t *domain.InviteToken) *inviteTokenModel {
+	return &inviteTokenModel{
+		ID:         t.ID,
+		AdminID:    t.AdminID,
+		Token:      t.Token,
+		InviterID:  t.CreatedBy,
+		ExpiresAt:  t.ExpiresAt,
+		ConsumedAt: t.UsedAt,
+		CreatedAt:  t.CreatedAt,
+	}
+}

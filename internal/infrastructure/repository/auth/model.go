@@ -47,3 +47,19 @@ type sessionTokenModel struct {
 func (sessionTokenModel) TableName() string {
 	return "session_tokens"
 }
+
+// inviteTokenModel represents the GORM model for invite tokens.
+type inviteTokenModel struct {
+	ID         string     `gorm:"primaryKey;type:uuid"`
+	AdminID    string     `gorm:"type:uuid;not null;index"`
+	Token      string     `gorm:"type:varchar(255);uniqueIndex;not null"`
+	InviterID  string     `gorm:"type:uuid;not null"`
+	ExpiresAt  time.Time  `gorm:"not null"`
+	ConsumedAt *time.Time `gorm:"default:null"`
+	CreatedAt  time.Time  `gorm:"not null"`
+}
+
+// TableName returns the table name for the inviteTokenModel.
+func (inviteTokenModel) TableName() string {
+	return "invite_tokens"
+}

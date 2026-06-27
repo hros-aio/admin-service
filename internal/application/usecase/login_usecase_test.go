@@ -48,6 +48,9 @@ func (m *mockUserRepo) GetRoleCodeByID(ctx context.Context, roleID string) (stri
 func (m *mockUserRepo) UpdatePassword(ctx context.Context, id string, newHash string) error {
 	return m.Called(ctx, id, newHash).Error(0)
 }
+func (m *mockUserRepo) ActivateAccount(ctx context.Context, adminID string, newHash string) error {
+	return m.Called(ctx, adminID, newHash).Error(0)
+}
 
 type mockMFACache struct{ mock.Mock }
 

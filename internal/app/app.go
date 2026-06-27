@@ -36,6 +36,7 @@ var Module = fx.Options(
 	fx.Provide(database.NewTxManager),
 	fx.Provide(authRepo.NewGormAdminUserRepository),
 	fx.Provide(authRepo.NewGormSessionTokenRepository),
+	fx.Provide(authRepo.NewGormInviteTokenRepository),
 	fx.Provide(redis.NewRedisClient),
 	fx.Provide(cache.NewRedisTokenBlacklist),
 	fx.Provide(cache.NewRedisBruteForceCache),

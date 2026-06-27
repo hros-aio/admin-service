@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/hros/admin-service/internal/domain"
 	domainErrors "github.com/hros/admin-service/internal/domain/errors"
@@ -96,6 +97,25 @@ func (r *GormAdminUserRepository) UpdatePassword(ctx context.Context, id string,
 	result := db.Model(&adminUserModel{}).
 		Where("id = ?", id).
 		Update("password_hash", newHash)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return domainErrors.ErrUserNotFound
+	}
+	return nil
+}
+
+// ActivateAccount securely updates the password hash and changes the status from pending to active in one atomic GORM execution.
+func (r *GormAdminUserRepository) ActivateAccount(ctx context.Context, adminID string, newHash string) error {
+	db := platformDB.GetTx(ctx, r.db)
+	result := db.Model(&adminUserModel{}).
+		Where("id = ? AND status = ?", adminID, "pending").
+		Updates(map[string]interface{}{
+			"password_hash": newHash,
+			"status":        "active",
+			"updated_at":    time.Now(),
+		})
 	if result.Error != nil {
 		return result.Error
 	}
