@@ -121,8 +121,9 @@ func TestInitiateSSOUseCaseWiring(t *testing.T) {
 
 	err = fx.ValidateApp(
 		Module,
-		fx.Invoke(func(uc *usecase.InitiateSSOUseCase) {
-			require.NotNil(t, uc)
+		fx.Invoke(func(uc1 *usecase.InitiateSSOUseCase, uc2 *usecase.CallbackSSOUseCase) {
+			require.NotNil(t, uc1)
+			require.NotNil(t, uc2)
 		}),
 	)
 	require.NoError(t, err)

@@ -133,3 +133,30 @@ func (l *SlogAuditLogger) LogAdminActivated(ctx context.Context, event events.Ad
 		slog.String("user_agent", event.UserAgent),
 	)
 }
+
+// LogSSOSuccess logs a successful SSO login event.
+func (l *SlogAuditLogger) LogSSOSuccess(ctx context.Context, event events.SSOSuccessEvent) {
+	l.logger.InfoContext(ctx, "SSO success",
+		slog.String("event", "login.sso_success"),
+		slog.String("admin_id", event.AdminID),
+		slog.String("email", event.Email),
+		slog.String("provider", event.Provider),
+		slog.String("ip_address", event.IPAddress),
+		slog.String("user_agent", event.UserAgent),
+		slog.Time("occurred_at", event.OccurredAt),
+	)
+}
+
+// LogSSOFailed logs a failed SSO login event.
+func (l *SlogAuditLogger) LogSSOFailed(ctx context.Context, event events.SSOFailedEvent) {
+	l.logger.WarnContext(ctx, "SSO failed",
+		slog.String("event", "login.sso_failed"),
+		slog.String("email", event.Email),
+		slog.String("provider", event.Provider),
+		slog.String("reason", event.Reason),
+		slog.String("ip_address", event.IPAddress),
+		slog.String("user_agent", event.UserAgent),
+		slog.Time("occurred_at", event.OccurredAt),
+	)
+}
+

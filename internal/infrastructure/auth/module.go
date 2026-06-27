@@ -35,5 +35,6 @@ var Module = fx.Module("auth-infra",
 		func(log *slog.Logger) authDomain.AuditLogger {
 			return NewSlogAuditLogger(log)
 		},
+		NewDefaultSSOClient,
 	),
 )

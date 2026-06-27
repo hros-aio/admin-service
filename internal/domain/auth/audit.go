@@ -28,4 +28,8 @@ type AuditLogger interface {
 	LogInviteAccepted(ctx context.Context, event events.InviteAcceptedEvent)
 	// LogAdminActivated records that an administrator account was successfully activated.
 	LogAdminActivated(ctx context.Context, event events.AdminActivatedEvent)
+	// LogSSOSuccess records a successful SSO login event.
+	LogSSOSuccess(ctx context.Context, event events.SSOSuccessEvent)
+	// LogSSOFailed records a failed SSO login event.
+	LogSSOFailed(ctx context.Context, event events.SSOFailedEvent)
 }

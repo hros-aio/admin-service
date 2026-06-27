@@ -223,4 +223,55 @@ func TestSlogAuditLogger(t *testing.T) {
 		assert.Equal(t, "192.168.1.1", logMap["ip_address"])
 		assert.Equal(t, "Go-test/1.0", logMap["user_agent"])
 	})
+
+	t.Run("LogSSOSuccess", func(t *testing.T) {
+		buf.Reset()
+		event := events.SSOSuccessEvent{
+			AdminID:    "admin-uuid-001",
+			Email:      "sso-user@example.com",
+			Provider:   "google",
+			IPAddress:  "192.168.1.1",
+			UserAgent:  "Go-test/1.0",
+			OccurredAt: time.Now(),
+		}
+		auditLogger.LogSSOSuccess(ctx, event)
+
+		var logMap map[string]interface{}
+		err := json.Unmarshal(buf.Bytes(), &logMap)
+		assert.NoError(t, err)
+
+		assert.Equal(t, "SSO success", logMap["msg"])
+		assert.Equal(t, "login.sso_success", logMap["event"])
+		assert.Equal(t, "admin-uuid-001", logMap["admin_id"])
+		assert.Equal(t, "sso-user@example.com", logMap["email"])
+		assert.Equal(t, "google", logMap["provider"])
+		assert.Equal(t, "192.168.1.1", logMap["ip_address"])
+		assert.Equal(t, "Go-test/1.0", logMap["user_agent"])
+	})
+
+	t.Run("LogSSOFailed", func(t *testing.T) {
+		buf.Reset()
+		event := events.SSOFailedEvent{
+			Email:      "sso-user@example.com",
+			Provider:   "google",
+			Reason:     "no account linked",
+			IPAddress:  "192.168.1.1",
+			UserAgent:  "Go-test/1.0",
+			OccurredAt: time.Now(),
+		}
+		auditLogger.LogSSOFailed(ctx, event)
+
+		var logMap map[string]interface{}
+		err := json.Unmarshal(buf.Bytes(), &logMap)
+		assert.NoError(t, err)
+
+		assert.Equal(t, "SSO failed", logMap["msg"])
+		assert.Equal(t, "login.sso_failed", logMap["event"])
+		assert.Equal(t, "sso-user@example.com", logMap["email"])
+		assert.Equal(t, "google", logMap["provider"])
+		assert.Equal(t, "no account linked", logMap["reason"])
+		assert.Equal(t, "192.168.1.1", logMap["ip_address"])
+		assert.Equal(t, "Go-test/1.0", logMap["user_agent"])
+	})
 }
+

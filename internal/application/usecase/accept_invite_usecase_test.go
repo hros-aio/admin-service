@@ -138,6 +138,12 @@ func (m *mockAcceptInviteAuditLogger) LogInviteAccepted(ctx context.Context, eve
 func (m *mockAcceptInviteAuditLogger) LogAdminActivated(ctx context.Context, event events.AdminActivatedEvent) {
 	m.Called(ctx, event)
 }
+func (m *mockAcceptInviteAuditLogger) LogSSOSuccess(ctx context.Context, event events.SSOSuccessEvent) {
+	m.Called(ctx, event)
+}
+func (m *mockAcceptInviteAuditLogger) LogSSOFailed(ctx context.Context, event events.SSOFailedEvent) {
+	m.Called(ctx, event)
+}
 
 // ---------------------------------------------------------------------------
 // Mock: NotificationPublisher

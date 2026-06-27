@@ -154,6 +154,12 @@ func (m *mockAuditLogger) LogInviteAccepted(ctx context.Context, event events.In
 func (m *mockAuditLogger) LogAdminActivated(ctx context.Context, event events.AdminActivatedEvent) {
 	m.Called(ctx, event)
 }
+func (m *mockAuditLogger) LogSSOSuccess(ctx context.Context, event events.SSOSuccessEvent) {
+	m.Called(ctx, event)
+}
+func (m *mockAuditLogger) LogSSOFailed(ctx context.Context, event events.SSOFailedEvent) {
+	m.Called(ctx, event)
+}
 
 type mockBruteForceCache struct{ mock.Mock }
 

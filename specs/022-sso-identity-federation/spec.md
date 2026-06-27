@@ -4,9 +4,9 @@
 
 **Created**: 2026-06-27
 
-**Status**: Approved (TSK-SSO-006)
+**Status**: Approved (TSK-SSO-007)
 
-**Input**: User description: "Define the `SSOStateCache` interface required by the application layer to temporarily hold OAuth/OIDC state and nonce parameters to prevent CSRF. Define specific domain errors `ErrNoAccountLinked` and `ErrInvalidSSOState`. Define the event payload structs for the `login.sso_success` and `login.sso_failed` audit events. Create up/down SQL migration scripts to add SSO mapping fields to the `admin_users` table. Add an `sso_identity_id` (VARCHAR, UNIQUE) and `sso_provider` (VARCHAR) column to reliably map IdP assertions to admin accounts beyond just email matching. Define the HTTP request and response DTOs for the SSO endpoints (e.g., `SSOCallbackRequest` containing `code` and `state`). Update the OpenAPI contract `api/openapi.yaml` to document the `GET /auth/sso/initiate` and `GET /auth/sso/callback` endpoints. Implement the `SSOStateCache` interface using Redis. Implement `StoreState(ctx, state, nonce)` mapping the state string with a short TTL (e.g., 10 minutes). Implement `VerifyAndConsumeState(ctx, state)` to fetch the nonce and delete the key atomically, preventing CSRF replay attacks. Update `AdminUserRepository` with a `FindByEmailOrSSO(ctx, email, ssoID)` method. This enables the use case to look up an internal admin account using either the exact `sso_identity_id` returned by the IdP or matching their work email. Implement `InitiateSSOUseCase`. Workflow: Generate a secure random `state` and `nonce`. Store them in Redis via `SSOStateCache.StoreState()`. Construct and return the fully formatted authorization redirect URL for the configured Identity Provider (SAML/OIDC)."
+**Input**: User description: "Define the `SSOStateCache` interface required by the application layer to temporarily hold OAuth/OIDC state and nonce parameters to prevent CSRF. Define specific domain errors `ErrNoAccountLinked` and `ErrInvalidSSOState`. Define the event payload structs for the `login.sso_success` and `login.sso_failed` audit events. Create up/down SQL migration scripts to add SSO mapping fields to the `admin_users` table. Add an `sso_identity_id` (VARCHAR, UNIQUE) and `sso_provider` (VARCHAR) column to reliably map IdP assertions to admin accounts beyond just email matching. Define the HTTP request and response DTOs for the SSO endpoints (e.g., `SSOCallbackRequest` containing `code` and `state`). Update the OpenAPI contract `api/openapi.yaml` to document the `GET /auth/sso/initiate` and `GET /auth/sso/callback` endpoints. Implement the `SSOStateCache` interface using Redis. Implement `StoreState(ctx, state, nonce)` mapping the state string with a short TTL (e.g., 10 minutes). Implement `VerifyAndConsumeState(ctx, state)` to fetch the nonce and delete the key atomically, preventing CSRF replay attacks. Update `AdminUserRepository` with a `FindByEmailOrSSO(ctx, email, ssoID)` method. This enables the use case to look up an internal admin account using either the exact `sso_identity_id` returned by the IdP or matching their work email. Implement `InitiateSSOUseCase`. Workflow: Generate a secure random `state` and `nonce`. Store them in Redis via `SSOStateCache.StoreState()`. Construct and return the fully formatted authorization redirect URL for the configured Identity Provider (SAML/OIDC). Implement `CallbackSSOUseCase`. Workflow: Accept `state` and IdP `code`/assertion. Verify state via `SSOStateCache.VerifyAndConsumeState()`; return `ErrInvalidSSOState` if invalid. Exchange code for IdP profile data. Call `AdminUserRepository.FindByEmailOrSSO()`. If no match, emit `login.sso_failed` to audit log and return `ErrNoAccountLinked`. If successful, issue JWT access/refresh tokens, generate a `SessionToken`, save it to the DB, and emit `login.sso_success` to the audit log."
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -106,6 +106,22 @@ Implement the SSO initiation use case to securely generate state variables, regi
 
 ---
 
+### User Story 7 - SSO Callback handling (Priority: P1)
+
+Implement the SSO callback handling use case to consume the state, verify Identity Provider assertions, lookup the matching user, and issue authorization tokens.
+
+**Why this priority**: Callback use case orchestrates the transition from federated assertion to local application session creation, ensuring security check enforcement.
+
+**Independent Test**: Unit tests using mocked domain entities, repositories, and caches verifying state validation, lookup, token generation, session saving, and audit logs.
+
+**Acceptance Scenarios**:
+
+1. **Given** a redirect callback, **When** processed with a valid state, **Then** verify and consume the state, exchange the code for user profile, lookup local user, generate session and JWT tokens, and emit success audit event.
+2. **Given** a redirect callback with invalid or expired state, **When** processed, **Then** fail with `ErrInvalidSSOState`.
+3. **Given** a valid callback but the user has no linked admin user account, **When** processed, **Then** emit failure audit event and return `ErrNoAccountLinked`.
+
+---
+
 ### Edge Cases
 
 - **State Expiry / Tampering**: The `SSOStateCache` contract must allow storing state parameters with a short TTL to prevent replay attacks and CSRF.
@@ -115,6 +131,7 @@ Implement the SSO initiation use case to securely generate state variables, regi
 - **Atomic Deletion / Replay Protection**: To prevent state reuse, state parameters must be deleted from Redis immediately upon validation.
 - **SSO Identity and Email Discrepancies**: If a user is registered with a different SSO ID than email, the lookup MUST still resolve the user correctly, returning a conflict error if they point to different accounts.
 - **Provider Misconfiguration**: If client configuration parameters are missing or invalid, the initiation request must gracefully return a clear, structured configuration error instead of generating malformed redirect URLs.
+- **Code Exchange Failure**: If the IdP code exchange fails or returned profile assertions are malformed, callback handling must abort cleanly and log the failure.
 
 ## Requirements *(mandatory)*
 
@@ -137,6 +154,10 @@ Implement the SSO initiation use case to securely generate state variables, regi
 - **FR-015**: System MUST implement `InitiateSSOUseCase` to generate state/nonce, cache them, and construct the redirect URL.
 - **FR-016**: State and nonce parameters MUST be generated using a cryptographically secure random source.
 - **FR-017**: The constructed redirect URL MUST include client ID, redirect URI, response type, scope, state, and nonce parameters.
+- **FR-018**: System MUST implement `CallbackSSOUseCase` to verify state/code, fetch provider profile, lookup admin user, create session, and issue JWT tokens.
+- **FR-019**: State verification MUST atomically consume the state parameter.
+- **FR-020**: Successful SSO authentication MUST publish the `login.sso_success` audit event to Kafka.
+- **FR-021**: Unlinked identity assertions MUST publish the `login.sso_failed` audit event and return `ErrNoAccountLinked`.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -160,6 +181,7 @@ Implement the SSO initiation use case to securely generate state variables, regi
 - **SC-007**: Unit tests verify Redis state caching, TTL, and deletion workflow with a mocked Redis client.
 - **SC-008**: Unit tests verify that lookup by email or SSO resolves the correct record or returns conflict/not-found results appropriately.
 - **SC-009**: Unit tests verify correct generation of state/nonce, caching, and redirect URL construction for configured providers.
+- **SC-010**: Unit tests verify `CallbackSSOUseCase` workflow under successful, unlinked, conflict, and invalid-state execution flows.
 
 ## Assumptions
 

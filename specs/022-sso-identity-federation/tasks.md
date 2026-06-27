@@ -4,11 +4,11 @@
 
 **Prerequisites**: plan.md ✅, spec.md ✅
 
-**Scope**: Define the `SSOStateCache` interface, specific domain errors, and event payload structs. Create migration scripts, define request DTOs, update OpenAPI contracts, implement Redis cache, implement DB lookup query, and implement SSO initiation logic.
+**Scope**: Define the `SSOStateCache` interface, specific domain errors, and event payload structs. Create migration scripts, define request DTOs, update OpenAPI contracts, implement Redis cache, implement DB lookup query, implement SSO initiation logic, and implement SSO callback logic.
 
 ## Format: `[ID] [P?] [Story] Description`
 
-- **[P]**: Can run in parallel
+- **[P]**: Can parallelize
 - **[Story]**: Maps to user story in spec.md
 - Include exact file paths in every task description
 
@@ -62,3 +62,10 @@
 
 - [x] T017 [P] [US6] Implement `InitiateSSOUseCase` in `internal/application/usecase/initiate_sso_usecase.go`.
 - [x] T018 [P] [US6] Implement unit tests for `InitiateSSOUseCase` in `internal/application/usecase/initiate_sso_usecase_test.go`.
+
+---
+
+## Phase 7: SSO Callback Use Case (TSK-SSO-007)
+
+- [x] T019 [P] [US7] Implement `CallbackSSOUseCase` in `internal/application/usecase/callback_sso_usecase.go`.
+- [x] T020 [P] [US7] Implement unit tests for `CallbackSSOUseCase` in `internal/application/usecase/callback_sso_usecase_test.go`.
