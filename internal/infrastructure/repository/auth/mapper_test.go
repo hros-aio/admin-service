@@ -28,6 +28,8 @@ func TestAdminUserMapperRoundTrip(t *testing.T) {
 		WebauthnCredentials: []byte(`[{"id":"cred-1"}]`),
 		FailCount:           3,
 		InvitedBy:           &invitedBy,
+		SSOIdentityID:       "sso-id-123",
+		SSOProvider:         "google",
 		CreatedAt:           now,
 		UpdatedAt:           now,
 	}
@@ -40,6 +42,10 @@ func TestAdminUserMapperRoundTrip(t *testing.T) {
 		"TotpSecret must survive the fromDomain→toDomain round-trip unchanged")
 	assert.Equal(t, original.WebauthnCredentials, roundTripped.WebauthnCredentials,
 		"WebauthnCredentials must survive the fromDomain→toDomain round-trip unchanged")
+	assert.Equal(t, original.SSOIdentityID, roundTripped.SSOIdentityID,
+		"SSOIdentityID must survive the fromDomain→toDomain round-trip unchanged")
+	assert.Equal(t, original.SSOProvider, roundTripped.SSOProvider,
+		"SSOProvider must survive the fromDomain→toDomain round-trip unchanged")
 
 	// Sanity-check that the rest of the fields also round-trip correctly so that
 	// future regressions in adjacent fields are caught by this test too.

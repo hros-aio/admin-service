@@ -4,9 +4,9 @@
 
 **Created**: 2026-06-27
 
-**Status**: Approved (TSK-SSO-004)
+**Status**: Approved (TSK-SSO-005)
 
-**Input**: User description: "Define the `SSOStateCache` interface required by the application layer to temporarily hold OAuth/OIDC state and nonce parameters to prevent CSRF. Define specific domain errors `ErrNoAccountLinked` and `ErrInvalidSSOState`. Define the event payload structs for the `login.sso_success` and `login.sso_failed` audit events. Create up/down SQL migration scripts to add SSO mapping fields to the `admin_users` table. Add an `sso_identity_id` (VARCHAR, UNIQUE) and `sso_provider` (VARCHAR) column to reliably map IdP assertions to admin accounts beyond just email matching. Define the HTTP request and response DTOs for the SSO endpoints (e.g., `SSOCallbackRequest` containing `code` and `state`). Update the OpenAPI contract `api/openapi.yaml` to document the `GET /auth/sso/initiate` and `GET /auth/sso/callback` endpoints. Implement the `SSOStateCache` interface using Redis. Implement `StoreState(ctx, state, nonce)` mapping the state string with a short TTL (e.g., 10 minutes). Implement `VerifyAndConsumeState(ctx, state)` to fetch the nonce and delete the key atomically, preventing CSRF replay attacks."
+**Input**: User description: "Define the `SSOStateCache` interface required by the application layer to temporarily hold OAuth/OIDC state and nonce parameters to prevent CSRF. Define specific domain errors `ErrNoAccountLinked` and `ErrInvalidSSOState`. Define the event payload structs for the `login.sso_success` and `login.sso_failed` audit events. Create up/down SQL migration scripts to add SSO mapping fields to the `admin_users` table. Add an `sso_identity_id` (VARCHAR, UNIQUE) and `sso_provider` (VARCHAR) column to reliably map IdP assertions to admin accounts beyond just email matching. Define the HTTP request and response DTOs for the SSO endpoints (e.g., `SSOCallbackRequest` containing `code` and `state`). Update the OpenAPI contract `api/openapi.yaml` to document the `GET /auth/sso/initiate` and `GET /auth/sso/callback` endpoints. Implement the `SSOStateCache` interface using Redis. Implement `StoreState(ctx, state, nonce)` mapping the state string with a short TTL (e.g., 10 minutes). Implement `VerifyAndConsumeState(ctx, state)` to fetch the nonce and delete the key atomically, preventing CSRF replay attacks. Update `AdminUserRepository` with a `FindByEmailOrSSO(ctx, email, ssoID)` method. This enables the use case to look up an internal admin account using either the exact `sso_identity_id` returned by the IdP or matching their work email."
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -75,6 +75,21 @@ Implement the `SSOStateCache` using Redis to store transient state parameters du
 
 ---
 
+### User Story 5 - Database Lookup for Federated Identity (Priority: P1)
+
+Implement database lookup in the `AdminUserRepository` to fetch an admin account using either the exact SSO identity ID or their work email.
+
+**Why this priority**: Correctly looking up user records is essential for verifying authorization assertions during the SSO callback.
+
+**Independent Test**: Unit tests against a mocked GORM connection verifying the query execution structure and GORM mapping.
+
+**Acceptance Scenarios**:
+
+1. **Given** a federated identity ID and email, **When** queried using `FindByEmailOrSSO`, **Then** retrieve the matching `AdminUser` if either the `email` or `sso_identity_id` matches.
+2. **Given** no matching record in the database, **When** queried using `FindByEmailOrSSO`, **Then** return `ErrUserNotFound` error.
+
+---
+
 ### Edge Cases
 
 - **State Expiry / Tampering**: The `SSOStateCache` contract must allow storing state parameters with a short TTL to prevent replay attacks and CSRF.
@@ -82,6 +97,7 @@ Implement the `SSOStateCache` using Redis to store transient state parameters du
 - **Migration Idempotency**: Migration scripts must handle columns that already exist/do not exist gracefully to avoid failing if run repeatedly.
 - **DTO Validation**: The callback request MUST validate that both `code` and `state` parameters are present and non-empty.
 - **Atomic Deletion / Replay Protection**: To prevent state reuse, state parameters must be deleted from Redis immediately upon validation.
+- **SSO Identity and Email Discrepancies**: If a user is registered with a different SSO ID than email, the repository MUST still resolve the user row correctly using the `OR` condition.
 
 ## Requirements *(mandatory)*
 
@@ -99,6 +115,8 @@ Implement the `SSOStateCache` using Redis to store transient state parameters du
 - **FR-010**: System MUST implement `SSOStateCache` interface using Redis (`internal/infrastructure/cache/sso_state_redis.go`).
 - **FR-011**: `StoreState` MUST map the state string to the nonce with a 10-minute TTL.
 - **FR-012**: Retrieval MUST verify and support deletion of the state parameter.
+- **FR-013**: System MUST update `AdminUserRepository` interface with `FindByEmailOrSSO(ctx, email, ssoID)` method.
+- **FR-014**: Gorm implementation MUST query using `email = ? OR sso_identity_id = ?` under transaction context if active.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -120,6 +138,7 @@ Implement the `SSOStateCache` using Redis to store transient state parameters du
 - **SC-005**: OpenAPI specification `api/openapi.yaml` compiles and validates successfully with Swagger/OpenAPI tools.
 - **SC-006**: Unit tests verify validation tags on the `SSOCallbackRequest` DTO structure.
 - **SC-007**: Unit tests verify Redis state caching, TTL, and deletion workflow with a mocked Redis client.
+- **SC-008**: Unit tests verify `FindByEmailOrSSO` GORM query statement and mapping with `sqlmock`.
 
 ## Assumptions
 

@@ -31,4 +31,4 @@
 
 ## Notes
 
-- All items pass. Spec is ready for `/speckit-plan` or `/speckit-implement` (TSK-SSO-004).
+- All items pass. Spec is ready for `/speckit-plan` or `/speckit-implement` (TSK-SSO-005).

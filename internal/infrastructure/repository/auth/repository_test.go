@@ -179,3 +179,49 @@ func TestGormAdminUserRepository_ActivateAccount(t *testing.T) {
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }
+
+func TestGormAdminUserRepository_FindByEmailOrSSO(t *testing.T) {
+	gormDB, mock := setupTestDB(t)
+	repo := NewGormAdminUserRepository(gormDB)
+
+	email := "admin@example.com"
+	ssoID := "sso-id-123"
+	now := time.Now()
+
+	t.Run("success match email or sso", func(t *testing.T) {
+		rows := sqlmock.NewRows([]string{
+			"id", "name", "email", "password_hash", "role_id", "status",
+			"mfa_enabled", "mfa_secret", "last_login_at", "fail_count",
+			"locked_until", "invited_by", "sso_identity_id", "sso_provider", "created_at", "updated_at",
+		}).AddRow(
+			"user-uuid", "Admin User", email, "hashed-password", "role-uuid", "active",
+			true, "secret", &now, 0, nil, nil, ssoID, "google", now, now,
+		)
+
+		mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "admin_users" WHERE email = $1 OR sso_identity_id = $2 ORDER BY "admin_users"."id" LIMIT $3`)).
+			WithArgs(email, ssoID, 1).
+			WillReturnRows(rows)
+
+		user, err := repo.FindByEmailOrSSO(context.Background(), email, ssoID)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, user)
+		assert.Equal(t, email, user.Email)
+		assert.Equal(t, ssoID, user.SSOIdentityID)
+		assert.Equal(t, "google", user.SSOProvider)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "admin_users" WHERE email = $1 OR sso_identity_id = $2 ORDER BY "admin_users"."id" LIMIT $3`)).
+			WithArgs(email, ssoID, 1).
+			WillReturnError(gorm.ErrRecordNotFound)
+
+		user, err := repo.FindByEmailOrSSO(context.Background(), email, ssoID)
+
+		assert.ErrorIs(t, err, domainErrors.ErrUserNotFound)
+		assert.Nil(t, user)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+}
+

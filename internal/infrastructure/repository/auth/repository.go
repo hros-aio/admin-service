@@ -124,3 +124,17 @@ func (r *GormAdminUserRepository) ActivateAccount(ctx context.Context, adminID s
 	}
 	return nil
 }
+
+// FindByEmailOrSSO retrieves an admin user by email OR SSO Identity ID.
+func (r *GormAdminUserRepository) FindByEmailOrSSO(ctx context.Context, email string, ssoID string) (*domain.AdminUser, error) {
+	db := platformDB.GetTx(ctx, r.db)
+	var model adminUserModel
+	if err := db.Where("email = ? OR sso_identity_id = ?", email, ssoID).First(&model).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domainErrors.ErrUserNotFound
+		}
+		return nil, err
+	}
+	return model.toDomain(), nil
+}
+

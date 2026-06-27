@@ -4,7 +4,7 @@
 
 **Prerequisites**: plan.md ✅, spec.md ✅
 
-**Scope**: Define the `SSOStateCache` interface, specific domain errors, and event payload structs. Create migration scripts, define request DTOs, update OpenAPI contracts, and implement Redis cache.
+**Scope**: Define the `SSOStateCache` interface, specific domain errors, and event payload structs. Create migration scripts, define request DTOs, update OpenAPI contracts, implement Redis cache, and implement DB lookup query.
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -47,3 +47,11 @@
 - [x] T011 [P] [US4] Implement `RedisSSOStateCache` in `internal/infrastructure/cache/sso_state_redis.go` conforming to the `interfaces.SSOStateCache` interface.
 - [x] T012 [P] [US4] Implement unit tests using `go-redis` mock (like `redismock`) in `internal/infrastructure/cache/sso_state_redis_test.go`.
 - [x] T013 [P] [US4] Register `RedisSSOStateCache` in the Uber Fx dependency injection module if required.
+
+---
+
+## Phase 5: Repository Layer (TSK-SSO-005)
+
+- [x] T014 [P] [US5] Add `FindByEmailOrSSO(ctx, email, ssoID)` method to `AdminUserRepository` interface in `internal/domain/admin_user.go`.
+- [x] T015 [P] [US5] Implement `FindByEmailOrSSO` in `GormAdminUserRepository` inside `internal/infrastructure/repository/auth/repository.go`.
+- [x] T016 [P] [US5] Implement unit tests for `FindByEmailOrSSO` in `internal/infrastructure/repository/auth/repository_test.go` using `sqlmock`.

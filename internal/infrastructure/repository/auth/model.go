@@ -20,6 +20,8 @@ type adminUserModel struct {
 	FailCount           int `gorm:"not null;default:0"`
 	LockedUntil         *time.Time
 	InvitedBy           *string   `gorm:"type:uuid"`
+	SSOIdentityID       string    `gorm:"column:sso_identity_id;type:varchar(255);uniqueIndex"`
+	SSOProvider         string    `gorm:"column:sso_provider;type:varchar(255)"`
 	CreatedAt           time.Time `gorm:"not null"`
 	UpdatedAt           time.Time `gorm:"not null"`
 }

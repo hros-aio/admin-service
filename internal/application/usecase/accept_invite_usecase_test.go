@@ -87,6 +87,14 @@ func (m *mockAdminUserRepositoryForAcceptInvite) GetRoleCodeByID(ctx context.Con
 func (m *mockAdminUserRepositoryForAcceptInvite) ActivateAccount(ctx context.Context, adminID, newHash string) error {
 	return m.Called(ctx, adminID, newHash).Error(0)
 }
+func (m *mockAdminUserRepositoryForAcceptInvite) FindByEmailOrSSO(ctx context.Context, email string, ssoID string) (*domain.AdminUser, error) {
+	args := m.Called(ctx, email, ssoID)
+	if v := args.Get(0); v != nil {
+		return v.(*domain.AdminUser), args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
 
 // ---------------------------------------------------------------------------
 // Mock: AuditLogger (accept-invite specific; reuses struct name scoped to file)

@@ -21,6 +21,8 @@ func (m adminUserModel) toDomain() *domain.AdminUser {
 		FailCount:           m.FailCount,
 		LockedUntil:         m.LockedUntil,
 		InvitedBy:           m.InvitedBy,
+		SSOIdentityID:       m.SSOIdentityID,
+		SSOProvider:         m.SSOProvider,
 		CreatedAt:           m.CreatedAt,
 		UpdatedAt:           m.UpdatedAt,
 	}
@@ -42,6 +44,8 @@ func fromDomain(u *domain.AdminUser) *adminUserModel {
 		FailCount:           u.FailCount,
 		LockedUntil:         u.LockedUntil,
 		InvitedBy:           u.InvitedBy,
+		SSOIdentityID:       u.SSOIdentityID,
+		SSOProvider:         u.SSOProvider,
 		CreatedAt:           u.CreatedAt,
 		UpdatedAt:           u.UpdatedAt,
 	}

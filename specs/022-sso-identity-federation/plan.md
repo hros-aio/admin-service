@@ -6,7 +6,7 @@
 
 ## Summary
 
-This plan outlines the implementation of the Domain and Application Interface definitions, database schema updates, DTO/API contract design, and Redis cache layer for the SSO Identity Federation.
+This plan outlines the implementation of the Domain and Application Interface definitions, database schema updates, DTO/API contract design, Redis cache layer, and user repository lookup for the SSO Identity Federation.
 
 **Phase 1 (TSK-SSO-001)**: Define `SSOStateCache` interface in `internal/application/interfaces/sso_state_cache.go`. Define domain errors `ErrNoAccountLinked` and `ErrInvalidSSOState` in `internal/domain/errors/auth_errors.go`. Define event payload structs for the `login.sso_success` and `login.sso_failed` audit events in `internal/domain/events/auth_events.go`.
 
@@ -16,11 +16,13 @@ This plan outlines the implementation of the Domain and Application Interface de
 
 **Phase 4 (TSK-SSO-004)**: Implement `SSOStateCache` using Redis in `internal/infrastructure/cache/sso_state_redis.go`. Implement unit tests with a mocked Redis client in `internal/infrastructure/cache/sso_state_redis_test.go`.
 
+**Phase 5 (TSK-SSO-005)**: Define `FindByEmailOrSSO(ctx, email, ssoID)` in the `AdminUserRepository` domain interface. Implement the method in `GormAdminUserRepository` inside `internal/infrastructure/repository/auth/repository.go`. Add unit tests in `internal/infrastructure/repository/auth/repository_test.go`.
+
 ## Technical Context
 
 **Language/Version**: Go 1.23+
 
-**Primary Dependencies**: go-redis (for cache implementation).
+**Primary Dependencies**: go-redis (for cache implementation), GORM (for repository mapping).
 
 **Storage**: PostgreSQL (admin_users mapping), Redis (temporary state cache).
 
@@ -28,11 +30,11 @@ This plan outlines the implementation of the Domain and Application Interface de
 
 | Principle | Status | Evidence |
 |-----------|--------|---------|
-| **I. Clean Architecture & Strict Boundaries** | ✅ PASS | Redis cache adapter implements `interfaces.SSOStateCache` without leaking infrastructure details to use cases. |
+| **I. Clean Architecture & Strict Boundaries** | ✅ PASS | Repository interface is defined in `internal/domain/` and implemented in `internal/infrastructure/repository/auth/`. |
 | **II. Documentation-First & OpenAPI-Driven** | ✅ PASS | Specs and plans updated prior to code modification. |
-| **III. Unit-Test-Per-File (NON-NEGOTIABLE)** | ✅ PASS | `sso_state_redis.go` is covered by `sso_state_redis_test.go` using a mock Redis client. |
-| **IV. Task-Driven & Atomic Implementation** | ✅ PASS | Focusing only on task TSK-SSO-004. |
-| **V. Observability & Structured Logging** | ✅ PASS | Errors returned from cache match domain error types to enable clear structured logs. |
+| **III. Unit-Test-Per-File (NON-NEGOTIABLE)** | ✅ PASS | Added repository unit tests utilizing `sqlmock`. |
+| **IV. Task-Driven & Atomic Implementation** | ✅ PASS | Focusing only on task TSK-SSO-005. |
+| **V. Observability & Structured Logging** | ✅ PASS | SSO IDs are queried correctly to facilitate structured trace-linking. |
 
 ## Project Structure
 
@@ -64,6 +66,7 @@ internal/
 │       ├── sso_state_cache.go      # SSOStateCache interface
 │       └── sso_state_cache_test.go # Unit tests/verifications for SSOStateCache interface
 ├── domain/
+│   ├── admin_user.go               # AdminUserRepository domain interface update
 │   ├── errors/
 │   │   ├── auth_errors.go          # ErrNoAccountLinked and ErrInvalidSSOState
 │   │   └── auth_errors_test.go     # Unit tests for domain errors
@@ -71,9 +74,13 @@ internal/
 │       ├── auth_events.go          # Event payload structs for SSO success/failure
 │       └── auth_events_test.go     # Unit tests for event payloads
 ├── infrastructure/
-│   └── cache/
-│       ├── sso_state_redis.go      # Redis implementation of SSOStateCache
-│       └── sso_state_redis_test.go # Unit tests for Redis cache implementation
+│   ├── cache/
+│   │   ├── sso_state_redis.go      # Redis implementation of SSOStateCache
+│   │   └── sso_state_redis_test.go # Unit tests for Redis cache implementation
+│   └── repository/
+│       └── auth/
+│           ├── repository.go       # GormAdminUserRepository implementation update
+│           └── repository_test.go  # Unit tests for GormAdminUserRepository updates
 migrations/
 ├── 000005_add_sso_to_admin_users.up.sql   # SQL migration up script
 └── 000005_add_sso_to_admin_users.down.sql # SQL migration down script
@@ -82,4 +89,4 @@ test/
     └── sso_migration_test.go       # Integration test for the database migration
 ```
 
-**Structure Decision**: Clean Architecture Redis cache and database adapter layers.
+**Structure Decision**: Clean Architecture database repository and cache layers.
