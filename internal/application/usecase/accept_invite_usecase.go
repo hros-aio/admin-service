@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	authDomain "github.com/hros/admin-service/internal/domain/auth"
@@ -33,6 +34,7 @@ type AcceptInviteUseCase struct {
 	inviteTokenRepo domain.InviteTokenRepository
 	audit           authDomain.AuditLogger
 	notificationPub NotificationPublisher
+	logger          *slog.Logger
 }
 
 // NewAcceptInviteUseCase creates a new AcceptInviteUseCase with all required dependencies.
@@ -41,12 +43,14 @@ func NewAcceptInviteUseCase(
 	inviteTokenRepo domain.InviteTokenRepository,
 	audit authDomain.AuditLogger,
 	notificationPub NotificationPublisher,
+	logger *slog.Logger,
 ) *AcceptInviteUseCase {
 	return &AcceptInviteUseCase{
 		userRepo:        userRepo,
 		inviteTokenRepo: inviteTokenRepo,
 		audit:           audit,
 		notificationPub: notificationPub,
+		logger:          logger,
 	}
 }
 
@@ -59,8 +63,11 @@ func NewAcceptInviteUseCase(
 //  4. Hash the new password with bcrypt at cost 12.
 //  5. Activate the account via AdminUserRepository.ActivateAccount.
 //  6. Atomically consume the token via InviteTokenRepository.Consume.
-//  7. Emit invite.accepted and admin.activated audit events (best-effort, non-blocking).
-//  8. Publish a notification.send Kafka event to the original inviter.
+//  7. Load the admin user to resolve their email for audit records.
+//  8. Emit invite.accepted and admin.activated audit events (best-effort).
+//  9. Publish a notification.send Kafka event to the original inviter (best-effort;
+//     persistence has already committed at this point so a publish failure is
+//     logged but not surfaced to the caller).
 func (uc *AcceptInviteUseCase) Execute(ctx context.Context, input AcceptInviteInput) error {
 	if input.Token == "" {
 		return errors.New("invite token cannot be empty")
@@ -107,27 +114,44 @@ func (uc *AcceptInviteUseCase) Execute(ctx context.Context, input AcceptInviteIn
 		return fmt.Errorf("consume invite token: %w", err)
 	}
 
+	// Step 7: Load admin user to populate email in audit records.
+	// Both persistence steps have committed at this point; a lookup failure is
+	// non-fatal — we fall back to an empty email rather than undo the activation.
+	adminEmail := ""
+	if adminUser, lookupErr := uc.userRepo.FindByID(ctx, inviteToken.AdminID); lookupErr == nil {
+		adminEmail = adminUser.Email
+	} else {
+		uc.logger.WarnContext(ctx, "could not resolve admin email for audit log",
+			slog.String("admin_id", inviteToken.AdminID),
+			slog.String("error", lookupErr.Error()),
+		)
+	}
+
 	now := time.Now().UTC()
 
-	// Step 7a: Emit invite.accepted audit event (best-effort).
+	// Step 8a: Emit invite.accepted audit event (best-effort).
 	uc.audit.LogInviteAccepted(ctx, events.InviteAcceptedEvent{
 		InviteTokenID: inviteToken.ID,
 		AdminID:       inviteToken.AdminID,
+		Email:         adminEmail,
 		InvitedBy:     inviteToken.CreatedBy,
 		IPAddress:     input.IPAddress,
 		UserAgent:     input.UserAgent,
 		OccurredAt:    now,
 	})
 
-	// Step 7b: Emit admin.activated audit event (best-effort).
+	// Step 8b: Emit admin.activated audit event (best-effort).
 	uc.audit.LogAdminActivated(ctx, events.AdminActivatedEvent{
 		AdminID:    inviteToken.AdminID,
+		Email:      adminEmail,
 		IPAddress:  input.IPAddress,
 		UserAgent:  input.UserAgent,
 		OccurredAt: now,
 	})
 
-	// Step 8: Publish in-app notification to the original inviter via Kafka.
+	// Step 9: Publish in-app notification to the original inviter via Kafka.
+	// Persistence (ActivateAccount + Consume) has already committed; a Kafka
+	// failure here must not roll back the activation. Log and proceed.
 	notifEvent := events.NotificationSendEvent{
 		RecipientID: inviteToken.CreatedBy,
 		Type:        "invite.accepted",
@@ -140,7 +164,10 @@ func (uc *AcceptInviteUseCase) Execute(ctx context.Context, input AcceptInviteIn
 		CreatedAt: now,
 	}
 	if err := uc.notificationPub.PublishInviteAcceptedNotification(ctx, notifEvent); err != nil {
-		return fmt.Errorf("publish invite accepted notification: %w", err)
+		uc.logger.WarnContext(ctx, "invite accepted notification publish failed; activation succeeded",
+			slog.String("admin_id", inviteToken.AdminID),
+			slog.String("error", err.Error()),
+		)
 	}
 
 	return nil

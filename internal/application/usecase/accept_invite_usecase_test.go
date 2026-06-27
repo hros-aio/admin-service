@@ -3,12 +3,15 @@ package usecase
 import (
 	"context"
 	"errors"
+	"io"
+	"log/slog"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/hros/admin-service/internal/domain"
 	domainErrors "github.com/hros/admin-service/internal/domain/errors"
@@ -161,7 +164,8 @@ func newAcceptInviteUseCase(
 	audit *mockAcceptInviteAuditLogger,
 	pub *mockNotificationPublisher,
 ) *AcceptInviteUseCase {
-	return NewAcceptInviteUseCase(userRepo, tokenRepo, audit, pub)
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	return NewAcceptInviteUseCase(userRepo, tokenRepo, audit, pub, logger)
 }
 
 // ---------------------------------------------------------------------------
@@ -171,6 +175,7 @@ func newAcceptInviteUseCase(
 func TestAcceptInviteUseCase_Execute_Success(t *testing.T) {
 	ctx := context.Background()
 	inviteToken := newValidInviteToken()
+	adminUser := &domain.AdminUser{ID: inviteToken.AdminID, Email: "admin@hros.io"}
 
 	userRepo := new(mockAdminUserRepositoryForAcceptInvite)
 	tokenRepo := new(mockInviteTokenRepository)
@@ -178,15 +183,20 @@ func TestAcceptInviteUseCase_Execute_Success(t *testing.T) {
 	pub := new(mockNotificationPublisher)
 
 	tokenRepo.On("FindByToken", ctx, inviteToken.Token).Return(inviteToken, nil)
-	userRepo.On("ActivateAccount", ctx, inviteToken.AdminID, mock.AnythingOfType("string")).Return(nil)
+	userRepo.On("ActivateAccount", ctx, inviteToken.AdminID, mock.MatchedBy(func(hash string) bool {
+		// Verify the stored value is a bcrypt hash of validPassword.
+		return bcrypt.CompareHashAndPassword([]byte(hash), []byte(validPassword)) == nil
+	})).Return(nil)
 	tokenRepo.On("Consume", ctx, inviteToken.Token).Return(inviteToken, nil)
+	userRepo.On("FindByID", ctx, inviteToken.AdminID).Return(adminUser, nil)
 	audit.On("LogInviteAccepted", ctx, mock.MatchedBy(func(e events.InviteAcceptedEvent) bool {
 		return e.AdminID == inviteToken.AdminID &&
 			e.InviteTokenID == inviteToken.ID &&
-			e.InvitedBy == inviteToken.CreatedBy
+			e.InvitedBy == inviteToken.CreatedBy &&
+			e.Email == adminUser.Email
 	})).Once()
 	audit.On("LogAdminActivated", ctx, mock.MatchedBy(func(e events.AdminActivatedEvent) bool {
-		return e.AdminID == inviteToken.AdminID
+		return e.AdminID == inviteToken.AdminID && e.Email == adminUser.Email
 	})).Once()
 	pub.On("PublishInviteAcceptedNotification", ctx, mock.MatchedBy(func(e events.NotificationSendEvent) bool {
 		return e.RecipientID == inviteToken.CreatedBy && e.Type == "invite.accepted"
@@ -310,8 +320,11 @@ func TestAcceptInviteUseCase_Execute_ConsumeTokenError(t *testing.T) {
 }
 
 func TestAcceptInviteUseCase_Execute_PublishNotificationError(t *testing.T) {
+	// Since notification publish is now best-effort, a Kafka failure must NOT
+	// surface as an error — the activation has already been committed.
 	ctx := context.Background()
 	inviteToken := newValidInviteToken()
+	adminUser := &domain.AdminUser{ID: inviteToken.AdminID, Email: "admin@hros.io"}
 
 	userRepo := new(mockAdminUserRepositoryForAcceptInvite)
 	tokenRepo := new(mockInviteTokenRepository)
@@ -321,13 +334,18 @@ func TestAcceptInviteUseCase_Execute_PublishNotificationError(t *testing.T) {
 	tokenRepo.On("FindByToken", ctx, inviteToken.Token).Return(inviteToken, nil)
 	userRepo.On("ActivateAccount", ctx, inviteToken.AdminID, mock.AnythingOfType("string")).Return(nil)
 	tokenRepo.On("Consume", ctx, inviteToken.Token).Return(inviteToken, nil)
+	userRepo.On("FindByID", ctx, inviteToken.AdminID).Return(adminUser, nil)
 	audit.On("LogInviteAccepted", ctx, mock.Anything).Once()
 	audit.On("LogAdminActivated", ctx, mock.Anything).Once()
 	pub.On("PublishInviteAcceptedNotification", ctx, mock.Anything).Return(errors.New("kafka error"))
 
 	uc := newAcceptInviteUseCase(userRepo, tokenRepo, audit, pub)
 	err := uc.Execute(ctx, AcceptInviteInput{Token: inviteToken.Token, Password: validPassword})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "publish invite accepted notification")
-	assert.Contains(t, err.Error(), "kafka error")
+
+	// Notification failure is best-effort: Execute must succeed.
+	require.NoError(t, err)
+	userRepo.AssertExpectations(t)
+	tokenRepo.AssertExpectations(t)
+	audit.AssertExpectations(t)
+	pub.AssertExpectations(t)
 }

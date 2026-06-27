@@ -173,4 +173,54 @@ func TestSlogAuditLogger(t *testing.T) {
 		assert.Equal(t, "10.0.0.1", logMap["ip_address"])
 		assert.Equal(t, "Firefox", logMap["user_agent"])
 	})
+
+	t.Run("LogInviteAccepted", func(t *testing.T) {
+		buf.Reset()
+		event := events.InviteAcceptedEvent{
+			InviteTokenID: "token-id-001",
+			AdminID:       "admin-uuid-001",
+			Email:         "newadmin@hros.io",
+			InvitedBy:     "inviter-uuid-001",
+			IPAddress:     "192.168.1.1",
+			UserAgent:     "Go-test/1.0",
+			OccurredAt:    time.Now(),
+		}
+		auditLogger.LogInviteAccepted(ctx, event)
+
+		var logMap map[string]interface{}
+		err := json.Unmarshal(buf.Bytes(), &logMap)
+		assert.NoError(t, err)
+
+		assert.Equal(t, "invite accepted", logMap["msg"])
+		assert.Equal(t, "invite.accepted", logMap["event"])
+		assert.Equal(t, "token-id-001", logMap["invite_token_id"])
+		assert.Equal(t, "admin-uuid-001", logMap["admin_id"])
+		assert.Equal(t, "newadmin@hros.io", logMap["email"])
+		assert.Equal(t, "inviter-uuid-001", logMap["invited_by"])
+		assert.Equal(t, "192.168.1.1", logMap["ip_address"])
+		assert.Equal(t, "Go-test/1.0", logMap["user_agent"])
+	})
+
+	t.Run("LogAdminActivated", func(t *testing.T) {
+		buf.Reset()
+		event := events.AdminActivatedEvent{
+			AdminID:    "admin-uuid-001",
+			Email:      "newadmin@hros.io",
+			IPAddress:  "192.168.1.1",
+			UserAgent:  "Go-test/1.0",
+			OccurredAt: time.Now(),
+		}
+		auditLogger.LogAdminActivated(ctx, event)
+
+		var logMap map[string]interface{}
+		err := json.Unmarshal(buf.Bytes(), &logMap)
+		assert.NoError(t, err)
+
+		assert.Equal(t, "admin account activated", logMap["msg"])
+		assert.Equal(t, "admin.activated", logMap["event"])
+		assert.Equal(t, "admin-uuid-001", logMap["admin_id"])
+		assert.Equal(t, "newadmin@hros.io", logMap["email"])
+		assert.Equal(t, "192.168.1.1", logMap["ip_address"])
+		assert.Equal(t, "Go-test/1.0", logMap["user_agent"])
+	})
 }
