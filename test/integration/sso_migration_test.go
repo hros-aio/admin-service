@@ -65,12 +65,12 @@ func TestSSOMigrationUpAndDownFlow(t *testing.T) {
 	// 1. Run UP migration the first time
 	runMigrationSQLFile(t, db, filepath.Join(migDir, "000005_add_sso_to_admin_users.up.sql"))
 
-	// Verify columns exist on admin_users table
+	// Verify columns exist on admin_users table in active schema
 	var columns []struct {
 		ColumnName string `gorm:"column:column_name"`
 		DataType   string `gorm:"column:data_type"`
 	}
-	err := db.Raw("SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'admin_users'").Scan(&columns).Error
+	err := db.Raw("SELECT column_name, data_type FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'admin_users'").Scan(&columns).Error
 	require.NoError(t, err)
 
 	colMap := make(map[string]string)
@@ -81,14 +81,32 @@ func TestSSOMigrationUpAndDownFlow(t *testing.T) {
 	assert.Contains(t, colMap, "sso_identity_id")
 	assert.Contains(t, colMap, "sso_provider")
 
+	// Verify uniqueness constraint on sso_identity_id in active schema
+	var isUnique bool
+	err = db.Raw(`
+		SELECT EXISTS (
+			SELECT 1
+			FROM information_schema.table_constraints AS tc
+			JOIN information_schema.key_column_usage AS kcu
+			  ON tc.constraint_name = kcu.constraint_name
+			  AND tc.table_schema = kcu.table_schema
+			WHERE tc.table_schema = 'public'
+			  AND tc.table_name = 'admin_users'
+			  AND kcu.column_name = 'sso_identity_id'
+			  AND tc.constraint_type = 'UNIQUE'
+		)
+	`).Scan(&isUnique).Error
+	require.NoError(t, err)
+	assert.True(t, isUnique, "Expected sso_identity_id to have UNIQUE constraint")
+
 	// 2. Run UP migration a second time to verify idempotency
 	runMigrationSQLFile(t, db, filepath.Join(migDir, "000005_add_sso_to_admin_users.up.sql"))
 
 	// 3. Run DOWN migration the first time
 	runMigrationSQLFile(t, db, filepath.Join(migDir, "000005_add_sso_to_admin_users.down.sql"))
 
-	// Verify columns do not exist on admin_users table
-	err = db.Raw("SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'admin_users'").Scan(&columns).Error
+	// Verify columns do not exist on admin_users table in active schema
+	err = db.Raw("SELECT column_name, data_type FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'admin_users'").Scan(&columns).Error
 	require.NoError(t, err)
 
 	colMapAfter := make(map[string]string)
@@ -98,6 +116,23 @@ func TestSSOMigrationUpAndDownFlow(t *testing.T) {
 
 	assert.NotContains(t, colMapAfter, "sso_identity_id")
 	assert.NotContains(t, colMapAfter, "sso_provider")
+
+	// Verify uniqueness constraint does not exist on sso_identity_id in active schema
+	err = db.Raw(`
+		SELECT EXISTS (
+			SELECT 1
+			FROM information_schema.table_constraints AS tc
+			JOIN information_schema.key_column_usage AS kcu
+			  ON tc.constraint_name = kcu.constraint_name
+			  AND tc.table_schema = kcu.table_schema
+			WHERE tc.table_schema = 'public'
+			  AND tc.table_name = 'admin_users'
+			  AND kcu.column_name = 'sso_identity_id'
+			  AND tc.constraint_type = 'UNIQUE'
+		)
+	`).Scan(&isUnique).Error
+	require.NoError(t, err)
+	assert.False(t, isUnique, "Expected sso_identity_id UNIQUE constraint to be dropped")
 
 	// 4. Run DOWN migration a second time to verify idempotency
 	runMigrationSQLFile(t, db, filepath.Join(migDir, "000005_add_sso_to_admin_users.down.sql"))
