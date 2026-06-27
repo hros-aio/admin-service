@@ -90,3 +90,24 @@ type NotificationSendEvent struct {
 	Payload     map[string]interface{} `json:"payload"`
 	CreatedAt   time.Time              `json:"created_at"`
 }
+
+// SSOSuccessEvent defines the payload structure for the 'login.sso_success' audit event.
+type SSOSuccessEvent struct {
+	AdminID    string    `json:"admin_id"`
+	Email      string    `json:"email"`
+	Provider   string    `json:"provider"`
+	IPAddress  string    `json:"ip_address"`
+	UserAgent  string    `json:"user_agent"`
+	OccurredAt time.Time `json:"occurred_at"`
+}
+
+// SSOFailedEvent defines the payload structure for the 'login.sso_failed' audit event.
+type SSOFailedEvent struct {
+	Email      string    `json:"email,omitempty"`
+	Provider   string    `json:"provider"`
+	Reason     string    `json:"reason"`
+	IPAddress  string    `json:"ip_address"`
+	UserAgent  string    `json:"user_agent"`
+	OccurredAt time.Time `json:"occurred_at"`
+}
+
