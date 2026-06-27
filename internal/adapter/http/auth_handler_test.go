@@ -185,6 +185,14 @@ func (m *mockAuditLogger) LogPasswordResetCompleted(ctx context.Context, event e
 	m.Called(ctx, event)
 }
 
+func (m *mockAuditLogger) LogInviteAccepted(ctx context.Context, event events.InviteAcceptedEvent) {
+	m.Called(ctx, event)
+}
+
+func (m *mockAuditLogger) LogAdminActivated(ctx context.Context, event events.AdminActivatedEvent) {
+	m.Called(ctx, event)
+}
+
 type mockPasswordResetCache struct {
 	mock.Mock
 }

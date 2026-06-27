@@ -24,4 +24,8 @@ type AuditLogger interface {
 	LogPasswordResetRequested(ctx context.Context, event events.PasswordResetRequestedEvent)
 	// LogPasswordResetCompleted records a completed password reset.
 	LogPasswordResetCompleted(ctx context.Context, event events.PasswordResetCompletedEvent)
+	// LogInviteAccepted records that an administrator accepted an invitation.
+	LogInviteAccepted(ctx context.Context, event events.InviteAcceptedEvent)
+	// LogAdminActivated records that an administrator account was successfully activated.
+	LogAdminActivated(ctx context.Context, event events.AdminActivatedEvent)
 }

@@ -109,3 +109,27 @@ func (l *SlogAuditLogger) LogPasswordResetCompleted(ctx context.Context, event e
 		slog.String("user_agent", event.UserAgent),
 	)
 }
+
+// LogInviteAccepted logs that an administrator accepted an invitation.
+func (l *SlogAuditLogger) LogInviteAccepted(ctx context.Context, event events.InviteAcceptedEvent) {
+	l.logger.InfoContext(ctx, "invite accepted",
+		slog.String("event", "invite.accepted"),
+		slog.String("invite_token_id", event.InviteTokenID),
+		slog.String("admin_id", event.AdminID),
+		slog.String("email", event.Email),
+		slog.String("invited_by", event.InvitedBy),
+		slog.String("ip_address", event.IPAddress),
+		slog.String("user_agent", event.UserAgent),
+	)
+}
+
+// LogAdminActivated logs that an administrator account was successfully activated.
+func (l *SlogAuditLogger) LogAdminActivated(ctx context.Context, event events.AdminActivatedEvent) {
+	l.logger.InfoContext(ctx, "admin account activated",
+		slog.String("event", "admin.activated"),
+		slog.String("admin_id", event.AdminID),
+		slog.String("email", event.Email),
+		slog.String("ip_address", event.IPAddress),
+		slog.String("user_agent", event.UserAgent),
+	)
+}

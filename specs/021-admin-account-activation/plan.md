@@ -18,6 +18,8 @@ This plan outlines the implementation of Admin Account Activation (Accept Invite
 
 **Phase 5 (TSK-ACT-005 — ✅ Done)**: Implement Kafka producer for `notification.send` event in `internal/adapter/kafka/producer/notification_events.go` to dispatch in-app notifications to the original inviter.
 
+**Phase 6 (TSK-ACT-006 — ✅ Done)**: Implement `AcceptInviteUseCase` in `internal/application/usecase/accept_invite_usecase.go` to orchestrate token validation, password hashing, account activation, token consumption, and event emission.
+
 ## Technical Context
 
 **Language/Version**: Go 1.23+
