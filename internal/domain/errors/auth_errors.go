@@ -57,4 +57,10 @@ var (
 
 	// ErrInviteUsed is returned when an invite token has already been used.
 	ErrInviteUsed = errors.New("invite token has already been used")
+
+	// ErrNoAccountLinked is returned when no admin account is linked to the SSO identity.
+	ErrNoAccountLinked = errors.New("no admin account linked to this identity")
+
+	// ErrInvalidSSOState is returned when the SSO state or nonce is invalid or expired.
+	ErrInvalidSSOState = errors.New("invalid SSO state")
 )

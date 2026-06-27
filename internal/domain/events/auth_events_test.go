@@ -241,3 +241,56 @@ func TestNotificationSendEvent_Serialization(t *testing.T) {
 	assert.Equal(t, event.Payload["admin_id"], unmarshaled.Payload["admin_id"])
 	assert.True(t, event.CreatedAt.Equal(unmarshaled.CreatedAt))
 }
+
+func TestSSOSuccessEvent_Serialization(t *testing.T) {
+	now := time.Now().UTC()
+	event := SSOSuccessEvent{
+		AdminID:    "admin-uuid-123",
+		Email:      "admin@hros.io",
+		Provider:   "okta",
+		IPAddress:  "192.168.1.1",
+		UserAgent:  "Mozilla/5.0",
+		OccurredAt: now,
+	}
+
+	data, err := json.Marshal(event)
+	require.NoError(t, err)
+
+	var unmarshaled SSOSuccessEvent
+	err = json.Unmarshal(data, &unmarshaled)
+	require.NoError(t, err)
+
+	assert.Equal(t, event.AdminID, unmarshaled.AdminID)
+	assert.Equal(t, event.Email, unmarshaled.Email)
+	assert.Equal(t, event.Provider, unmarshaled.Provider)
+	assert.Equal(t, event.IPAddress, unmarshaled.IPAddress)
+	assert.Equal(t, event.UserAgent, unmarshaled.UserAgent)
+	assert.True(t, event.OccurredAt.Equal(unmarshaled.OccurredAt))
+}
+
+func TestSSOFailedEvent_Serialization(t *testing.T) {
+	now := time.Now().UTC()
+	event := SSOFailedEvent{
+		Email:      "admin@hros.io",
+		Provider:   "google",
+		Reason:     "no_account_linked",
+		IPAddress:  "192.168.1.1",
+		UserAgent:  "Mozilla/5.0",
+		OccurredAt: now,
+	}
+
+	data, err := json.Marshal(event)
+	require.NoError(t, err)
+
+	var unmarshaled SSOFailedEvent
+	err = json.Unmarshal(data, &unmarshaled)
+	require.NoError(t, err)
+
+	assert.Equal(t, event.Email, unmarshaled.Email)
+	assert.Equal(t, event.Provider, unmarshaled.Provider)
+	assert.Equal(t, event.Reason, unmarshaled.Reason)
+	assert.Equal(t, event.IPAddress, unmarshaled.IPAddress)
+	assert.Equal(t, event.UserAgent, unmarshaled.UserAgent)
+	assert.True(t, event.OccurredAt.Equal(unmarshaled.OccurredAt))
+}
+
