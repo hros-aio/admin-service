@@ -12,6 +12,8 @@ This plan outlines the implementation of Admin Account Activation (Accept Invite
 
 **Phase 2 (TSK-ACT-002 — ✅ Done)**: Create SQL migration scripts `migrations/000004_create_invite_tokens.up.sql` and `migrations/000004_create_invite_tokens.down.sql` to establish the `invite_tokens` table.
 
+**Phase 3 (TSK-ACT-003 — ✅ Done)**: Define the `AcceptInviteRequest` HTTP DTO in `internal/adapter/http/auth/dto/auth_dto.go`. Document the `POST /auth/accept-invite` endpoint in `api/openapi.yaml`.
+
 ## Technical Context
 
 **Language/Version**: Go 1.23+
@@ -24,11 +26,11 @@ This plan outlines the implementation of Admin Account Activation (Accept Invite
 
 | Principle | Status | Evidence |
 |-----------|--------|---------|
-| **I. Clean Architecture & Strict Boundaries** | ✅ PASS | Domain layer defines pure structures and interfaces without infrastructure imports. |
-| **II. Documentation-First & OpenAPI-Driven** | ✅ PASS | Creating specification and planning documents before writing code. |
-| **III. Unit-Test-Per-File (NON-NEGOTIABLE)** | ✅ PASS | All new and modified domain code will have corresponding `_test.go` unit tests. |
-| **IV. Task-Driven & Atomic Implementation** | ✅ PASS | Focusing solely on task TSK-ACT-002. |
-| **V. Observability & Structured Logging** | ✅ PASS | Audit events and Kafka events are designed to transport structured data. |
+| **I. Clean Architecture & Strict Boundaries** | ✅ PASS | DTO definition handles serialization and request validation cleanly. |
+| **II. Documentation-First & OpenAPI-Driven** | ✅ PASS | Updating OpenAPI schema and planning files prior to coding. |
+| **III. Unit-Test-Per-File (NON-NEGOTIABLE)** | ✅ PASS | Adding test cases to DTO validation unit tests. |
+| **IV. Task-Driven & Atomic Implementation** | ✅ PASS | Focusing solely on task TSK-ACT-003. |
+| **V. Observability & Structured Logging** | ✅ PASS | Custom errors mapped to standard OpenAPI error responses. |
 
 ## Project Structure
 
@@ -44,7 +46,15 @@ specs/021-admin-account-activation/
 ### Source Code
 
 ```text
+api/
+└── openapi.yaml                 # OpenAPI contract documentation
 internal/
+├── adapter/
+│   └── http/
+│       └── auth/
+│           └── dto/
+│               ├── auth_dto.go  # Add AcceptInviteRequest DTO
+│               └── auth_dto_test.go # Test AcceptInviteRequest validation
 ├── domain/
 │   ├── invite_token.go          # InviteToken entity & repository interface
 │   ├── invite_token_test.go     # Tests for InviteToken entity methods

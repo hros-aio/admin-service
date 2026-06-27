@@ -32,3 +32,12 @@
 - [x] T006 [P] [US1] Create migration down script `migrations/000004_create_invite_tokens.down.sql` to drop `invite_tokens` table.
 - [x] T007 [P] [US1] Run database migrations forward and backward to verify they execute successfully.
 
+---
+
+## Phase 3: DTO & OpenAPI Contract (TSK-ACT-003)
+
+- [x] T008 [P] [US1] Define `AcceptInviteRequest` DTO in `internal/adapter/http/auth/dto/auth_dto.go` with strict validation tags.
+- [x] T009 [P] [US1] Add unit tests for `AcceptInviteRequest` validation in `internal/adapter/http/auth/dto/auth_dto_test.go`.
+- [x] T010 [P] [US1] Document the `POST /v1/auth/accept-invite` endpoint in `api/openapi.yaml`.
+
+
