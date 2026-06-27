@@ -1846,4 +1846,30 @@ func TestAuthHandler_AcceptInvite(t *testing.T) {
 		assert.Equal(t, "internal_error", errorResp.Code)
 		mockUC.AssertExpectations(t)
 	})
+
+	t.Run("Nil UseCase returns 500 without panic", func(t *testing.T) {
+		// Passing nil explicitly exercises the nil-guard added in the handler.
+		// Without the guard this would panic; with it, callers get a controlled 500.
+		handler := NewAuthHandler(nil, nil, nil, nil, nil, nil, nil)
+
+		reqBody := dto.AcceptInviteRequest{
+			Token:                "valid-token",
+			Password:             "SecurePassword123!",
+			PasswordConfirmation: "SecurePassword123!",
+		}
+		body, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPost, "/v1/auth/accept-invite", bytes.NewReader(body))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		err := handler.AcceptInvite(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+
+		var errorResp sharedErrors.ErrorResponse
+		err = json.Unmarshal(rec.Body.Bytes(), &errorResp)
+		assert.NoError(t, err)
+		assert.Equal(t, "internal_error", errorResp.Code)
+	})
 }

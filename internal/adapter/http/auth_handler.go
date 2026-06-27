@@ -376,6 +376,12 @@ func (h *AuthHandler) AcceptInvite(c echo.Context) error {
 		UserAgent: c.Request().UserAgent(),
 	}
 
+	if h.acceptInviteUC == nil {
+		traceID := c.Response().Header().Get(echo.HeaderXRequestID)
+		resp := sharedErrors.NewErrorResponse("internal_error", "Internal server error", nil, traceID)
+		return c.JSON(http.StatusInternalServerError, resp)
+	}
+
 	if err := h.acceptInviteUC.Execute(c.Request().Context(), input); err != nil {
 		traceID := c.Response().Header().Get(echo.HeaderXRequestID)
 
