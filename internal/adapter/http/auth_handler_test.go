@@ -1641,3 +1641,52 @@ func TestAuthHandler_ConfirmPasswordReset(t *testing.T) {
 		assert.Equal(t, "internal_error", errorResp.Code)
 	})
 }
+
+func TestAuthHandler_AcceptInvite(t *testing.T) {
+	e := echo.New()
+	handler := NewAuthHandler(nil, nil, nil, nil, nil, nil)
+
+	t.Run("Success", func(t *testing.T) {
+		reqBody := dto.AcceptInviteRequest{
+			Token:                "valid-token",
+			Password:             "SecurePassword123!",
+			PasswordConfirmation: "SecurePassword123!",
+		}
+		body, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPost, "/v1/auth/accept-invite", bytes.NewReader(body))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		err := handler.AcceptInvite(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+
+		var resp map[string]string
+		err = json.Unmarshal(rec.Body.Bytes(), &resp)
+		assert.NoError(t, err)
+		assert.Equal(t, "Account activated successfully.", resp["message"])
+	})
+
+	t.Run("Validation Failure", func(t *testing.T) {
+		reqBody := dto.AcceptInviteRequest{
+			Token:                "",
+			Password:             "SecurePassword123!",
+			PasswordConfirmation: "Mismatched!",
+		}
+		body, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPost, "/v1/auth/accept-invite", bytes.NewReader(body))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		err := handler.AcceptInvite(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+
+		var errorResp sharedErrors.ErrorResponse
+		err = json.Unmarshal(rec.Body.Bytes(), &errorResp)
+		assert.NoError(t, err)
+		assert.Equal(t, "validation_error", errorResp.Code)
+	})
+}

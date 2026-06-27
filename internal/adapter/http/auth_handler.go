@@ -53,6 +53,7 @@ func RegisterRoutes(e *echo.Echo, h *AuthHandler) {
 	e.POST("/v1/auth/mfa/verify", h.VerifyMFA)
 	e.POST("/v1/auth/password-reset/request", h.RequestPasswordReset)
 	e.POST("/v1/auth/password-reset/confirm", h.ConfirmPasswordReset)
+	e.POST("/v1/auth/accept-invite", h.AcceptInvite)
 }
 
 // Login handles the admin login request.
@@ -340,4 +341,23 @@ func (h *AuthHandler) ConfirmPasswordReset(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, echo.Map{"message": "Password updated successfully."})
+}
+
+// AcceptInvite handles the request to accept an administrator invitation.
+func (h *AuthHandler) AcceptInvite(c echo.Context) error {
+	var req dto.AcceptInviteRequest
+	if err := c.Bind(&req); err != nil {
+		traceID := c.Response().Header().Get(echo.HeaderXRequestID)
+		resp := sharedErrors.NewErrorResponse("bad_request", "Invalid request body", err.Error(), traceID)
+		return c.JSON(http.StatusBadRequest, resp)
+	}
+
+	if err := h.validate.Struct(&req); err != nil {
+		traceID := c.Response().Header().Get(echo.HeaderXRequestID)
+		resp := sharedErrors.NewErrorResponse("validation_error", "Request validation failed", err.Error(), traceID)
+		return c.JSON(http.StatusBadRequest, resp)
+	}
+
+	// Stub response for now, matching the OpenAPI contract
+	return c.JSON(http.StatusOK, echo.Map{"message": "Account activated successfully."})
 }
