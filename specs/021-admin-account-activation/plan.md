@@ -14,6 +14,8 @@ This plan outlines the implementation of Admin Account Activation (Accept Invite
 
 **Phase 3 (TSK-ACT-003 — ✅ Done)**: Define the `AcceptInviteRequest` HTTP DTO in `internal/adapter/http/auth/dto/auth_dto.go`. Document the `POST /v1/auth/accept-invite` endpoint in `api/openapi.yaml`.
 
+**Phase 4 (TSK-ACT-004 — ✅ Done)**: Implement `InviteTokenRepository` and update `AdminUserRepository` with `ActivateAccount` in `internal/infrastructure/repository/auth/`.
+
 ## Technical Context
 
 **Language/Version**: Go 1.23+
@@ -26,11 +28,11 @@ This plan outlines the implementation of Admin Account Activation (Accept Invite
 
 | Principle | Status | Evidence |
 |-----------|--------|---------|
-| **I. Clean Architecture & Strict Boundaries** | ✅ PASS | DTO definition handles serialization and request validation cleanly. |
-| **II. Documentation-First & OpenAPI-Driven** | ✅ PASS | Updating OpenAPI schema and planning files prior to coding. |
-| **III. Unit-Test-Per-File (NON-NEGOTIABLE)** | ✅ PASS | Adding test cases to DTO validation unit tests. |
-| **IV. Task-Driven & Atomic Implementation** | ✅ PASS | Focusing solely on task TSK-ACT-003. |
-| **V. Observability & Structured Logging** | ✅ PASS | Custom errors mapped to standard OpenAPI error responses. |
+| **I. Clean Architecture & Strict Boundaries** | ✅ PASS | Repository implementation implements domain interfaces using GORM. |
+| **II. Documentation-First & OpenAPI-Driven** | ✅ PASS | Updating planning and task files prior to coding. |
+| **III. Unit-Test-Per-File (NON-NEGOTIABLE)** | ✅ PASS | Adding test cases to repository unit tests. |
+| **IV. Task-Driven & Atomic Implementation** | ✅ PASS | Focusing solely on task TSK-ACT-004. |
+| **V. Observability & Structured Logging** | ✅ PASS | Errors from GORM execution mapped to appropriate domain errors. |
 
 ## Project Structure
 
@@ -64,6 +66,13 @@ internal/
 │   └── events/
 │       ├── auth_events.go       # Add AdminActivatedEvent, InviteAcceptedEvent, NotificationSendEvent
 │       └── auth_events_test.go  # Test coverage for events
+├── infrastructure/
+│   └── repository/
+│       └── auth/
+│           ├── invite_token_repository.go # GORM InviteTokenRepository implementation
+│           ├── invite_token_repository_test.go # Unit tests for GORM InviteTokenRepository
+│           ├── repository.go            # Update GormAdminUserRepository with ActivateAccount
+│           └── repository_test.go       # Update unit tests for GormAdminUserRepository
 migrations/
 ├── 000004_create_invite_tokens.up.sql   # SQL script to create invite_tokens table
 └── 000004_create_invite_tokens.down.sql # SQL script to drop invite_tokens table

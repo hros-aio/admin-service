@@ -40,4 +40,15 @@
 - [x] T009 [P] [US1] Add unit tests for `AcceptInviteRequest` validation in `internal/adapter/http/auth/dto/auth_dto_test.go`.
 - [x] T010 [P] [US1] Document the `POST /v1/auth/accept-invite` endpoint in `api/openapi.yaml`.
 
+---
+
+## Phase 4: Repository Layer (TSK-ACT-004)
+
+- [x] T011 [P] [US1] Define GORM mapping for `InviteToken` and implement `GormInviteTokenRepository` with `Save`, `FindByToken`, `Update`, and `Consume` in `internal/infrastructure/repository/auth/invite_token_repository.go`.
+- [x] T012 [P] [US1] Add `ActivateAccount` method to `GormAdminUserRepository` in `internal/infrastructure/repository/auth/repository.go` and update interface in `internal/domain/admin_user.go`.
+- [x] T013 [P] [US1] Add unit tests for repository methods using sqlmock in:
+  - `internal/infrastructure/repository/auth/invite_token_repository_test.go`
+  - `internal/infrastructure/repository/auth/repository_test.go`
+
+
 
