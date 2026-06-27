@@ -50,5 +50,13 @@
   - `internal/infrastructure/repository/auth/invite_token_repository_test.go`
   - `internal/infrastructure/repository/auth/repository_test.go`
 
+---
+
+## Phase 5: Kafka Producer (TSK-ACT-005)
+
+- [x] T014 [P] [US1] Implement `NotificationKafkaProducer` with `PublishInviteAcceptedNotification` in `internal/adapter/kafka/producer/notification_events.go`.
+- [x] T015 [P] [US1] Add unit tests using Sarama mocks to verify envelope shape, happy path, Sarama errors, and empty recipient guard in `internal/adapter/kafka/producer/notification_events_test.go`.
+
+
 
 

@@ -16,6 +16,8 @@ This plan outlines the implementation of Admin Account Activation (Accept Invite
 
 **Phase 4 (TSK-ACT-004 — ✅ Done)**: Implement `InviteTokenRepository` and update `AdminUserRepository` with `ActivateAccount` in `internal/infrastructure/repository/auth/`.
 
+**Phase 5 (TSK-ACT-005 — ✅ Done)**: Implement Kafka producer for `notification.send` event in `internal/adapter/kafka/producer/notification_events.go` to dispatch in-app notifications to the original inviter.
+
 ## Technical Context
 
 **Language/Version**: Go 1.23+
