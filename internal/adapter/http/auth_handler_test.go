@@ -70,6 +70,15 @@ func (m *mockUserRepo) ActivateAccount(ctx context.Context, adminID string, newH
 	return m.Called(ctx, adminID, newHash).Error(0)
 }
 
+func (m *mockUserRepo) FindByEmailOrSSO(ctx context.Context, email string, ssoProvider string, ssoID string) (*domain.AdminUser, error) {
+	args := m.Called(ctx, email, ssoProvider, ssoID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.AdminUser), args.Error(1)
+}
+
+
 type mockMFACache struct{ mock.Mock }
 
 func (m *mockMFACache) StoreToken(ctx context.Context, token string, adminID string) error {

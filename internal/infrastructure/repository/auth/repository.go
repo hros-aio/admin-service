@@ -124,3 +124,56 @@ func (r *GormAdminUserRepository) ActivateAccount(ctx context.Context, adminID s
 	}
 	return nil
 }
+
+// FindByEmailOrSSO retrieves an admin user by email OR SSO Identity ID/Provider.
+func (r *GormAdminUserRepository) FindByEmailOrSSO(ctx context.Context, email string, ssoProvider string, ssoID string) (*domain.AdminUser, error) {
+	db := platformDB.GetTx(ctx, r.db)
+
+	var emailUser *domain.AdminUser
+	var ssoUser *domain.AdminUser
+
+	// 1. Resolve by email if not blank
+	if email != "" {
+		var emailModel adminUserModel
+		err := db.Where("email = ?", email).First(&emailModel).Error
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, err
+		}
+		if err == nil {
+			emailUser = emailModel.toDomain()
+		}
+	}
+
+	// 2. Resolve by SSO if provider and ssoID are not blank
+	if ssoProvider != "" && ssoID != "" {
+		var ssoModel adminUserModel
+		err := db.Where("sso_provider = ? AND sso_identity_id = ?", ssoProvider, ssoID).First(&ssoModel).Error
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, err
+		}
+		if err == nil {
+			ssoUser = ssoModel.toDomain()
+		}
+	}
+
+	// 3. Compare and return results
+	if emailUser != nil && ssoUser != nil {
+		if emailUser.ID != ssoUser.ID {
+			return nil, domainErrors.ErrIdentityConflict
+		}
+		return emailUser, nil
+	}
+
+	if emailUser != nil {
+		return emailUser, nil
+	}
+
+	if ssoUser != nil {
+		return ssoUser, nil
+	}
+
+	// If neither resolved, return ErrUserNotFound
+	return nil, domainErrors.ErrUserNotFound
+}
+
+
