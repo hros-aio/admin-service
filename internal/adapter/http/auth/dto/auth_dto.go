@@ -48,3 +48,15 @@ type AcceptInviteRequest struct {
 	Password             string `json:"password" validate:"required"`
 	PasswordConfirmation string `json:"password_confirmation" validate:"required,eqfield=Password"`
 }
+
+// SSOInitiateRequest represents the query parameters for the SSO initiation endpoint.
+type SSOInitiateRequest struct {
+	Provider string `json:"provider" query:"provider" validate:"required"`
+}
+
+// SSOCallbackRequest represents the query parameters for the SSO callback endpoint.
+type SSOCallbackRequest struct {
+	Code  string `json:"code" query:"code" validate:"required"`
+	State string `json:"state" query:"state" validate:"required"`
+}
+

@@ -6,11 +6,13 @@
 
 ## Summary
 
-This plan outlines the implementation of the Domain and Application Interface definitions, as well as the database schema updates for the SSO Identity Federation.
+This plan outlines the implementation of the Domain and Application Interface definitions, database schema updates, and DTO/API contract design for the SSO Identity Federation.
 
 **Phase 1 (TSK-SSO-001)**: Define `SSOStateCache` interface in `internal/application/interfaces/sso_state_cache.go`. Define domain errors `ErrNoAccountLinked` and `ErrInvalidSSOState` in `internal/domain/errors/auth_errors.go`. Define event payload structs for the `login.sso_success` and `login.sso_failed` audit events in `internal/domain/events/auth_events.go`.
 
 **Phase 2 (TSK-SSO-002)**: Create SQL migration scripts `migrations/000005_add_sso_to_admin_users.up.sql` and `migrations/000005_add_sso_to_admin_users.down.sql` to add SSO mapping fields (`sso_identity_id`, `sso_provider`) to `admin_users` table.
+
+**Phase 3 (TSK-SSO-003)**: Define `SSOCallbackRequest` DTO in `internal/adapter/http/dto/auth_dto.go` (or `internal/adapter/http/auth/dto/auth_dto.go` depending on layout). Update `api/openapi.yaml` to document SSO initiation and callback endpoints.
 
 ## Technical Context
 
@@ -24,11 +26,11 @@ This plan outlines the implementation of the Domain and Application Interface de
 
 | Principle | Status | Evidence |
 |-----------|--------|---------|
-| **I. Clean Architecture & Strict Boundaries** | ✅ PASS | Database schema changes support domain requirements without introducing domain leaks. |
-| **II. Documentation-First & OpenAPI-Driven** | ✅ PASS | Written plan and task definitions updated prior to implementation. |
-| **III. Unit-Test-Per-File (NON-NEGOTIABLE)** | ✅ PASS | Database migration is covered by an integration migration test. |
-| **IV. Task-Driven & Atomic Implementation** | ✅ PASS | Focusing only on task TSK-SSO-002. |
-| **V. Observability & Structured Logging** | ✅ PASS | Columns allow tracking the identity provider of authenticated users. |
+| **I. Clean Architecture & Strict Boundaries** | ✅ PASS | DTO files are contained strictly within the adapter/http layer; API contracts map strictly to HTTP layer. |
+| **II. Documentation-First & OpenAPI-Driven** | ✅ PASS | Endpoints are defined in `openapi.yaml` and plan is updated prior to implementation. |
+| **III. Unit-Test-Per-File (NON-NEGOTIABLE)** | ✅ PASS | DTO validation logic is covered by a corresponding unit test file. |
+| **IV. Task-Driven & Atomic Implementation** | ✅ PASS | Focusing only on task TSK-SSO-003. |
+| **V. Observability & Structured Logging** | ✅ PASS | Logging and error envelopes are documented consistently with global REST guidelines. |
 
 ## Project Structure
 
@@ -46,7 +48,15 @@ specs/022-sso-identity-federation/
 ### Source Code
 
 ```text
+api/
+└── openapi.yaml                 # OpenAPI specification
 internal/
+├── adapter/
+│   └── http/
+│       └── auth/
+│           └── dto/
+│               ├── auth_dto.go  # DTO structs including SSOCallbackRequest
+│               └── auth_dto_test.go # DTO validation unit tests
 ├── application/
 │   └── interfaces/
 │       ├── sso_state_cache.go      # SSOStateCache interface
@@ -66,4 +76,4 @@ test/
     └── sso_migration_test.go       # Integration test for the database migration
 ```
 
-**Structure Decision**: Clean Architecture database migration scripts.
+**Structure Decision**: Clean Architecture database migration and REST adapter layers.

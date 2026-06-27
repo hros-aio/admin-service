@@ -4,9 +4,9 @@
 
 **Created**: 2026-06-27
 
-**Status**: Approved (TSK-SSO-002)
+**Status**: Approved (TSK-SSO-003)
 
-**Input**: User description: "Define the `SSOStateCache` interface required by the application layer to temporarily hold OAuth/OIDC state and nonce parameters to prevent CSRF. Define specific domain errors `ErrNoAccountLinked` and `ErrInvalidSSOState`. Define the event payload structs for the `login.sso_success` and `login.sso_failed` audit events. Create up/down SQL migration scripts to add SSO mapping fields to the `admin_users` table. Add an `sso_identity_id` (VARCHAR, UNIQUE) and `sso_provider` (VARCHAR) column to reliably map IdP assertions to admin accounts beyond just email matching."
+**Input**: User description: "Define the `SSOStateCache` interface required by the application layer to temporarily hold OAuth/OIDC state and nonce parameters to prevent CSRF. Define specific domain errors `ErrNoAccountLinked` and `ErrInvalidSSOState`. Define the event payload structs for the `login.sso_success` and `login.sso_failed` audit events. Create up/down SQL migration scripts to add SSO mapping fields to the `admin_users` table. Add an `sso_identity_id` (VARCHAR, UNIQUE) and `sso_provider` (VARCHAR) column to reliably map IdP assertions to admin accounts beyond just email matching. Define the HTTP request and response DTOs for the SSO endpoints (e.g., `SSOCallbackRequest` containing `code` and `state`). Update the OpenAPI contract `api/openapi.yaml` to document the `GET /auth/sso/initiate` and `GET /auth/sso/callback` endpoints."
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -43,11 +43,28 @@ Create SQL migrations to add mapping fields to `admin_users` to facilitate SSO i
 
 ---
 
+### User Story 3 - SSO REST API contracts and DTO definitions (Priority: P1)
+
+Document endpoints and declare request/response DTO structures for initiating SSO redirects and handling IdP callback responses.
+
+**Why this priority**: The HTTP contract and interface DTOs define the API boundary between frontend clients, backend routing, and application use cases.
+
+**Independent Test**: Unit tests on DTO bindings and structure validation tags.
+
+**Acceptance Scenarios**:
+
+1. **Given** a request to initiate SSO, **When** calling `GET /auth/sso/initiate`, **Then** the server responds with `302 Found` redirect to the IdP.
+2. **Given** a redirection callback from the IdP, **When** parsing query parameters, **Then** the parameters map to `SSOCallbackRequest` containing `code` and `state`.
+3. **Given** an IdP callback where the identity is not associated with any active admin user, **When** validated, **Then** return `401 Unauthorized` with error code `NO_ACCOUNT_LINKED`.
+
+---
+
 ### Edge Cases
 
 - **State Expiry / Tampering**: The `SSOStateCache` contract must allow storing state parameters with a short TTL to prevent replay attacks and CSRF.
 - **Serialization Safety**: Audit events must define struct tags that permit safe, clean JSON serialization for logging or streaming to Kafka.
 - **Migration Idempotency**: Migration scripts must handle columns that already exist/do not exist gracefully to avoid failing if run repeatedly.
+- **DTO Validation**: The callback request MUST validate that both `code` and `state` parameters are present and non-empty.
 
 ## Requirements *(mandatory)*
 
@@ -60,6 +77,8 @@ Create SQL migrations to add mapping fields to `admin_users` to facilitate SSO i
 - **FR-005**: System MUST define event payload struct for `login.sso_failed` (SSOFailedEvent) with audit metadata and failure reason.
 - **FR-006**: Up migration MUST add `sso_identity_id` (VARCHAR, UNIQUE) and `sso_provider` (VARCHAR) to `admin_users` table.
 - **FR-007**: Down migration MUST drop `sso_identity_id` and `sso_provider` from `admin_users` table.
+- **FR-008**: System MUST document `GET /auth/sso/initiate` and `GET /auth/sso/callback` in `api/openapi.yaml`.
+- **FR-009**: System MUST define `SSOCallbackRequest` DTO containing `code` and `state` query parameters with validation tags.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -78,6 +97,8 @@ Create SQL migrations to add mapping fields to `admin_users` to facilitate SSO i
 - **SC-002**: Standard package boundaries are respected: no framework or infrastructure imports (e.g., GORM, Echo, Redis) are present in the domain files.
 - **SC-003**: Unit tests achieve 100% code coverage for the newly added domain errors and events.
 - **SC-004**: Migration SQL executes successfully forward and backward without errors.
+- **SC-005**: OpenAPI specification `api/openapi.yaml` compiles and validates successfully with Swagger/OpenAPI tools.
+- **SC-006**: Unit tests verify validation tags on the `SSOCallbackRequest` DTO structure.
 
 ## Assumptions
 
