@@ -41,3 +41,10 @@ type PasswordResetConfirmRequest struct {
 	Password             string `json:"password" validate:"required"`
 	PasswordConfirmation string `json:"password_confirmation" validate:"required,eqfield=Password"`
 }
+
+// AcceptInviteRequest represents the payload for accepting an admin invite.
+type AcceptInviteRequest struct {
+	Token                string `json:"token" validate:"required"`
+	Password             string `json:"password" validate:"required"`
+	PasswordConfirmation string `json:"password_confirmation" validate:"required,eqfield=Password"`
+}

@@ -25,5 +25,5 @@ Do not implement new features during review unless explicitly requested.
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-[specs/020-self-service-password-reset/plan.md](file:///home/ren0503/new-hros/admin-service/specs/020-self-service-password-reset/plan.md)
+[specs/021-admin-account-activation/plan.md](file:///home/ren0503/new-hros/admin-service/specs/021-admin-account-activation/plan.md)
 <!-- SPECKIT END -->
