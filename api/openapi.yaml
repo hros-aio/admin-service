@@ -193,6 +193,45 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /v1/auth/accept-invite:
+    post:
+      operationId: acceptInvite
+      tags:
+        - Authentication
+      summary: Accept Invite
+      description: Complete account activation using invitation token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptInviteRequest'
+      responses:
+        '200':
+          description: Account activated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Account activated successfully."
+        '400':
+          description: Invite token expired (INVITE_EXPIRED) or already used (INVITE_USED)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Password does not meet complexity requirements (PASSWORD_WEAK)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -303,6 +342,25 @@ components:
         token:
           type: string
           example: "uuid-reset-token-here"
+        password:
+          type: string
+          format: password
+          example: "NewSecurePass123!"
+        password_confirmation:
+          type: string
+          format: password
+          example: "NewSecurePass123!"
+
+    AcceptInviteRequest:
+      type: object
+      required:
+        - token
+        - password
+        - password_confirmation
+      properties:
+        token:
+          type: string
+          example: "uuid-invite-token-here"
         password:
           type: string
           format: password

@@ -326,3 +326,87 @@ func TestPasswordResetDTOs_JSONMapping(t *testing.T) {
 		assert.Equal(t, req.PasswordConfirmation, unmarshaled.PasswordConfirmation)
 	})
 }
+
+func TestAcceptInviteRequest_Validation(t *testing.T) {
+	validate := validator.New()
+
+	tests := []struct {
+		name    string
+		request AcceptInviteRequest
+		isValid bool
+	}{
+		{
+			name: "Valid request",
+			request: AcceptInviteRequest{
+				Token:                "invite-token-123",
+				Password:             "SecurePass1!",
+				PasswordConfirmation: "SecurePass1!",
+			},
+			isValid: true,
+		},
+		{
+			name: "Missing token",
+			request: AcceptInviteRequest{
+				Password:             "SecurePass1!",
+				PasswordConfirmation: "SecurePass1!",
+			},
+			isValid: false,
+		},
+		{
+			name: "Missing password",
+			request: AcceptInviteRequest{
+				Token:                "invite-token-123",
+				PasswordConfirmation: "SecurePass1!",
+			},
+			isValid: false,
+		},
+		{
+			name: "Missing password confirmation",
+			request: AcceptInviteRequest{
+				Token:    "invite-token-123",
+				Password: "SecurePass1!",
+			},
+			isValid: false,
+		},
+		{
+			name: "Mismatched passwords",
+			request: AcceptInviteRequest{
+				Token:                "invite-token-123",
+				Password:             "SecurePass1!",
+				PasswordConfirmation: "DifferentPass1!",
+			},
+			isValid: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validate.Struct(tt.request)
+			if tt.isValid {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+			}
+		})
+	}
+}
+
+func TestAcceptInviteDTO_JSONMapping(t *testing.T) {
+	req := AcceptInviteRequest{
+		Token:                "token_123",
+		Password:             "SecurePass1!",
+		PasswordConfirmation: "SecurePass1!",
+	}
+	data, err := json.Marshal(req)
+	assert.NoError(t, err)
+	assert.Contains(t, string(data), `"token":"token_123"`)
+	assert.Contains(t, string(data), `"password":"SecurePass1!"`)
+	assert.Contains(t, string(data), `"password_confirmation":"SecurePass1!"`)
+
+	var unmarshaled AcceptInviteRequest
+	err = json.Unmarshal(data, &unmarshaled)
+	assert.NoError(t, err)
+	assert.Equal(t, req.Token, unmarshaled.Token)
+	assert.Equal(t, req.Password, unmarshaled.Password)
+	assert.Equal(t, req.PasswordConfirmation, unmarshaled.PasswordConfirmation)
+}
