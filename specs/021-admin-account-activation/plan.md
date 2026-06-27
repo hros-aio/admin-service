@@ -12,7 +12,7 @@ This plan outlines the implementation of Admin Account Activation (Accept Invite
 
 **Phase 2 (TSK-ACT-002 — ✅ Done)**: Create SQL migration scripts `migrations/000004_create_invite_tokens.up.sql` and `migrations/000004_create_invite_tokens.down.sql` to establish the `invite_tokens` table.
 
-**Phase 3 (TSK-ACT-003 — ✅ Done)**: Define the `AcceptInviteRequest` HTTP DTO in `internal/adapter/http/auth/dto/auth_dto.go`. Document the `POST /auth/accept-invite` endpoint in `api/openapi.yaml`.
+**Phase 3 (TSK-ACT-003 — ✅ Done)**: Define the `AcceptInviteRequest` HTTP DTO in `internal/adapter/http/auth/dto/auth_dto.go`. Document the `POST /v1/auth/accept-invite` endpoint in `api/openapi.yaml`.
 
 ## Technical Context
 
