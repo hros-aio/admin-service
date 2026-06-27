@@ -4,7 +4,7 @@
 
 **Prerequisites**: plan.md ✅, spec.md ✅
 
-**Scope**: Define the `SSOStateCache` interface, specific domain errors, and event payload structs. Create migration scripts and integration tests for SSO mapping columns.
+**Scope**: Define the `SSOStateCache` interface, specific domain errors, and event payload structs. Create migration scripts, define request DTOs, and update OpenAPI contracts.
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -31,3 +31,11 @@
 - [x] T005 [P] [US2] Create SQL migration script `migrations/000005_add_sso_to_admin_users.up.sql` to add unique `sso_identity_id` and `sso_provider` to `admin_users`.
 - [x] T006 [P] [US2] Create SQL migration script `migrations/000005_add_sso_to_admin_users.down.sql` to drop these columns.
 - [x] T007 [P] [US2] Implement integration test in `test/integration/sso_migration_test.go` verifying that UP migration adds columns with correct constraint and DOWN migration drops them.
+
+---
+
+## Phase 3: DTO & API Contract (TSK-SSO-003)
+
+- [x] T008 [P] [US3] Define `SSOCallbackRequest` DTO in `internal/adapter/http/auth/dto/auth_dto.go` with validation tags.
+- [x] T009 [P] [US3] Add unit tests for `SSOCallbackRequest` validation in `internal/adapter/http/auth/dto/auth_dto_test.go`.
+- [x] T010 [P] [US3] Document `GET /auth/sso/initiate` and `GET /auth/sso/callback` endpoints in `api/openapi.yaml`.

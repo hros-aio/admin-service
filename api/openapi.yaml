@@ -232,6 +232,75 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /v1/auth/sso/initiate:
+    get:
+      operationId: ssoInitiate
+      tags:
+        - Authentication
+      summary: Initiate SSO
+      description: Redirects the client to the Identity Provider login page.
+      parameters:
+        - name: provider
+          in: query
+          required: true
+          schema:
+            type: string
+          example: google
+      responses:
+        '302':
+          description: Redirect to Identity Provider login page
+          headers:
+            Location:
+              schema:
+                type: string
+              description: Target URL of the Identity Provider authorization endpoint
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/auth/sso/callback:
+    get:
+      operationId: ssoCallback
+      tags:
+        - Authentication
+      summary: SSO Callback
+      description: Handle authentication response from the Identity Provider.
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+          example: "auth_code_123"
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+          example: "state_abc"
+      responses:
+        '200':
+          description: Login successful, returns access/refresh tokens
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: Invalid state parameter (INVALID_SSO_STATE)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No admin account linked to this identity (NO_ACCOUNT_LINKED)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
 components:
   securitySchemes:
     bearerAuth:

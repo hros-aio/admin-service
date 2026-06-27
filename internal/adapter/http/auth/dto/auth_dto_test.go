@@ -410,3 +410,82 @@ func TestAcceptInviteDTO_JSONMapping(t *testing.T) {
 	assert.Equal(t, req.Password, unmarshaled.Password)
 	assert.Equal(t, req.PasswordConfirmation, unmarshaled.PasswordConfirmation)
 }
+
+func TestSSOInitiateRequest_Validation(t *testing.T) {
+	validate := validator.New()
+
+	tests := []struct {
+		name    string
+		request SSOInitiateRequest
+		isValid bool
+	}{
+		{
+			name: "Valid request",
+			request: SSOInitiateRequest{
+				Provider: "google",
+			},
+			isValid: true,
+		},
+		{
+			name:    "Missing provider",
+			request: SSOInitiateRequest{},
+			isValid: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validate.Struct(tt.request)
+			if tt.isValid {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+			}
+		})
+	}
+}
+
+func TestSSOCallbackRequest_Validation(t *testing.T) {
+	validate := validator.New()
+
+	tests := []struct {
+		name    string
+		request SSOCallbackRequest
+		isValid bool
+	}{
+		{
+			name: "Valid request",
+			request: SSOCallbackRequest{
+				Code:  "auth_code_123",
+				State: "state_abc",
+			},
+			isValid: true,
+		},
+		{
+			name: "Missing code",
+			request: SSOCallbackRequest{
+				State: "state_abc",
+			},
+			isValid: false,
+		},
+		{
+			name: "Missing state",
+			request: SSOCallbackRequest{
+				Code: "auth_code_123",
+			},
+			isValid: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validate.Struct(tt.request)
+			if tt.isValid {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+			}
+		})
+	}
+}
+
