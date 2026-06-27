@@ -129,3 +129,53 @@ func TestGormAdminUserRepository_UpdatePassword(t *testing.T) {
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }
+
+func TestGormAdminUserRepository_ActivateAccount(t *testing.T) {
+	adminID := "admin-uuid"
+	newHash := "new-hashed-password"
+
+	t.Run("success", func(t *testing.T) {
+		gormDB, mock := setupTestDB(t)
+		repo := NewGormAdminUserRepository(gormDB)
+
+		mock.ExpectBegin()
+		mock.ExpectExec(regexp.QuoteMeta(`UPDATE "admin_users" SET "password_hash"=$1,"status"=$2,"updated_at"=$3 WHERE id = $4 AND status = $5`)).
+			WithArgs(newHash, "active", sqlmock.AnyArg(), adminID, "pending").
+			WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectCommit()
+
+		err := repo.ActivateAccount(context.Background(), adminID, newHash)
+		assert.NoError(t, err)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("not found or not pending", func(t *testing.T) {
+		gormDB, mock := setupTestDB(t)
+		repo := NewGormAdminUserRepository(gormDB)
+
+		mock.ExpectBegin()
+		mock.ExpectExec(regexp.QuoteMeta(`UPDATE "admin_users" SET "password_hash"=$1,"status"=$2,"updated_at"=$3 WHERE id = $4 AND status = $5`)).
+			WithArgs(newHash, "active", sqlmock.AnyArg(), adminID, "pending").
+			WillReturnResult(sqlmock.NewResult(0, 0))
+		mock.ExpectCommit()
+
+		err := repo.ActivateAccount(context.Background(), adminID, newHash)
+		assert.ErrorIs(t, err, domainErrors.ErrUserNotFound)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("database error", func(t *testing.T) {
+		gormDB, mock := setupTestDB(t)
+		repo := NewGormAdminUserRepository(gormDB)
+
+		mock.ExpectBegin()
+		mock.ExpectExec(regexp.QuoteMeta(`UPDATE "admin_users" SET "password_hash"=$1,"status"=$2,"updated_at"=$3 WHERE id = $4 AND status = $5`)).
+			WithArgs(newHash, "active", sqlmock.AnyArg(), adminID, "pending").
+			WillReturnError(sql.ErrConnDone)
+		mock.ExpectRollback()
+
+		err := repo.ActivateAccount(context.Background(), adminID, newHash)
+		assert.Error(t, err)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+}

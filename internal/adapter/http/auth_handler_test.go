@@ -66,6 +66,10 @@ func (m *mockUserRepo) UpdatePassword(ctx context.Context, id string, newHash st
 	return m.Called(ctx, id, newHash).Error(0)
 }
 
+func (m *mockUserRepo) ActivateAccount(ctx context.Context, adminID string, newHash string) error {
+	return m.Called(ctx, adminID, newHash).Error(0)
+}
+
 type mockMFACache struct{ mock.Mock }
 
 func (m *mockMFACache) StoreToken(ctx context.Context, token string, adminID string) error {

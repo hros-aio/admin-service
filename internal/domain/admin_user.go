@@ -82,4 +82,5 @@ type AdminUserRepository interface {
 	Delete(ctx context.Context, id string) error
 	GetRoleCodeByID(ctx context.Context, roleID string) (string, error)
 	UpdatePassword(ctx context.Context, id string, newHash string) error
+	ActivateAccount(ctx context.Context, adminID string, newHash string) error
 }
