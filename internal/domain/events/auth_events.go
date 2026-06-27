@@ -60,3 +60,33 @@ type PasswordResetCompletedEvent struct {
 	UserAgent  string    `json:"user_agent"`
 	OccurredAt time.Time `json:"occurred_at"`
 }
+
+// AdminActivatedEvent defines the payload structure for the 'admin.activated' audit event.
+type AdminActivatedEvent struct {
+	AdminID    string    `json:"admin_id"`
+	Email      string    `json:"email"`
+	IPAddress  string    `json:"ip_address"`
+	UserAgent  string    `json:"user_agent"`
+	OccurredAt time.Time `json:"occurred_at"`
+}
+
+// InviteAcceptedEvent defines the payload structure for the 'invite.accepted' audit event.
+type InviteAcceptedEvent struct {
+	InviteTokenID string    `json:"invite_token_id"`
+	AdminID       string    `json:"admin_id"`
+	Email         string    `json:"email"`
+	InvitedBy     string    `json:"invited_by"`
+	IPAddress     string    `json:"ip_address"`
+	UserAgent     string    `json:"user_agent"`
+	OccurredAt    time.Time `json:"occurred_at"`
+}
+
+// NotificationSendEvent defines the payload structure for the 'notification.send' Kafka event.
+type NotificationSendEvent struct {
+	RecipientID string                 `json:"recipient_id"`
+	Type        string                 `json:"type"`
+	Title       string                 `json:"title"`
+	Message     string                 `json:"message"`
+	Payload     map[string]interface{} `json:"payload"`
+	CreatedAt   time.Time              `json:"created_at"`
+}

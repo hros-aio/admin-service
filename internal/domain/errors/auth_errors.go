@@ -51,4 +51,10 @@ var (
 
 	// ErrPasswordWeak is returned when a new password does not meet complexity requirements.
 	ErrPasswordWeak = errors.New("password does not meet complexity requirements")
+
+	// ErrInviteExpired is returned when an invite token has expired.
+	ErrInviteExpired = errors.New("invite token has expired")
+
+	// ErrInviteUsed is returned when an invite token has already been used.
+	ErrInviteUsed = errors.New("invite token has already been used")
 )

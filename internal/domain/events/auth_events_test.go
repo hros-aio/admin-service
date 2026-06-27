@@ -161,3 +161,83 @@ func TestPasswordResetCompletedEvent_Serialization(t *testing.T) {
 	assert.Equal(t, event.UserAgent, unmarshaled.UserAgent)
 	assert.True(t, event.OccurredAt.Equal(unmarshaled.OccurredAt))
 }
+
+func TestAdminActivatedEvent_Serialization(t *testing.T) {
+	now := time.Now().UTC()
+	event := AdminActivatedEvent{
+		AdminID:    "admin-uuid-123",
+		Email:      "admin@hros.io",
+		IPAddress:  "192.168.1.1",
+		UserAgent:  "Mozilla/5.0",
+		OccurredAt: now,
+	}
+
+	data, err := json.Marshal(event)
+	require.NoError(t, err)
+
+	var unmarshaled AdminActivatedEvent
+	err = json.Unmarshal(data, &unmarshaled)
+	require.NoError(t, err)
+
+	assert.Equal(t, event.AdminID, unmarshaled.AdminID)
+	assert.Equal(t, event.Email, unmarshaled.Email)
+	assert.Equal(t, event.IPAddress, unmarshaled.IPAddress)
+	assert.Equal(t, event.UserAgent, unmarshaled.UserAgent)
+	assert.True(t, event.OccurredAt.Equal(unmarshaled.OccurredAt))
+}
+
+func TestInviteAcceptedEvent_Serialization(t *testing.T) {
+	now := time.Now().UTC()
+	event := InviteAcceptedEvent{
+		InviteTokenID: "token-uuid-456",
+		AdminID:       "admin-uuid-123",
+		Email:         "admin@hros.io",
+		InvitedBy:     "superadmin-uuid-789",
+		IPAddress:     "192.168.1.1",
+		UserAgent:     "Mozilla/5.0",
+		OccurredAt:    now,
+	}
+
+	data, err := json.Marshal(event)
+	require.NoError(t, err)
+
+	var unmarshaled InviteAcceptedEvent
+	err = json.Unmarshal(data, &unmarshaled)
+	require.NoError(t, err)
+
+	assert.Equal(t, event.InviteTokenID, unmarshaled.InviteTokenID)
+	assert.Equal(t, event.AdminID, unmarshaled.AdminID)
+	assert.Equal(t, event.Email, unmarshaled.Email)
+	assert.Equal(t, event.InvitedBy, unmarshaled.InvitedBy)
+	assert.Equal(t, event.IPAddress, unmarshaled.IPAddress)
+	assert.Equal(t, event.UserAgent, unmarshaled.UserAgent)
+	assert.True(t, event.OccurredAt.Equal(unmarshaled.OccurredAt))
+}
+
+func TestNotificationSendEvent_Serialization(t *testing.T) {
+	now := time.Now().UTC()
+	event := NotificationSendEvent{
+		RecipientID: "superadmin-uuid-789",
+		Type:        "invite_accepted",
+		Title:       "Invitation Accepted",
+		Message:     "admin@hros.io has accepted your invitation.",
+		Payload: map[string]interface{}{
+			"admin_id": "admin-uuid-123",
+		},
+		CreatedAt: now,
+	}
+
+	data, err := json.Marshal(event)
+	require.NoError(t, err)
+
+	var unmarshaled NotificationSendEvent
+	err = json.Unmarshal(data, &unmarshaled)
+	require.NoError(t, err)
+
+	assert.Equal(t, event.RecipientID, unmarshaled.RecipientID)
+	assert.Equal(t, event.Type, unmarshaled.Type)
+	assert.Equal(t, event.Title, unmarshaled.Title)
+	assert.Equal(t, event.Message, unmarshaled.Message)
+	assert.Equal(t, event.Payload["admin_id"], unmarshaled.Payload["admin_id"])
+	assert.True(t, event.CreatedAt.Equal(unmarshaled.CreatedAt))
+}
