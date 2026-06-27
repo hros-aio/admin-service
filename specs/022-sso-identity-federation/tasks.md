@@ -4,7 +4,7 @@
 
 **Prerequisites**: plan.md ✅, spec.md ✅
 
-**Scope**: Define the `SSOStateCache` interface, specific domain errors, and event payload structs.
+**Scope**: Define the `SSOStateCache` interface, specific domain errors, and event payload structs. Create migration scripts and integration tests for SSO mapping columns.
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -23,3 +23,11 @@
   - `internal/application/interfaces/sso_state_cache_test.go`
   - `internal/domain/errors/auth_errors_test.go`
   - `internal/domain/events/auth_events_test.go`
+
+---
+
+## Phase 2: Database Migration (TSK-SSO-002)
+
+- [x] T005 [P] [US2] Create SQL migration script `migrations/000005_add_sso_to_admin_users.up.sql` to add unique `sso_identity_id` and `sso_provider` to `admin_users`.
+- [x] T006 [P] [US2] Create SQL migration script `migrations/000005_add_sso_to_admin_users.down.sql` to drop these columns.
+- [x] T007 [P] [US2] Implement integration test in `test/integration/sso_migration_test.go` verifying that UP migration adds columns with correct constraint and DOWN migration drops them.
