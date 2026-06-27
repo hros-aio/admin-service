@@ -2,6 +2,7 @@
 package http
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strings"
@@ -14,6 +15,13 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+// acceptInviteExecutor is the handler-layer interface satisfied by *usecase.AcceptInviteUseCase.
+// Declaring it here keeps the handler decoupled from the concrete use-case type and
+// allows straightforward mock injection in unit tests.
+type acceptInviteExecutor interface {
+	Execute(ctx context.Context, input usecase.AcceptInviteInput) error
+}
+
 // AuthHandler handles authentication HTTP requests.
 type AuthHandler struct {
 	loginUC                *usecase.LoginUseCase
@@ -22,6 +30,7 @@ type AuthHandler struct {
 	verifyMfaUC            *usecase.VerifyMFAUseCase
 	requestPasswordResetUC *usecase.RequestPasswordResetUseCase
 	confirmPasswordResetUC *usecase.ConfirmPasswordResetUseCase
+	acceptInviteUC         acceptInviteExecutor
 	validate               *validator.Validate
 }
 
@@ -33,6 +42,7 @@ func NewAuthHandler(
 	verifyMfaUC *usecase.VerifyMFAUseCase,
 	requestPasswordResetUC *usecase.RequestPasswordResetUseCase,
 	confirmPasswordResetUC *usecase.ConfirmPasswordResetUseCase,
+	acceptInviteUC acceptInviteExecutor,
 ) *AuthHandler {
 	return &AuthHandler{
 		loginUC:                loginUC,
@@ -41,6 +51,7 @@ func NewAuthHandler(
 		verifyMfaUC:            verifyMfaUC,
 		requestPasswordResetUC: requestPasswordResetUC,
 		confirmPasswordResetUC: confirmPasswordResetUC,
+		acceptInviteUC:         acceptInviteUC,
 		validate:               validator.New(),
 	}
 }
@@ -358,6 +369,38 @@ func (h *AuthHandler) AcceptInvite(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, resp)
 	}
 
-	// Stub response for now, matching the OpenAPI contract
+	input := usecase.AcceptInviteInput{
+		Token:     req.Token,
+		Password:  req.Password,
+		IPAddress: c.RealIP(),
+		UserAgent: c.Request().UserAgent(),
+	}
+
+	if h.acceptInviteUC == nil {
+		traceID := c.Response().Header().Get(echo.HeaderXRequestID)
+		resp := sharedErrors.NewErrorResponse("internal_error", "Internal server error", nil, traceID)
+		return c.JSON(http.StatusInternalServerError, resp)
+	}
+
+	if err := h.acceptInviteUC.Execute(c.Request().Context(), input); err != nil {
+		traceID := c.Response().Header().Get(echo.HeaderXRequestID)
+
+		if errors.Is(err, domainErrors.ErrInviteExpired) {
+			resp := sharedErrors.NewErrorResponse("INVITE_EXPIRED", "Invite token has expired", nil, traceID)
+			return c.JSON(http.StatusBadRequest, resp)
+		}
+		if errors.Is(err, domainErrors.ErrInviteUsed) {
+			resp := sharedErrors.NewErrorResponse("INVITE_USED", "Invite token has already been used", nil, traceID)
+			return c.JSON(http.StatusBadRequest, resp)
+		}
+		if errors.Is(err, domainErrors.ErrPasswordWeak) {
+			resp := sharedErrors.NewErrorResponse("PASSWORD_WEAK", "Password does not meet complexity requirements", nil, traceID)
+			return c.JSON(http.StatusUnprocessableEntity, resp)
+		}
+
+		resp := sharedErrors.NewErrorResponse("internal_error", "Internal server error", nil, traceID)
+		return c.JSON(http.StatusInternalServerError, resp)
+	}
+
 	return c.JSON(http.StatusOK, echo.Map{"message": "Account activated successfully."})
 }

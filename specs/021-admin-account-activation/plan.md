@@ -20,6 +20,8 @@ This plan outlines the implementation of Admin Account Activation (Accept Invite
 
 **Phase 6 (TSK-ACT-006 — ✅ Done)**: Implement `AcceptInviteUseCase` in `internal/application/usecase/accept_invite_usecase.go` to orchestrate token validation, password hashing, account activation, token consumption, and event emission.
 
+**Phase 7 (TSK-ACT-007 — ✅ Done)**: Wire `AcceptInviteUseCase` into `AuthHandler` in `internal/adapter/http/auth_handler.go`. Replace the stub `AcceptInvite` handler body with: bind → validate → invoke use case → map `ErrInviteExpired`/`ErrInviteUsed` → 400, `ErrPasswordWeak` → 422, catch-all → 500; success → 200 OK. Add unit tests in `internal/adapter/http/auth_handler_test.go` covering all HTTP mapping branches using `httptest`.
+
 ## Technical Context
 
 **Language/Version**: Go 1.23+
@@ -57,6 +59,8 @@ api/
 internal/
 ├── adapter/
 │   └── http/
+│       ├── auth_handler.go      # AcceptInvite handler — wire AcceptInviteUseCase, map errors
+│       ├── auth_handler_test.go # Unit tests for AcceptInvite handler (httptest)
 │       └── auth/
 │           └── dto/
 │               ├── auth_dto.go  # Add AcceptInviteRequest DTO
