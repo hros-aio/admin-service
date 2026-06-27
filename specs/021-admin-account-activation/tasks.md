@@ -23,3 +23,12 @@
   - `internal/domain/invite_token_test.go`
   - `internal/domain/errors/auth_errors_test.go`
   - `internal/domain/events/auth_events_test.go`
+
+---
+
+## Phase 2: Migration Layer (TSK-ACT-002)
+
+- [x] T005 [P] [US1] Create migration up script `migrations/000004_create_invite_tokens.up.sql` to establish `invite_tokens` table.
+- [x] T006 [P] [US1] Create migration down script `migrations/000004_create_invite_tokens.down.sql` to drop `invite_tokens` table.
+- [x] T007 [P] [US1] Run database migrations forward and backward to verify they execute successfully.
+
