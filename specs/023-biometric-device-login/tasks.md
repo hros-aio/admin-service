@@ -44,7 +44,7 @@
 
 **Purpose**: Formatting and overall testing check
 
-- [x] T005 Run `go fmt` and `go test` on the cache package to confirm compilation and test correctness
+- [x] T005 Run `go fmt` and `go test` for both `internal/infrastructure/cache/...` and `internal/application/interfaces/...` (exercising interface tests modified in T002) to confirm compilation and test correctness
 
 ---
 

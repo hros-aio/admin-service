@@ -3,6 +3,8 @@ package cache
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -41,9 +43,13 @@ end
 `
 )
 
-// StoreChallenge caches the challenge bytes associated with a ceremony or session-scoped key.
-func (r *RedisWebAuthnChallengeCache) StoreChallenge(ctx context.Context, key string, challenge []byte, ttl time.Duration) error {
-	redisKey := webauthnKeyPrefix + key
+// StoreChallenge caches the challenge bytes associated with a ceremony or session-scoped email.
+func (r *RedisWebAuthnChallengeCache) StoreChallenge(ctx context.Context, email string, challenge []byte, ttl time.Duration) error {
+	if ttl <= 0 {
+		return errors.New("TTL must be positive")
+	}
+	opaqueID := hashEmail(email)
+	redisKey := webauthnKeyPrefix + opaqueID
 	err := r.client.Set(ctx, redisKey, challenge, ttl).Err()
 	if err != nil {
 		r.logger.ErrorContext(ctx, "failed to store WebAuthn challenge in Redis",
@@ -62,10 +68,11 @@ func (r *RedisWebAuthnChallengeCache) StoreChallenge(ctx context.Context, key st
 	return nil
 }
 
-// GetChallenge retrieves the cached challenge bytes for the given key.
+// GetChallenge retrieves the cached challenge bytes for the given email.
 // It returns domainErrors.ErrChallengeNotFoundOrExpired if the challenge does not exist or has expired.
-func (r *RedisWebAuthnChallengeCache) GetChallenge(ctx context.Context, key string) ([]byte, error) {
-	redisKey := webauthnKeyPrefix + key
+func (r *RedisWebAuthnChallengeCache) GetChallenge(ctx context.Context, email string) ([]byte, error) {
+	opaqueID := hashEmail(email)
+	redisKey := webauthnKeyPrefix + opaqueID
 	val, err := r.client.Get(ctx, redisKey).Bytes()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
@@ -90,9 +97,10 @@ func (r *RedisWebAuthnChallengeCache) GetChallenge(ctx context.Context, key stri
 	return val, nil
 }
 
-// DeleteChallenge removes the cached challenge for the given key.
-func (r *RedisWebAuthnChallengeCache) DeleteChallenge(ctx context.Context, key string) error {
-	redisKey := webauthnKeyPrefix + key
+// DeleteChallenge removes the cached challenge for the given email.
+func (r *RedisWebAuthnChallengeCache) DeleteChallenge(ctx context.Context, email string) error {
+	opaqueID := hashEmail(email)
+	redisKey := webauthnKeyPrefix + opaqueID
 	err := r.client.Del(ctx, redisKey).Err()
 	if err != nil {
 		r.logger.ErrorContext(ctx, "failed to delete WebAuthn challenge from Redis",
@@ -112,8 +120,9 @@ func (r *RedisWebAuthnChallengeCache) DeleteChallenge(ctx context.Context, key s
 
 // VerifyAndConsumeChallenge atomically retrieves the cached challenge bytes and deletes it.
 // It returns domainErrors.ErrChallengeNotFoundOrExpired if the challenge is not found or has expired.
-func (r *RedisWebAuthnChallengeCache) VerifyAndConsumeChallenge(ctx context.Context, key string) ([]byte, error) {
-	redisKey := webauthnKeyPrefix + key
+func (r *RedisWebAuthnChallengeCache) VerifyAndConsumeChallenge(ctx context.Context, email string) ([]byte, error) {
+	opaqueID := hashEmail(email)
+	redisKey := webauthnKeyPrefix + opaqueID
 	res, err := r.client.Eval(ctx, consumeChallengeScript, []string{redisKey}).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
@@ -148,4 +157,10 @@ func (r *RedisWebAuthnChallengeCache) VerifyAndConsumeChallenge(ctx context.Cont
 		slog.String("key", "auth:webauthn_challenge:[REDACTED]"),
 	)
 	return []byte(valStr), nil
+}
+
+func hashEmail(email string) string {
+	h := sha256.New()
+	h.Write([]byte(email))
+	return hex.EncodeToString(h.Sum(nil))
 }

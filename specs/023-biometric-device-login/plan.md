@@ -5,8 +5,8 @@
 ## Summary
 
 Implement the `WebAuthnChallengeCache` interface using Redis.
-Define `StoreChallenge(ctx, email, challenge, ttl)` mapping the email to the secure challenge string with a strict short TTL (e.g., 5 minutes).
-Define `VerifyAndConsumeChallenge(ctx, email)` to fetch and delete the challenge atomically.
+Define `StoreChallenge(ctx, email, challenge, ttl)` keeping the email at the API boundary, but mapping it internally to an opaque challenge/session identifier (one-way SHA-256 hash of the email) in the Redis keyspace with a strict short TTL (e.g., 5 minutes) to protect PII.
+Define `VerifyAndConsumeChallenge(ctx, email)` to atomically fetch and delete the challenge entry using the opaque identifier.
 
 ## Technical Context
 
@@ -57,6 +57,9 @@ internal/
 │   └── interfaces/
 │       ├── webauthn_cache.go          # Cache Interface
 │       └── webauthn_cache_test.go     # Compilation fake/mock check
+├── domain/
+│   └── errors/
+│       └── auth_errors.go             # Domain Errors
 └── infrastructure/
     └── cache/
         ├── webauthn_redis.go          # Redis Implementation

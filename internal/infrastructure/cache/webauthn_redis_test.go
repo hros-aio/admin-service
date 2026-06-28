@@ -44,7 +44,7 @@ func TestRedisWebAuthnChallengeCache_StoreChallenge(t *testing.T) {
 		err := cache.StoreChallenge(ctx, testEmail, challenge, ttl)
 		require.NoError(t, err)
 
-		key := "auth:webauthn_challenge:" + testEmail
+		key := "auth:webauthn_challenge:" + hashEmail(testEmail)
 		val, err := mr.Get(key)
 		require.NoError(t, err)
 		assert.Equal(t, string(challenge), val)
@@ -66,6 +66,16 @@ func TestRedisWebAuthnChallengeCache_StoreChallenge(t *testing.T) {
 		err := badCache.StoreChallenge(ctx, testEmail, []byte("challenge"), 5*time.Minute)
 		assert.Error(t, err)
 	})
+
+	t.Run("error when TTL is non-positive", func(t *testing.T) {
+		err := cache.StoreChallenge(ctx, testEmail, []byte("challenge"), 0)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "TTL must be positive")
+
+		err = cache.StoreChallenge(ctx, testEmail, []byte("challenge"), -1*time.Second)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "TTL must be positive")
+	})
 }
 
 func TestRedisWebAuthnChallengeCache_GetChallenge(t *testing.T) {
@@ -83,7 +93,7 @@ func TestRedisWebAuthnChallengeCache_GetChallenge(t *testing.T) {
 
 	t.Run("successfully retrieves valid challenge", func(t *testing.T) {
 		challenge := []byte("secure_challenge_data_xyz")
-		key := "auth:webauthn_challenge:" + testEmail
+		key := "auth:webauthn_challenge:" + hashEmail(testEmail)
 		err := mr.Set(key, string(challenge))
 		require.NoError(t, err)
 
@@ -129,7 +139,7 @@ func TestRedisWebAuthnChallengeCache_DeleteChallenge(t *testing.T) {
 
 	t.Run("successfully deletes challenge", func(t *testing.T) {
 		challenge := []byte("secure_challenge_data_xyz")
-		key := "auth:webauthn_challenge:" + testEmail
+		key := "auth:webauthn_challenge:" + hashEmail(testEmail)
 		err := mr.Set(key, string(challenge))
 		require.NoError(t, err)
 
@@ -170,7 +180,7 @@ func TestRedisWebAuthnChallengeCache_VerifyAndConsumeChallenge(t *testing.T) {
 
 	t.Run("successfully consumes challenge atomically", func(t *testing.T) {
 		challenge := []byte("secure_challenge_data_xyz")
-		key := "auth:webauthn_challenge:" + testEmail
+		key := "auth:webauthn_challenge:" + hashEmail(testEmail)
 		err := mr.Set(key, string(challenge))
 		require.NoError(t, err)
 		mr.SetTTL(key, 5*time.Minute)
