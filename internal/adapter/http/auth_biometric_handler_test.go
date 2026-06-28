@@ -114,7 +114,7 @@ func TestAuthBiometricHandler_Challenge(t *testing.T) {
 		assert.Equal(t, "validation_error", resp.Code)
 	})
 
-	t.Run("biometric not registered - unauthorized", func(t *testing.T) {
+	t.Run("biometric not registered - indistinguishable failure", func(t *testing.T) {
 		e := echo.New()
 		reqBody, _ := json.Marshal(dto.BiometricChallengeRequest{
 			Email: "admin@hros.com",
@@ -132,12 +132,12 @@ func TestAuthBiometricHandler_Challenge(t *testing.T) {
 		handler := NewAuthBiometricHandler(mockUC, nil)
 		err := handler.Challenge(c)
 		assert.NoError(t, err)
-		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 
 		var resp sharedErrors.ErrorResponse
 		err = json.Unmarshal(rec.Body.Bytes(), &resp)
 		assert.NoError(t, err)
-		assert.Equal(t, "unauthorized", resp.Code)
+		assert.Equal(t, "internal_error", resp.Code)
 		mockUC.AssertExpectations(t)
 	})
 

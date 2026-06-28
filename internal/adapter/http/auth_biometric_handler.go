@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -54,13 +55,15 @@ func (h *AuthBiometricHandler) Challenge(c echo.Context) error {
 	var req dto.BiometricChallengeRequest
 	if err := c.Bind(&req); err != nil {
 		traceID := c.Response().Header().Get(echo.HeaderXRequestID)
-		resp := sharedErrors.NewErrorResponse("bad_request", "Invalid request body", err.Error(), traceID)
+		slog.Error("Invalid request body in biometric challenge", "error", err, "trace_id", traceID)
+		resp := sharedErrors.NewErrorResponse("bad_request", "Invalid request body", nil, traceID)
 		return c.JSON(http.StatusBadRequest, resp)
 	}
 
 	if err := h.validate.Struct(&req); err != nil {
 		traceID := c.Response().Header().Get(echo.HeaderXRequestID)
-		resp := sharedErrors.NewErrorResponse("validation_error", "Request validation failed", err.Error(), traceID)
+		slog.Error("Request validation failed in biometric challenge", "error", err, "trace_id", traceID)
+		resp := sharedErrors.NewErrorResponse("validation_error", "Request validation failed", nil, traceID)
 		return c.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -71,11 +74,8 @@ func (h *AuthBiometricHandler) Challenge(c echo.Context) error {
 	out, err := h.generateChallengeUC.Execute(c.Request().Context(), input)
 	if err != nil {
 		traceID := c.Response().Header().Get(echo.HeaderXRequestID)
-		if errors.Is(err, domainErrors.ErrBiometricNotRegistered) {
-			resp := sharedErrors.NewErrorResponse("unauthorized", "Biometric authentication not registered", err.Error(), traceID)
-			return c.JSON(http.StatusUnauthorized, resp)
-		}
-		resp := sharedErrors.NewErrorResponse("internal_error", "Failed to generate biometric challenge", err.Error(), traceID)
+		slog.Error("Failed to generate biometric challenge", "error", err, "trace_id", traceID)
+		resp := sharedErrors.NewErrorResponse("internal_error", "Failed to generate biometric challenge", nil, traceID)
 		return c.JSON(http.StatusInternalServerError, resp)
 	}
 
@@ -91,13 +91,15 @@ func (h *AuthBiometricHandler) Verify(c echo.Context) error {
 	var req dto.BiometricVerifyRequest
 	if err := c.Bind(&req); err != nil {
 		traceID := c.Response().Header().Get(echo.HeaderXRequestID)
-		resp := sharedErrors.NewErrorResponse("bad_request", "Invalid request body", err.Error(), traceID)
+		slog.Error("Invalid request body in biometric verify", "error", err, "trace_id", traceID)
+		resp := sharedErrors.NewErrorResponse("bad_request", "Invalid request body", nil, traceID)
 		return c.JSON(http.StatusBadRequest, resp)
 	}
 
 	if err := h.validate.Struct(&req); err != nil {
 		traceID := c.Response().Header().Get(echo.HeaderXRequestID)
-		resp := sharedErrors.NewErrorResponse("validation_error", "Request validation failed", err.Error(), traceID)
+		slog.Error("Request validation failed in biometric verify", "error", err, "trace_id", traceID)
+		resp := sharedErrors.NewErrorResponse("validation_error", "Request validation failed", nil, traceID)
 		return c.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -119,21 +121,24 @@ func (h *AuthBiometricHandler) Verify(c echo.Context) error {
 	clientDataJSON, err := decodeBase64(req.ClientDataJSON)
 	if err != nil {
 		traceID := c.Response().Header().Get(echo.HeaderXRequestID)
-		resp := sharedErrors.NewErrorResponse("bad_request", "Invalid base64 in client_data_json", err.Error(), traceID)
+		slog.Error("Invalid base64 in client_data_json", "error", err, "trace_id", traceID)
+		resp := sharedErrors.NewErrorResponse("bad_request", "Invalid base64 in client_data_json", nil, traceID)
 		return c.JSON(http.StatusBadRequest, resp)
 	}
 
 	authenticatorData, err := decodeBase64(req.AuthenticatorData)
 	if err != nil {
 		traceID := c.Response().Header().Get(echo.HeaderXRequestID)
-		resp := sharedErrors.NewErrorResponse("bad_request", "Invalid base64 in authenticator_data", err.Error(), traceID)
+		slog.Error("Invalid base64 in authenticator_data", "error", err, "trace_id", traceID)
+		resp := sharedErrors.NewErrorResponse("bad_request", "Invalid base64 in authenticator_data", nil, traceID)
 		return c.JSON(http.StatusBadRequest, resp)
 	}
 
 	signature, err := decodeBase64(req.Signature)
 	if err != nil {
 		traceID := c.Response().Header().Get(echo.HeaderXRequestID)
-		resp := sharedErrors.NewErrorResponse("bad_request", "Invalid base64 in signature", err.Error(), traceID)
+		slog.Error("Invalid base64 in signature", "error", err, "trace_id", traceID)
+		resp := sharedErrors.NewErrorResponse("bad_request", "Invalid base64 in signature", nil, traceID)
 		return c.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -151,15 +156,16 @@ func (h *AuthBiometricHandler) Verify(c echo.Context) error {
 	out, err := h.verifyBiometricUC.Execute(c.Request().Context(), input)
 	if err != nil {
 		traceID := c.Response().Header().Get(echo.HeaderXRequestID)
+		slog.Error("Biometric verification failed", "error", err, "trace_id", traceID)
 		if errors.Is(err, domainErrors.ErrBiometricNotRegistered) ||
 			errors.Is(err, domainErrors.ErrInvalidBiometricSignature) ||
 			errors.Is(err, domainErrors.ErrChallengeNotFoundOrExpired) ||
 			errors.Is(err, domainErrors.ErrUserInactive) ||
 			errors.Is(err, domainErrors.ErrUserLocked) {
-			resp := sharedErrors.NewErrorResponse("unauthorized", "Biometric verification failed", err.Error(), traceID)
+			resp := sharedErrors.NewErrorResponse("unauthorized", "Biometric verification failed", nil, traceID)
 			return c.JSON(http.StatusUnauthorized, resp)
 		}
-		resp := sharedErrors.NewErrorResponse("internal_error", "Verification failed", err.Error(), traceID)
+		resp := sharedErrors.NewErrorResponse("internal_error", "Verification failed", nil, traceID)
 		return c.JSON(http.StatusInternalServerError, resp)
 	}
 
