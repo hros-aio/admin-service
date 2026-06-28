@@ -35,7 +35,7 @@ Admins can log in to the administrative portal using their registered biometric 
 
 **Acceptance Scenarios**:
 
-1. **Given** an admin email, **When** they request an authentication challenge, **Then** the system generates a challenge, caches it, and returns it to the client.
+1. **Given** an admin email, **When** they request an authentication challenge, **Then** the system verifies the account is registered for biometrics, generates a cryptographically secure challenge, caches it, and returns both the challenge and the registered credential ID to the client.
 2. **Given** a cached authentication challenge, **When** the admin submits a valid signature matching their single registered biometric credential, **Then** the system authenticates the user, logs a biometric success event, and monotonically advances the persisted sign count for that credential.
 
 ---
@@ -77,6 +77,7 @@ Clients and automated integrators must be able to use standardized, fully-valida
 - **FR-009**: The system MUST define request schemas validating client-supplied parameters for the biometric verification endpoint (requiring email, credential ID, authenticator data, client data JSON, and cryptographic signature).
 - **FR-010**: The OpenAPI contract MUST document the biometric challenge and verification endpoints, including successful outcomes and failure codes (such as 400 Bad Request and 401 Unauthorized).
 - **FR-011**: The system MUST monotonically advance the sign count inside the user's persistent `webauthn_credentials` JSONB field post-verification to mitigate authenticator cloning attacks.
+- **FR-012**: The biometric challenge generation flow MUST return the generated cryptographic challenge alongside the registered biometric credential ID to the client.
 
 ### Key Entities *(include if feature involves data)*
 

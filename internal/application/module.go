@@ -17,5 +17,6 @@ var Module = fx.Module("application",
 		usecase.NewAcceptInviteUseCase,
 		usecase.NewInitiateSSOUseCase,
 		usecase.NewCallbackSSOUseCase,
+		usecase.NewGenerateBiometricChallengeUseCase,
 	),
 )

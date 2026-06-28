@@ -1,4 +1,4 @@
-# Tasks: Biometric Device Login (WebAuthn) - Repository Layer (TSK-BIO-004)
+# Tasks: Biometric Device Login (WebAuthn) - UseCase Layer (TSK-BIO-005)
 
 **Input**: Design documents from `/specs/023-biometric-device-login/`
 
@@ -23,7 +23,7 @@
 
 **Purpose**: Project initialization and basic structure
 
-*(No setup tasks required for this repository update; using existing infrastructure)*
+*(No setup tasks required; using existing infrastructure)*
 
 ---
 
@@ -31,21 +31,21 @@
 
 **Purpose**: Core infrastructure that MUST be complete before ANY user story can be implemented
 
-*(No foundational schema migrations or routing setup required; `webauthn_credentials` JSONB column already exists)*
+*(No foundational tasks required)*
 
 ---
 
 ## Phase 3: User Story 2 - Biometric Login (Priority: P1)
 
-**Goal**: Implement `UpdateWebAuthnSignCount` repository method to persist WebAuthn sign counts and mitigate authenticator cloning attacks.
+**Goal**: Implement `GenerateBiometricChallengeUseCase` to generate and cache WebAuthn login challenges.
 
-**Independent Test**: Verify using `sqlmock` that the GORM query correctly performs a PostgreSQL `jsonb_set` atomic update on the `webauthn_credentials` column.
+**Independent Test**: Verify using mocked repositories and caches that the usecase correctly fetches the user, parses the JSONB credential, generates a cryptographically secure challenge, caches it, and returns the expected string.
 
 ### Implementation for User Story 2
 
-- [x] T001 [US2] Define `UpdateWebAuthnSignCount(ctx context.Context, adminID string, newCount uint32) error` in `AdminUserRepository` interface in `internal/domain/admin_user.go`
-- [x] T002 [US2] Implement `UpdateWebAuthnSignCount(ctx context.Context, adminID string, newCount uint32) error` method in `GormAdminUserRepository` inside `internal/infrastructure/repository/auth/repository.go`
-- [x] T003 [P] [US2] Create unit tests in `internal/infrastructure/repository/auth/repository_test.go` using `sqlmock` to verify the GORM query structure, parameters, rows affected matching, and database error handling for `UpdateWebAuthnSignCount`
+- [x] T001 [US2] Implement `GenerateBiometricChallengeUseCase` and input/output structs in `internal/application/usecase/generate_biometric_challenge_usecase.go`
+- [x] T002 [P] [US2] Create unit tests in `internal/application/usecase/generate_biometric_challenge_usecase_test.go` with 100% coverage using Go mock repositories
+- [x] T003 [US2] Register `GenerateBiometricChallengeUseCase` inside Fx module in `internal/application/module.go`
 
 ---
 
@@ -53,7 +53,7 @@
 
 **Purpose**: Formatting and overall testing check
 
-- [x] T004 Run `go fmt` and `go test` for all affected packages, including `internal/infrastructure/repository/auth/...`, `internal/adapter/http/auth_handler_test.go`, `internal/application/usecase/login_usecase_test.go`, and `internal/application/usecase/accept_invite_usecase_test.go` to confirm mock compilation and test correctness
+- [x] T004 Run `go fmt` and `go test` for `internal/application/...` to verify compilation and test correctness
 
 ---
 
@@ -61,12 +61,12 @@
 
 ### Phase Dependencies
 
-- **User Story 2 (Phase 3)**: Can start immediately since database and code frameworks are already set up.
-- **Polish (Phase 4)**: Depends on User Story 2 implementation and tests being complete.
+- **User Story 2 (Phase 3)**: Can start immediately.
+- **Polish (Phase 4)**: Depends on User Story 2 being complete.
 
 ### Parallel Opportunities
 
-- Unit tests (T003) and implementation (T002) can be drafted concurrently after interface definition (T001) is complete.
+- Unit tests (T002) and implementation (T001) can be worked on concurrently by stubbing the interface first.
 
 ---
 
@@ -74,7 +74,7 @@
 
 ### MVP First (User Story 2 Only)
 
-1. Define interface method.
-2. Write GORM implementation.
-3. Write `sqlmock` unit tests.
-4. Verify all tests pass.
+1. Implement UseCase and structs.
+2. Register UseCase in Fx.
+3. Write mock-based unit tests.
+4. Run formatting and verify all tests pass.
