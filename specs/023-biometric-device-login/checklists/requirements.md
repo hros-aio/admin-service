@@ -35,3 +35,4 @@
 - Spec verified for Redis challenge cache interface and implementation requirements (TSK-BIO-003).
 - Spec verified for Repository layer updates (TSK-BIO-004).
 - Spec verified for UseCase layer biometric challenge generation (TSK-BIO-005).
+- Spec verified for UseCase layer biometric verification (TSK-BIO-006).

@@ -94,8 +94,8 @@ func (m *mockAdminUserRepositoryForAcceptInvite) FindByEmailOrSSO(ctx context.Co
 	}
 	return nil, args.Error(1)
 }
-func (m *mockAdminUserRepositoryForAcceptInvite) UpdateWebAuthnSignCount(ctx context.Context, adminID string, newCount uint32) error {
-	return m.Called(ctx, adminID, newCount).Error(0)
+func (m *mockAdminUserRepositoryForAcceptInvite) UpdateWebAuthnSignCount(ctx context.Context, adminID string, credentialID string, newCount uint32) error {
+	return m.Called(ctx, adminID, credentialID, newCount).Error(0)
 }
 
 // ---------------------------------------------------------------------------
@@ -144,6 +144,10 @@ func (m *mockAcceptInviteAuditLogger) LogSSOSuccess(ctx context.Context, event e
 	m.Called(ctx, event)
 }
 func (m *mockAcceptInviteAuditLogger) LogSSOFailed(ctx context.Context, event events.SSOFailedEvent) {
+	m.Called(ctx, event)
+}
+
+func (m *mockAcceptInviteAuditLogger) LogBiometricSuccess(ctx context.Context, event events.BiometricSuccessEvent) {
 	m.Called(ctx, event)
 }
 
