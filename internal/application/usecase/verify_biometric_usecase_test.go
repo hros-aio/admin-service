@@ -57,8 +57,10 @@ func signTestAssertion(priv *ecdsa.PrivateKey, clientDataJSON, authenticatorData
 }
 
 func makeTestAuthenticatorData(counter uint32) []byte {
-	// W3C Authenticator Data structure has signature counter at bytes 33-36.
 	authData := make([]byte, 37)
+	rpIDHash := sha256.Sum256([]byte("hros.admin"))
+	copy(authData[0:32], rpIDHash[:])
+	authData[32] = 0x05 // UP (0x01) and UV (0x04) set
 	binary.BigEndian.PutUint32(authData[33:37], counter)
 	return authData
 }
@@ -70,7 +72,9 @@ func TestVerifyBiometricUseCase(t *testing.T) {
 	encodedChallenge := base64.RawURLEncoding.EncodeToString(cachedChallenge)
 
 	clientDataJSON, _ := json.Marshal(map[string]string{
+		"type":      "webauthn.get",
 		"challenge": encodedChallenge,
+		"origin":    "https://hros.admin",
 	})
 
 	privKey, pubKeyPEM := generateTestKeyPair(t)
@@ -102,7 +106,7 @@ func TestVerifyBiometricUseCase(t *testing.T) {
 
 		cache.On("VerifyAndConsumeChallenge", mock.Anything, email).Return(cachedChallenge, nil).Once()
 		ur.On("FindByEmail", mock.Anything, email).Return(user, nil).Once()
-		ur.On("UpdateWebAuthnSignCount", mock.Anything, user.ID, uint32(10)).Return(nil).Once()
+		ur.On("UpdateWebAuthnSignCount", mock.Anything, user.ID, credentialID, uint32(10)).Return(nil).Once()
 		audit.On("LogBiometricSuccess", mock.Anything, mock.Anything).Return().Once()
 
 		tokens.On("GenerateAccessToken", mock.Anything, user, 15*time.Minute).Return("access-token", nil).Once()
@@ -127,6 +131,61 @@ func TestVerifyBiometricUseCase(t *testing.T) {
 		assert.Equal(t, user.ID, out.User.ID)
 		assert.Equal(t, user.Email, out.User.Email)
 
+		ur.AssertExpectations(t)
+		cache.AssertExpectations(t)
+		sr.AssertExpectations(t)
+		tokens.AssertExpectations(t)
+		audit.AssertExpectations(t)
+	})
+
+	t.Run("success when both counters are zero", func(t *testing.T) {
+		ur := new(mockUserRepo)
+		cache := new(mockChallengeCache)
+		sr := new(mockSessionRepo)
+		tokens := new(mockTokenProvider)
+		audit := new(mockAuditLogger)
+
+		uc := NewVerifyBiometricUseCase(ur, cache, sr, tokens, audit)
+
+		credentialsJSON, _ := json.Marshal(WebAuthnCredential{
+			ID:        credentialID,
+			PublicKey: pubKeyPEM,
+			SignCount: 0, // stored count = 0
+		})
+
+		user := &domain.AdminUser{
+			ID:                  "user-uuid",
+			Email:               email,
+			Name:                "John Admin",
+			Status:              "active",
+			WebauthnCredentials: credentialsJSON,
+		}
+
+		zeroAuthData := makeTestAuthenticatorData(0) // authenticator count = 0
+		zeroSignature := signTestAssertion(privKey, clientDataJSON, zeroAuthData)
+
+		cache.On("VerifyAndConsumeChallenge", mock.Anything, email).Return(cachedChallenge, nil).Once()
+		ur.On("FindByEmail", mock.Anything, email).Return(user, nil).Once()
+		ur.On("UpdateWebAuthnSignCount", mock.Anything, user.ID, credentialID, uint32(0)).Return(nil).Once()
+		audit.On("LogBiometricSuccess", mock.Anything, mock.Anything).Return().Once()
+
+		tokens.On("GenerateAccessToken", mock.Anything, user, 15*time.Minute).Return("access-token", nil).Once()
+		tokens.On("GenerateRefreshToken", mock.Anything).Return("refresh-token", nil).Once()
+		sr.On("Save", mock.Anything, mock.Anything).Return(nil).Once()
+
+		out, err := uc.Execute(context.Background(), VerifyBiometricInput{
+			Email:             email,
+			CredentialID:      credentialID,
+			ClientDataJSON:    clientDataJSON,
+			AuthenticatorData: zeroAuthData,
+			Signature:         zeroSignature,
+			RememberMe:        false,
+			IPAddress:         "127.0.0.1",
+			UserAgent:         "Mozilla/5.0",
+		})
+
+		assert.NoError(t, err)
+		assert.NotNil(t, out)
 		ur.AssertExpectations(t)
 		cache.AssertExpectations(t)
 		sr.AssertExpectations(t)
@@ -190,7 +249,9 @@ func TestVerifyBiometricUseCase(t *testing.T) {
 		uc := NewVerifyBiometricUseCase(ur, cache, nil, nil, nil)
 
 		mismatchedClientData, _ := json.Marshal(map[string]string{
+			"type":      "webauthn.get",
 			"challenge": "wrong_challenge",
+			"origin":    "https://hros.admin",
 		})
 
 		cache.On("VerifyAndConsumeChallenge", mock.Anything, email).Return(cachedChallenge, nil).Once()
@@ -392,6 +453,37 @@ func TestVerifyBiometricUseCase(t *testing.T) {
 		ur.AssertExpectations(t)
 	})
 
+	t.Run("undersized authenticator data error", func(t *testing.T) {
+		ur := new(mockUserRepo)
+		cache := new(mockChallengeCache)
+		uc := NewVerifyBiometricUseCase(ur, cache, nil, nil, nil)
+
+		user := &domain.AdminUser{
+			ID:                  "user-uuid",
+			Email:               email,
+			Status:              "active",
+			WebauthnCredentials: nil,
+		}
+
+		shortAuthData := []byte("short-bytes") // shorter than 37
+
+		cache.On("VerifyAndConsumeChallenge", mock.Anything, email).Return(cachedChallenge, nil).Once()
+		ur.On("FindByEmail", mock.Anything, email).Return(user, nil).Once()
+
+		out, err := uc.Execute(context.Background(), VerifyBiometricInput{
+			Email:             email,
+			CredentialID:      credentialID,
+			ClientDataJSON:    clientDataJSON,
+			AuthenticatorData: shortAuthData,
+			Signature:         validSignature,
+		})
+
+		assert.ErrorIs(t, err, domainErrors.ErrInvalidBiometricSignature)
+		assert.Nil(t, out)
+		cache.AssertExpectations(t)
+		ur.AssertExpectations(t)
+	})
+
 	t.Run("session save error propagates", func(t *testing.T) {
 		ur := new(mockUserRepo)
 		cache := new(mockChallengeCache)
@@ -418,8 +510,7 @@ func TestVerifyBiometricUseCase(t *testing.T) {
 
 		cache.On("VerifyAndConsumeChallenge", mock.Anything, email).Return(cachedChallenge, nil).Once()
 		ur.On("FindByEmail", mock.Anything, email).Return(user, nil).Once()
-		ur.On("UpdateWebAuthnSignCount", mock.Anything, user.ID, uint32(10)).Return(nil).Once()
-		audit.On("LogBiometricSuccess", mock.Anything, mock.Anything).Return().Once()
+		ur.On("UpdateWebAuthnSignCount", mock.Anything, user.ID, credentialID, uint32(10)).Return(nil).Once()
 
 		tokens.On("GenerateAccessToken", mock.Anything, user, 15*time.Minute).Return("access-token", nil).Once()
 		tokens.On("GenerateRefreshToken", mock.Anything).Return("refresh-token", nil).Once()
@@ -440,6 +531,6 @@ func TestVerifyBiometricUseCase(t *testing.T) {
 		cache.AssertExpectations(t)
 		sr.AssertExpectations(t)
 		tokens.AssertExpectations(t)
-		audit.AssertExpectations(t)
+		audit.AssertExpectations(t) // asserts that LogBiometricSuccess was NOT called!
 	})
 }

@@ -306,6 +306,7 @@ func TestGormAdminUserRepository_FindByEmailOrSSO(t *testing.T) {
 
 func TestGormAdminUserRepository_UpdateWebAuthnSignCount(t *testing.T) {
 	adminID := "admin-uuid"
+	credentialID := "cred-1"
 	newCount := uint32(42)
 
 	t.Run("success", func(t *testing.T) {
@@ -313,12 +314,17 @@ func TestGormAdminUserRepository_UpdateWebAuthnSignCount(t *testing.T) {
 		repo := NewGormAdminUserRepository(gormDB)
 
 		mock.ExpectBegin()
-		mock.ExpectExec(regexp.QuoteMeta(`UPDATE "admin_users" SET "webauthn_credentials"=jsonb_set(COALESCE(webauthn_credentials, '{}'::jsonb), '{sign_count}', to_jsonb(GREATEST(COALESCE((webauthn_credentials->>'sign_count')::integer, 0), $1::integer))),"updated_at"=$2 WHERE id = $3`)).
-			WithArgs(newCount, sqlmock.AnyArg(), adminID).
+		columns := []string{"id", "webauthn_credentials"}
+		mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "admin_users" WHERE id = $1 ORDER BY "admin_users"."id" LIMIT $2 FOR UPDATE`)).
+			WithArgs(adminID, 1).
+			WillReturnRows(sqlmock.NewRows(columns).AddRow(adminID, []byte(`{"id":"cred-1", "public_key":"pub", "sign_count":5}`)))
+
+		mock.ExpectExec(regexp.QuoteMeta(`UPDATE "admin_users" SET "webauthn_credentials"=$1,"updated_at"=$2 WHERE id = $3`)).
+			WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), adminID).
 			WillReturnResult(sqlmock.NewResult(0, 1))
 		mock.ExpectCommit()
 
-		err := repo.UpdateWebAuthnSignCount(context.Background(), adminID, newCount)
+		err := repo.UpdateWebAuthnSignCount(context.Background(), adminID, credentialID, newCount)
 		assert.NoError(t, err)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -328,12 +334,12 @@ func TestGormAdminUserRepository_UpdateWebAuthnSignCount(t *testing.T) {
 		repo := NewGormAdminUserRepository(gormDB)
 
 		mock.ExpectBegin()
-		mock.ExpectExec(regexp.QuoteMeta(`UPDATE "admin_users" SET "webauthn_credentials"=jsonb_set(COALESCE(webauthn_credentials, '{}'::jsonb), '{sign_count}', to_jsonb(GREATEST(COALESCE((webauthn_credentials->>'sign_count')::integer, 0), $1::integer))),"updated_at"=$2 WHERE id = $3`)).
-			WithArgs(newCount, sqlmock.AnyArg(), adminID).
-			WillReturnResult(sqlmock.NewResult(0, 0))
-		mock.ExpectCommit()
+		mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "admin_users" WHERE id = $1 ORDER BY "admin_users"."id" LIMIT $2 FOR UPDATE`)).
+			WithArgs(adminID, 1).
+			WillReturnRows(sqlmock.NewRows([]string{"id"})) // empty rows
+		mock.ExpectRollback()
 
-		err := repo.UpdateWebAuthnSignCount(context.Background(), adminID, newCount)
+		err := repo.UpdateWebAuthnSignCount(context.Background(), adminID, credentialID, newCount)
 		assert.ErrorIs(t, err, domainErrors.ErrUserNotFound)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -343,12 +349,12 @@ func TestGormAdminUserRepository_UpdateWebAuthnSignCount(t *testing.T) {
 		repo := NewGormAdminUserRepository(gormDB)
 
 		mock.ExpectBegin()
-		mock.ExpectExec(regexp.QuoteMeta(`UPDATE "admin_users" SET "webauthn_credentials"=jsonb_set(COALESCE(webauthn_credentials, '{}'::jsonb), '{sign_count}', to_jsonb(GREATEST(COALESCE((webauthn_credentials->>'sign_count')::integer, 0), $1::integer))),"updated_at"=$2 WHERE id = $3`)).
-			WithArgs(newCount, sqlmock.AnyArg(), adminID).
+		mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "admin_users" WHERE id = $1 ORDER BY "admin_users"."id" LIMIT $2 FOR UPDATE`)).
+			WithArgs(adminID, 1).
 			WillReturnError(sql.ErrConnDone)
 		mock.ExpectRollback()
 
-		err := repo.UpdateWebAuthnSignCount(context.Background(), adminID, newCount)
+		err := repo.UpdateWebAuthnSignCount(context.Background(), adminID, credentialID, newCount)
 		assert.Error(t, err)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})

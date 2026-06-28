@@ -64,7 +64,9 @@ func NewVerifyBiometricUseCase(
 }
 
 type clientData struct {
+	Type      string `json:"type"`
 	Challenge string `json:"challenge"`
+	Origin    string `json:"origin"`
 }
 
 type ecdsaSignature struct {
@@ -88,9 +90,22 @@ func (uc *VerifyBiometricUseCase) Execute(ctx context.Context, input VerifyBiome
 		return nil, fmt.Errorf("verify and consume challenge: %w", err)
 	}
 
-	// 2. Parse clientDataJSON and verify the challenge matches
+	// 2. Parse clientDataJSON and verify type is webauthn.get, origin is allowed, and the challenge matches
 	var cd clientData
 	if err := json.Unmarshal(input.ClientDataJSON, &cd); err != nil {
+		return nil, domainErrors.ErrInvalidBiometricSignature
+	}
+
+	if cd.Type != "webauthn.get" {
+		return nil, domainErrors.ErrInvalidBiometricSignature
+	}
+
+	allowedOrigins := map[string]bool{
+		"http://localhost:3000":  true,
+		"https://localhost:3000": true,
+		"https://hros.admin":     true,
+	}
+	if !allowedOrigins[cd.Origin] {
 		return nil, domainErrors.ErrInvalidBiometricSignature
 	}
 
@@ -114,6 +129,26 @@ func (uc *VerifyBiometricUseCase) Execute(ctx context.Context, input VerifyBiome
 
 	if user.IsLocked() {
 		return nil, domainErrors.ErrUserLocked
+	}
+
+	// Validate authenticator data length, RP ID hash, and UP/UV flags before credential parsing
+	if len(input.AuthenticatorData) < 37 {
+		return nil, domainErrors.ErrInvalidBiometricSignature
+	}
+
+	rpIDHash := input.AuthenticatorData[:32]
+	expectedHash1 := sha256.Sum256([]byte("localhost"))
+	expectedHash2 := sha256.Sum256([]byte("hros.admin"))
+	if !bytes.Equal(rpIDHash, expectedHash1[:]) && !bytes.Equal(rpIDHash, expectedHash2[:]) {
+		return nil, domainErrors.ErrInvalidBiometricSignature
+	}
+
+	flags := input.AuthenticatorData[32]
+	if (flags & 0x01) == 0 { // User Present (UP) must be set
+		return nil, domainErrors.ErrInvalidBiometricSignature
+	}
+	if (flags & 0x04) == 0 { // User Verified (UV) must be set
+		return nil, domainErrors.ErrInvalidBiometricSignature
 	}
 
 	// 4. Retrieve and parse WebAuthn Credentials
@@ -155,31 +190,17 @@ func (uc *VerifyBiometricUseCase) Execute(ctx context.Context, input VerifyBiome
 	}
 
 	// 6. Monotonicity check on signature count (cloning detection)
-	if len(input.AuthenticatorData) < 37 {
-		return nil, domainErrors.ErrInvalidBiometricSignature
-	}
 	newCount := binary.BigEndian.Uint32(input.AuthenticatorData[33:37])
-	if newCount <= matchedCred.SignCount {
+	if (matchedCred.SignCount > 0 || newCount > 0) && newCount <= matchedCred.SignCount {
 		return nil, domainErrors.ErrInvalidBiometricSignature
 	}
 
-	// 7. Update counter in DB (using monotonic repository helper)
-	if err := uc.userRepo.UpdateWebAuthnSignCount(ctx, user.ID, newCount); err != nil {
+	// 7. Update counter in DB (using monotonic repository helper) for matched credential
+	if err := uc.userRepo.UpdateWebAuthnSignCount(ctx, user.ID, matchedCred.ID, newCount); err != nil {
 		return nil, fmt.Errorf("failed to update sign count: %w", err)
 	}
 
-	// 8. Log biometric success audit trail
-	biometricEvent := events.BiometricSuccessEvent{
-		AdminID:      user.ID,
-		Email:        user.Email,
-		CredentialID: matchedCred.ID,
-		IPAddress:    input.IPAddress,
-		UserAgent:    input.UserAgent,
-		OccurredAt:   time.Now().UTC(),
-	}
-	uc.audit.LogBiometricSuccess(ctx, biometricEvent)
-
-	// 9. Issue tokens and session
+	// 8. Issue tokens and session
 	accessToken, err := uc.tokens.GenerateAccessToken(ctx, user, 15*time.Minute)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate access token: %w", err)
@@ -209,6 +230,17 @@ func (uc *VerifyBiometricUseCase) Execute(ctx context.Context, input VerifyBiome
 	if err := uc.sessionRepo.Save(ctx, session); err != nil {
 		return nil, fmt.Errorf("failed to save session: %w", err)
 	}
+
+	// 9. Log biometric success audit trail ONLY after successful session persistence
+	biometricEvent := events.BiometricSuccessEvent{
+		AdminID:      user.ID,
+		Email:        user.Email,
+		CredentialID: matchedCred.ID,
+		IPAddress:    input.IPAddress,
+		UserAgent:    input.UserAgent,
+		OccurredAt:   time.Now().UTC(),
+	}
+	uc.audit.LogBiometricSuccess(ctx, biometricEvent)
 
 	return &LoginOutput{
 		AccessToken:  accessToken,
@@ -241,7 +273,7 @@ func verifyECDSASignature(pubKeyStr string, clientDataJSON, authenticatorData, s
 	}
 
 	ecdsaPub, ok := pub.(*ecdsa.PublicKey)
-	if !ok {
+	if !ok || ecdsaPub.Curve.Params().Name != "P-256" {
 		return false
 	}
 

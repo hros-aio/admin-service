@@ -78,8 +78,8 @@ func (m *mockUserRepo) FindByEmailOrSSO(ctx context.Context, email string, ssoPr
 	return args.Get(0).(*domain.AdminUser), args.Error(1)
 }
 
-func (m *mockUserRepo) UpdateWebAuthnSignCount(ctx context.Context, adminID string, newCount uint32) error {
-	return m.Called(ctx, adminID, newCount).Error(0)
+func (m *mockUserRepo) UpdateWebAuthnSignCount(ctx context.Context, adminID string, credentialID string, newCount uint32) error {
+	return m.Called(ctx, adminID, credentialID, newCount).Error(0)
 }
 
 type mockMFACache struct{ mock.Mock }

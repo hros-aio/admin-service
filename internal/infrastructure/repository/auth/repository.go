@@ -1,7 +1,9 @@
 package auth
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -9,6 +11,7 @@ import (
 	domainErrors "github.com/hros/admin-service/internal/domain/errors"
 	platformDB "github.com/hros/admin-service/internal/platform/database"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // GormAdminUserRepository implements domain.AdminUserRepository using GORM.
@@ -176,22 +179,76 @@ func (r *GormAdminUserRepository) FindByEmailOrSSO(ctx context.Context, email st
 	return nil, domainErrors.ErrUserNotFound
 }
 
-// UpdateWebAuthnSignCount updates the signature count inside the webauthn_credentials JSONB column to mitigate authenticator cloning.
-func (r *GormAdminUserRepository) UpdateWebAuthnSignCount(ctx context.Context, adminID string, newCount uint32) error {
+type repoWebAuthnCredential struct {
+	ID        string `json:"id"`
+	PublicKey string `json:"public_key"`
+	SignCount uint32 `json:"sign_count"`
+}
+
+// UpdateWebAuthnSignCount updates the signature count of the matched credential inside the webauthn_credentials JSONB column monotonically.
+func (r *GormAdminUserRepository) UpdateWebAuthnSignCount(ctx context.Context, adminID string, credentialID string, newCount uint32) error {
 	db := platformDB.GetTx(ctx, r.db)
 
-	result := db.Model(&adminUserModel{}).
-		Where("id = ?", adminID).
-		Update("webauthn_credentials", gorm.Expr(
-			"jsonb_set(COALESCE(webauthn_credentials, '{}'::jsonb), '{sign_count}', to_jsonb(GREATEST(COALESCE((webauthn_credentials->>'sign_count')::integer, 0), ?::integer)))",
-			newCount,
-		))
+	return db.Transaction(func(tx *gorm.DB) error {
+		var user adminUserModel
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", adminID).First(&user).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return domainErrors.ErrUserNotFound
+			}
+			return err
+		}
 
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return domainErrors.ErrUserNotFound
-	}
-	return nil
+		trimmedCreds := bytes.TrimSpace(user.WebauthnCredentials)
+		if len(trimmedCreds) == 0 {
+			return domainErrors.ErrBiometricNotRegistered
+		}
+
+		var creds []repoWebAuthnCredential
+		isArray := trimmedCreds[0] == '['
+		if isArray {
+			if err := json.Unmarshal(trimmedCreds, &creds); err != nil {
+				return err
+			}
+		} else if trimmedCreds[0] == '{' {
+			var singleCred repoWebAuthnCredential
+			if err := json.Unmarshal(trimmedCreds, &singleCred); err != nil {
+				return err
+			}
+			creds = []repoWebAuthnCredential{singleCred}
+		} else {
+			return domainErrors.ErrBiometricNotRegistered
+		}
+
+		found := false
+		for i := range creds {
+			if creds[i].ID == credentialID {
+				if newCount > creds[i].SignCount {
+					creds[i].SignCount = newCount
+				}
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			return domainErrors.ErrBiometricNotRegistered
+		}
+
+		var updatedBytes []byte
+		var err error
+		if isArray {
+			updatedBytes, err = json.Marshal(creds)
+		} else {
+			updatedBytes, err = json.Marshal(creds[0])
+		}
+		if err != nil {
+			return err
+		}
+
+		if err := tx.Model(&adminUserModel{}).Where("id = ?", adminID).Update("webauthn_credentials", updatedBytes).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
 }

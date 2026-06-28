@@ -94,8 +94,8 @@ func (m *mockAdminUserRepositoryForAcceptInvite) FindByEmailOrSSO(ctx context.Co
 	}
 	return nil, args.Error(1)
 }
-func (m *mockAdminUserRepositoryForAcceptInvite) UpdateWebAuthnSignCount(ctx context.Context, adminID string, newCount uint32) error {
-	return m.Called(ctx, adminID, newCount).Error(0)
+func (m *mockAdminUserRepositoryForAcceptInvite) UpdateWebAuthnSignCount(ctx context.Context, adminID string, credentialID string, newCount uint32) error {
+	return m.Called(ctx, adminID, credentialID, newCount).Error(0)
 }
 
 // ---------------------------------------------------------------------------

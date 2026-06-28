@@ -33,7 +33,7 @@
 
 - [x] T001 [US2] Update `AuditLogger` interface in `internal/domain/auth/audit.go` to include `LogBiometricSuccess(ctx context.Context, event events.BiometricSuccessEvent)`
 - [x] T002 [US2] Implement `LogBiometricSuccess` in `SlogAuditLogger` in `internal/infrastructure/auth/audit_logger.go`
-- [x] T003 [US2] Update the `mockAuditLogger` structs in `internal/application/usecase/login_usecase_test.go` and `internal/adapter/http/auth_handler_test.go` to mock the new audit method and satisfy interface constraints
+- [x] T003 [US2] Update the `mockAuditLogger` and `mockAcceptInviteAuditLogger` structs in `internal/application/usecase/login_usecase_test.go`, `internal/application/usecase/accept_invite_usecase_test.go`, and `internal/adapter/http/auth_handler_test.go` to mock the new audit method and satisfy interface constraints
 
 ---
 
