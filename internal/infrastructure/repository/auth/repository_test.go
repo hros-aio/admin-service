@@ -313,8 +313,8 @@ func TestGormAdminUserRepository_UpdateWebAuthnSignCount(t *testing.T) {
 		repo := NewGormAdminUserRepository(gormDB)
 
 		mock.ExpectBegin()
-		mock.ExpectExec(regexp.QuoteMeta(`UPDATE "admin_users" SET "webauthn_credentials"=jsonb_set(COALESCE(webauthn_credentials, '{}'::jsonb), '{sign_count}', $1::jsonb),"updated_at"=$2 WHERE id = $3`)).
-			WithArgs([]byte("42"), sqlmock.AnyArg(), adminID).
+		mock.ExpectExec(regexp.QuoteMeta(`UPDATE "admin_users" SET "webauthn_credentials"=jsonb_set(COALESCE(webauthn_credentials, '{}'::jsonb), '{sign_count}', to_jsonb(GREATEST(COALESCE((webauthn_credentials->>'sign_count')::integer, 0), $1::integer))),"updated_at"=$2 WHERE id = $3`)).
+			WithArgs(newCount, sqlmock.AnyArg(), adminID).
 			WillReturnResult(sqlmock.NewResult(0, 1))
 		mock.ExpectCommit()
 
@@ -328,8 +328,8 @@ func TestGormAdminUserRepository_UpdateWebAuthnSignCount(t *testing.T) {
 		repo := NewGormAdminUserRepository(gormDB)
 
 		mock.ExpectBegin()
-		mock.ExpectExec(regexp.QuoteMeta(`UPDATE "admin_users" SET "webauthn_credentials"=jsonb_set(COALESCE(webauthn_credentials, '{}'::jsonb), '{sign_count}', $1::jsonb),"updated_at"=$2 WHERE id = $3`)).
-			WithArgs([]byte("42"), sqlmock.AnyArg(), adminID).
+		mock.ExpectExec(regexp.QuoteMeta(`UPDATE "admin_users" SET "webauthn_credentials"=jsonb_set(COALESCE(webauthn_credentials, '{}'::jsonb), '{sign_count}', to_jsonb(GREATEST(COALESCE((webauthn_credentials->>'sign_count')::integer, 0), $1::integer))),"updated_at"=$2 WHERE id = $3`)).
+			WithArgs(newCount, sqlmock.AnyArg(), adminID).
 			WillReturnResult(sqlmock.NewResult(0, 0))
 		mock.ExpectCommit()
 
@@ -343,8 +343,8 @@ func TestGormAdminUserRepository_UpdateWebAuthnSignCount(t *testing.T) {
 		repo := NewGormAdminUserRepository(gormDB)
 
 		mock.ExpectBegin()
-		mock.ExpectExec(regexp.QuoteMeta(`UPDATE "admin_users" SET "webauthn_credentials"=jsonb_set(COALESCE(webauthn_credentials, '{}'::jsonb), '{sign_count}', $1::jsonb),"updated_at"=$2 WHERE id = $3`)).
-			WithArgs([]byte("42"), sqlmock.AnyArg(), adminID).
+		mock.ExpectExec(regexp.QuoteMeta(`UPDATE "admin_users" SET "webauthn_credentials"=jsonb_set(COALESCE(webauthn_credentials, '{}'::jsonb), '{sign_count}', to_jsonb(GREATEST(COALESCE((webauthn_credentials->>'sign_count')::integer, 0), $1::integer))),"updated_at"=$2 WHERE id = $3`)).
+			WithArgs(newCount, sqlmock.AnyArg(), adminID).
 			WillReturnError(sql.ErrConnDone)
 		mock.ExpectRollback()
 

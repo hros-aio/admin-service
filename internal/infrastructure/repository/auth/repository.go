@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/hros/admin-service/internal/domain"
@@ -181,11 +180,12 @@ func (r *GormAdminUserRepository) FindByEmailOrSSO(ctx context.Context, email st
 func (r *GormAdminUserRepository) UpdateWebAuthnSignCount(ctx context.Context, adminID string, newCount uint32) error {
 	db := platformDB.GetTx(ctx, r.db)
 
-	newCountJSON := []byte(fmt.Sprintf("%d", newCount))
-
 	result := db.Model(&adminUserModel{}).
 		Where("id = ?", adminID).
-		Update("webauthn_credentials", gorm.Expr("jsonb_set(COALESCE(webauthn_credentials, '{}'::jsonb), '{sign_count}', ?::jsonb)", newCountJSON))
+		Update("webauthn_credentials", gorm.Expr(
+			"jsonb_set(COALESCE(webauthn_credentials, '{}'::jsonb), '{sign_count}', to_jsonb(GREATEST(COALESCE((webauthn_credentials->>'sign_count')::integer, 0), ?::integer)))",
+			newCount,
+		))
 
 	if result.Error != nil {
 		return result.Error

@@ -53,7 +53,7 @@
 
 **Purpose**: Formatting and overall testing check
 
-- [x] T004 Run `go fmt` and `go test` for `internal/infrastructure/repository/auth/...` and verify all tests pass
+- [x] T004 Run `go fmt` and `go test` for all affected packages, including `internal/infrastructure/repository/auth/...`, `internal/adapter/http/auth_handler_test.go`, `internal/application/usecase/login_usecase_test.go`, and `internal/application/usecase/accept_invite_usecase_test.go` to confirm mock compilation and test correctness
 
 ---
 
