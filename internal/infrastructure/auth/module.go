@@ -7,8 +7,10 @@ import (
 	"log/slog"
 
 	"github.com/hros/admin-service/internal/application/auth"
+	"github.com/hros/admin-service/internal/application/usecase"
 	"github.com/hros/admin-service/internal/config"
 	authDomain "github.com/hros/admin-service/internal/domain/auth"
+	"github.com/hros/admin-service/internal/infrastructure/cache"
 	"go.uber.org/fx"
 )
 
@@ -36,5 +38,18 @@ var Module = fx.Module("auth-infra",
 			return NewSlogAuditLogger(log)
 		},
 		NewDefaultSSOClient,
+		cache.NewRedisSSOStateCache,
+		func(cfg *config.Config) map[string]usecase.SSOProviderConfig {
+			providers := make(map[string]usecase.SSOProviderConfig)
+			if cfg.SSOGoogleClientID != "" && cfg.SSOGoogleRedirectURL != "" && cfg.SSOGoogleAuthURL != "" {
+				providers["google"] = usecase.SSOProviderConfig{
+					ClientID:    cfg.SSOGoogleClientID,
+					RedirectURL: cfg.SSOGoogleRedirectURL,
+					AuthURL:     cfg.SSOGoogleAuthURL,
+					Scopes:      []string{"openid", "email", "profile"},
+				}
+			}
+			return providers
+		},
 	),
 )

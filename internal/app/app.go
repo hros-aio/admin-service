@@ -43,19 +43,6 @@ var Module = fx.Options(
 	fx.Provide(cache.NewRedisBruteForceCache),
 	fx.Provide(cache.NewRedisMFACache),
 	fx.Provide(cache.NewRedisPasswordResetCache),
-	fx.Provide(cache.NewRedisSSOStateCache),
-	fx.Provide(func(cfg *config.Config) map[string]usecase.SSOProviderConfig {
-		providers := make(map[string]usecase.SSOProviderConfig)
-		if cfg.SSOGoogleClientID != "" && cfg.SSOGoogleRedirectURL != "" && cfg.SSOGoogleAuthURL != "" {
-			providers["google"] = usecase.SSOProviderConfig{
-				ClientID:    cfg.SSOGoogleClientID,
-				RedirectURL: cfg.SSOGoogleRedirectURL,
-				AuthURL:     cfg.SSOGoogleAuthURL,
-				Scopes:      []string{"openid", "email", "profile"},
-			}
-		}
-		return providers
-	}),
 	fx.Provide(kafka.NewKafkaProducer),
 	fx.Provide(kafka.NewKafkaConsumerGroup),
 	authInfra.Module,
