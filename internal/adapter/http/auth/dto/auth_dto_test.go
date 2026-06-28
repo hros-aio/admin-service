@@ -488,3 +488,194 @@ func TestSSOCallbackRequest_Validation(t *testing.T) {
 		})
 	}
 }
+
+func TestBiometricChallengeRequest_Validation(t *testing.T) {
+	validate := validator.New()
+
+	tests := []struct {
+		name    string
+		request BiometricChallengeRequest
+		isValid bool
+	}{
+		{
+			name: "Valid request",
+			request: BiometricChallengeRequest{
+				Email: "admin@hros.com",
+			},
+			isValid: true,
+		},
+		{
+			name:    "Missing email",
+			request: BiometricChallengeRequest{},
+			isValid: false,
+		},
+		{
+			name: "Invalid email format",
+			request: BiometricChallengeRequest{
+				Email: "invalid-email",
+			},
+			isValid: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validate.Struct(tt.request)
+			if tt.isValid {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+			}
+		})
+	}
+}
+
+func TestBiometricVerifyRequest_Validation(t *testing.T) {
+	validate := validator.New()
+
+	tests := []struct {
+		name    string
+		request BiometricVerifyRequest
+		isValid bool
+	}{
+		{
+			name: "Valid request",
+			request: BiometricVerifyRequest{
+				Email:             "admin@hros.com",
+				CredentialID:      "cred_123",
+				AuthenticatorData: "auth_data",
+				ClientDataJSON:    "client_data",
+				Signature:         "sig_123",
+			},
+			isValid: true,
+		},
+		{
+			name: "Missing email",
+			request: BiometricVerifyRequest{
+				CredentialID:      "cred_123",
+				AuthenticatorData: "auth_data",
+				ClientDataJSON:    "client_data",
+				Signature:         "sig_123",
+			},
+			isValid: false,
+		},
+		{
+			name: "Invalid email",
+			request: BiometricVerifyRequest{
+				Email:             "not-an-email",
+				CredentialID:      "cred_123",
+				AuthenticatorData: "auth_data",
+				ClientDataJSON:    "client_data",
+				Signature:         "sig_123",
+			},
+			isValid: false,
+		},
+		{
+			name: "Missing credential ID",
+			request: BiometricVerifyRequest{
+				Email:             "admin@hros.com",
+				AuthenticatorData: "auth_data",
+				ClientDataJSON:    "client_data",
+				Signature:         "sig_123",
+			},
+			isValid: false,
+		},
+		{
+			name: "Missing authenticator data",
+			request: BiometricVerifyRequest{
+				Email:          "admin@hros.com",
+				CredentialID:   "cred_123",
+				ClientDataJSON: "client_data",
+				Signature:      "sig_123",
+			},
+			isValid: false,
+		},
+		{
+			name: "Missing client data JSON",
+			request: BiometricVerifyRequest{
+				Email:             "admin@hros.com",
+				CredentialID:      "cred_123",
+				AuthenticatorData: "auth_data",
+				Signature:         "sig_123",
+			},
+			isValid: false,
+		},
+		{
+			name: "Missing signature",
+			request: BiometricVerifyRequest{
+				Email:             "admin@hros.com",
+				CredentialID:      "cred_123",
+				AuthenticatorData: "auth_data",
+				ClientDataJSON:    "client_data",
+			},
+			isValid: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validate.Struct(tt.request)
+			if tt.isValid {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+			}
+		})
+	}
+}
+
+func TestBiometricDTOs_JSONMapping(t *testing.T) {
+	t.Run("BiometricChallengeRequest JSON mapping", func(t *testing.T) {
+		req := BiometricChallengeRequest{
+			Email: "admin@hros.com",
+		}
+		data, err := json.Marshal(req)
+		assert.NoError(t, err)
+		assert.Contains(t, string(data), `"email":"admin@hros.com"`)
+
+		var unmarshaled BiometricChallengeRequest
+		err = json.Unmarshal(data, &unmarshaled)
+		assert.NoError(t, err)
+		assert.Equal(t, req.Email, unmarshaled.Email)
+	})
+
+	t.Run("BiometricChallengeResponse JSON mapping", func(t *testing.T) {
+		resp := BiometricChallengeResponse{
+			Challenge: "challenge_123",
+		}
+		data, err := json.Marshal(resp)
+		assert.NoError(t, err)
+		assert.Contains(t, string(data), `"challenge":"challenge_123"`)
+
+		var unmarshaled BiometricChallengeResponse
+		err = json.Unmarshal(data, &unmarshaled)
+		assert.NoError(t, err)
+		assert.Equal(t, resp.Challenge, unmarshaled.Challenge)
+	})
+
+	t.Run("BiometricVerifyRequest JSON mapping", func(t *testing.T) {
+		req := BiometricVerifyRequest{
+			Email:             "admin@hros.com",
+			CredentialID:      "cred_123",
+			AuthenticatorData: "auth_data",
+			ClientDataJSON:    "client_data",
+			Signature:         "sig_123",
+		}
+		data, err := json.Marshal(req)
+		assert.NoError(t, err)
+		assert.Contains(t, string(data), `"email":"admin@hros.com"`)
+		assert.Contains(t, string(data), `"credential_id":"cred_123"`)
+		assert.Contains(t, string(data), `"authenticator_data":"auth_data"`)
+		assert.Contains(t, string(data), `"client_data_json":"client_data"`)
+		assert.Contains(t, string(data), `"signature":"sig_123"`)
+
+		var unmarshaled BiometricVerifyRequest
+		err = json.Unmarshal(data, &unmarshaled)
+		assert.NoError(t, err)
+		assert.Equal(t, req.Email, unmarshaled.Email)
+		assert.Equal(t, req.CredentialID, unmarshaled.CredentialID)
+		assert.Equal(t, req.AuthenticatorData, unmarshaled.AuthenticatorData)
+		assert.Equal(t, req.ClientDataJSON, unmarshaled.ClientDataJSON)
+		assert.Equal(t, req.Signature, unmarshaled.Signature)
+	})
+}

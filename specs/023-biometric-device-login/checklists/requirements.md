@@ -31,4 +31,4 @@
 
 ## Notes
 
-- All items validated and verified. Spec is ready for planning.
+- Spec verified for DTO and OpenAPI path requirements (TSK-BIO-002).
