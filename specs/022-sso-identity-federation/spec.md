@@ -139,6 +139,22 @@ Implement Echo HTTP handlers for initiating and handling redirects from the Iden
 
 ---
 
+### User Story 9 - Full SSO Integration Test (Priority: P2)
+
+Verify the full SSO Identity Federation flow under integrated conditions using transient PostgreSQL and Redis containers.
+
+**Why this priority**: Comprehensive integration tests verify correct database schemas, Redis state lifetimes, and end-to-end routing without relying on local mocks.
+
+**Independent Test**: Complete execution of the integration test suite spinning up containerized database and cache, validating all SSO request flows.
+
+**Acceptance Scenarios**:
+
+1. **Given** a clean federated identity database and Redis cache, **When** `/v1/auth/sso/initiate?provider=google` is requested, **Then** state parameters are generated and cached, and the caller is redirected.
+2. **Given** an active cached state, **When** a valid `/v1/auth/sso/callback` is requested with the correct state and authorization code matching a seeded admin email, **Then** return success, update the session tokens in PostgreSQL, and issue a JWT.
+3. **Given** a valid state but the callback has an unregistered email, **When** `/v1/auth/sso/callback` is requested, **Then** return HTTP 401.
+
+---
+
 ### Edge Cases
 
 - **State Expiry / Tampering**: The `SSOStateCache` contract must allow storing state parameters with a short TTL to prevent replay attacks and CSRF.
@@ -179,6 +195,9 @@ Implement Echo HTTP handlers for initiating and handling redirects from the Iden
 - **FR-023**: The initiate handler MUST invoke `InitiateSSOUseCase` and execute an HTTP 302 redirect.
 - **FR-024**: The callback handler MUST invoke `CallbackSSOUseCase`, set the refresh session token in an HTTP-only cookie, and either redirect to the frontend dashboard (for browser requests requesting HTML) or return a JSON response containing the access token.
 - **FR-025**: The callback handler MUST map `ErrNoAccountLinked` to HTTP 401 with the message "No admin account linked to this identity".
+- **FR-026**: System MUST provide an integration test suite validating full end-to-end SSO flow using containerized PostgreSQL and Redis.
+- **FR-027**: The integration test MUST verify Redis state validation, database lookup, session token persistence, and JWT token issuance.
+- **FR-028**: The integration test MUST verify failure paths including invalid state and unregistered federated emails.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -205,6 +224,7 @@ Implement Echo HTTP handlers for initiating and handling redirects from the Iden
 - **SC-010**: Unit tests verify `CallbackSSOUseCase` workflow under successful, unlinked, conflict, and invalid-state execution flows.
 - **SC-011**: Echo handlers for SSO endpoints are successfully registered in the Fx dependency injection module.
 - **SC-012**: Unit tests in `internal/adapter/http/auth_sso_handler_test.go` achieve at least 80% coverage and assert correct HTTP status codes, redirect locations, cookies, and error response mappings.
+- **SC-013**: Integration tests in `test/integration/sso_flow_test.go` run successfully and assert correct full-flow database state updates, token values, and redirect/error status codes.
 
 ## Assumptions
 
