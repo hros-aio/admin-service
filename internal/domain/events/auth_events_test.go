@@ -293,3 +293,30 @@ func TestSSOFailedEvent_Serialization(t *testing.T) {
 	assert.Equal(t, event.UserAgent, unmarshaled.UserAgent)
 	assert.True(t, event.OccurredAt.Equal(unmarshaled.OccurredAt))
 }
+
+func TestBiometricSuccessEvent_Serialization(t *testing.T) {
+	now := time.Now().UTC()
+	event := BiometricSuccessEvent{
+		AdminID:      "admin-uuid-123",
+		Email:        "admin@hros.io",
+		CredentialID: "cred-id-abc",
+		IPAddress:    "192.168.1.1",
+		UserAgent:    "Mozilla/5.0",
+		OccurredAt:   now,
+	}
+
+	data, err := json.Marshal(event)
+	require.NoError(t, err)
+
+	var unmarshaled BiometricSuccessEvent
+	err = json.Unmarshal(data, &unmarshaled)
+	require.NoError(t, err)
+
+	assert.Equal(t, event.AdminID, unmarshaled.AdminID)
+	assert.Equal(t, event.Email, unmarshaled.Email)
+	assert.Equal(t, event.CredentialID, unmarshaled.CredentialID)
+	assert.Equal(t, event.IPAddress, unmarshaled.IPAddress)
+	assert.Equal(t, event.UserAgent, unmarshaled.UserAgent)
+	assert.True(t, event.OccurredAt.Equal(unmarshaled.OccurredAt))
+}
+

@@ -110,3 +110,14 @@ type SSOFailedEvent struct {
 	UserAgent  string    `json:"user_agent"`
 	OccurredAt time.Time `json:"occurred_at"`
 }
+
+// BiometricSuccessEvent defines the payload structure for the 'login.biometric_success' audit event.
+type BiometricSuccessEvent struct {
+	AdminID      string    `json:"admin_id"`
+	Email        string    `json:"email"`
+	CredentialID string    `json:"credential_id"`
+	IPAddress    string    `json:"ip_address"`
+	UserAgent    string    `json:"user_agent"`
+	OccurredAt   time.Time `json:"occurred_at"`
+}
+

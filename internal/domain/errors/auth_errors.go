@@ -66,4 +66,10 @@ var (
 
 	// ErrIdentityConflict is returned when SSO identity and email resolve to different admin users.
 	ErrIdentityConflict = errors.New("identity conflict: email and SSO ID map to different users")
+
+	// ErrBiometricNotRegistered is returned when biometric login is attempted but no credentials are registered.
+	ErrBiometricNotRegistered = errors.New("biometric credential not registered")
+
+	// ErrInvalidBiometricSignature is returned when biometric cryptographic verification fails.
+	ErrInvalidBiometricSignature = errors.New("invalid biometric signature")
 )
