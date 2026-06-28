@@ -164,6 +164,7 @@ func TestAcceptInviteFlow(t *testing.T) {
 		fx.Provide(authCache.NewRedisTokenBlacklist),
 		fx.Provide(authCache.NewRedisBruteForceCache),
 		fx.Provide(authCache.NewRedisMFACache),
+		fx.Provide(authCache.NewRedisWebAuthnChallengeCache),
 		fx.Provide(authCache.NewRedisPasswordResetCache),
 		fx.Provide(func() (sarama.SyncProducer, error) {
 			return mockProducer, nil

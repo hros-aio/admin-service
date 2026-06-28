@@ -42,6 +42,7 @@ var Module = fx.Options(
 	fx.Provide(cache.NewRedisTokenBlacklist),
 	fx.Provide(cache.NewRedisBruteForceCache),
 	fx.Provide(cache.NewRedisMFACache),
+	fx.Provide(cache.NewRedisWebAuthnChallengeCache),
 	fx.Provide(cache.NewRedisPasswordResetCache),
 	fx.Provide(kafka.NewKafkaProducer),
 	fx.Provide(kafka.NewKafkaConsumerGroup),

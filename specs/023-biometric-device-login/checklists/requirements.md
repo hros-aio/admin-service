@@ -36,3 +36,4 @@
 - Spec verified for Repository layer updates (TSK-BIO-004).
 - Spec verified for UseCase layer biometric challenge generation (TSK-BIO-005).
 - Spec verified for UseCase layer biometric verification (TSK-BIO-006).
+- Spec verified for Echo HTTP handlers (POST /auth/biometric/challenge and POST /auth/biometric/verify) and Fx routing (TSK-BIO-007).

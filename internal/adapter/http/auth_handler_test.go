@@ -1902,8 +1902,9 @@ func TestRegisterRoutes(t *testing.T) {
 	e := echo.New()
 	h := NewAuthHandler(nil, nil, nil, nil, nil, nil, nil)
 	sso := NewAuthSSOHandler(nil, nil)
+	bio := NewAuthBiometricHandler(nil, nil)
 
-	RegisterRoutes(e, h, sso)
+	RegisterRoutes(e, h, sso, bio)
 
 	routes := e.Routes()
 	expectedRoutes := map[string]string{
@@ -1914,6 +1915,8 @@ func TestRegisterRoutes(t *testing.T) {
 		"/v1/auth/password-reset/request": http.MethodPost,
 		"/v1/auth/password-reset/confirm": http.MethodPost,
 		"/v1/auth/accept-invite":          http.MethodPost,
+		"/v1/auth/biometric/challenge":    http.MethodPost,
+		"/v1/auth/biometric/verify":       http.MethodPost,
 		"/v1/auth/sso/initiate":           http.MethodGet,
 		"/v1/auth/sso/callback":           http.MethodGet,
 	}

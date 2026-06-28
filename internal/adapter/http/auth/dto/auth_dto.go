@@ -67,7 +67,8 @@ type BiometricChallengeRequest struct {
 
 // BiometricChallengeResponse represents the public key/challenge options returned to the client.
 type BiometricChallengeResponse struct {
-	Challenge string `json:"challenge"`
+	Challenge    string `json:"challenge"`
+	CredentialID string `json:"credential_id"`
 }
 
 // BiometricVerifyRequest represents the payload to verify a biometric login signature.
@@ -77,4 +78,5 @@ type BiometricVerifyRequest struct {
 	AuthenticatorData string `json:"authenticator_data" validate:"required,notblank"`
 	ClientDataJSON    string `json:"client_data_json" validate:"required,notblank"`
 	Signature         string `json:"signature" validate:"required,notblank"`
+	RememberMe        bool   `json:"remember_me"`
 }
