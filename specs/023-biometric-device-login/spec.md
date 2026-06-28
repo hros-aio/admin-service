@@ -42,26 +42,26 @@ Admins can log in to the administrative portal using their registered biometric 
 
 ### Edge Cases
 
-- **ErrBiometricNotRegistered**: The admin attempts to log in using biometrics but has no registered biometric credentials.
-- **ErrInvalidBiometricSignature**: The signature submitted during verification does not match the cached challenge or stored public key.
-- **Challenge Expired/Not Found**: The challenge cache has cleared (due to TTL) or the request has an invalid challenge, rejecting the verification step.
+- **Unregistered Biometric Device**: The admin attempts to log in using biometrics but has no registered biometric credentials.
+- **Invalid Cryptographic Signature**: The signature submitted during verification does not match the cached challenge or stored public key.
+- **Challenge Expired or Missing**: The cryptographic challenge has expired or is not found in transient storage, rejecting the verification step.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
 - **FR-001**: The system MUST generate a cryptographically secure challenge for WebAuthn authentication.
-- **FR-002**: The system MUST cache the challenge using `WebAuthnChallengeCache` with a short TTL (e.g., 60 seconds).
+- **FR-002**: The system MUST cache the challenge in a transient store with a short TTL (e.g., 60 seconds).
 - **FR-003**: The system MUST support storing multiple biometric credentials per admin user.
 - **FR-004**: The system MUST verify biometric signatures during the login phase using the cached challenge and registered public keys.
-- **FR-005**: The system MUST log a `login.biometric_success` audit event containing the admin ID, email, and credential ID upon successful verification.
-- **FR-006**: The system MUST return `ErrBiometricNotRegistered` if a biometric login is requested for an account with no biometric credentials.
-- **FR-007**: The system MUST return `ErrInvalidBiometricSignature` if the cryptographic verification fails.
+- **FR-005**: The system MUST log an audit event for successful biometric login containing the admin ID, email, and credential ID.
+- **FR-006**: The system MUST fail the login attempt with a clear error indicating the device is not registered if a biometric login is requested for an account with no biometric credentials.
+- **FR-007**: The system MUST fail the login attempt with a clear signature verification error if the cryptographic signature check fails.
 
 ### Key Entities *(include if feature involves data)*
 
-- **WebAuthnChallengeCache**: Transient repository holding challenge payload associated with an admin during the multi-step handshake.
-- **BiometricCredential**: Domain representation of a registered authenticator containing Credential ID, Public Key, and Sign Count.
+- **Transient Challenge Storage**: A short-lived memory store holding challenge payloads associated with an admin during the multi-step handshake.
+- **Biometric Credential**: Information representing a registered authenticator containing Credential ID, Public Key, and Sign Count.
 
 ## Success Criteria *(mandatory)*
 
