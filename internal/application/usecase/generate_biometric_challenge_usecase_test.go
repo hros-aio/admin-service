@@ -256,4 +256,28 @@ func TestGenerateBiometricChallengeUseCase(t *testing.T) {
 		ur.AssertExpectations(t)
 		cache.AssertExpectations(t)
 	})
+
+	t.Run("success with leading and trailing whitespace in credentials", func(t *testing.T) {
+		ur := new(mockUserRepo)
+		cache := new(mockChallengeCache)
+		uc := NewGenerateBiometricChallengeUseCase(ur, cache)
+
+		user := &domain.AdminUser{
+			ID:                  "user-uuid",
+			Email:               email,
+			WebauthnCredentials: []byte("  \n\t [{\"id\":\"cred_whitespace\", \"public_key\":\"pubkey\", \"sign_count\": 0}] \n  "),
+		}
+
+		ur.On("FindByEmail", mock.Anything, email).Return(user, nil).Once()
+		cache.On("StoreChallenge", mock.Anything, email, mock.Anything, 5*time.Minute).Return(nil).Once()
+
+		out, err := uc.Execute(context.Background(), GenerateBiometricChallengeInput{Email: email})
+
+		assert.NoError(t, err)
+		assert.NotNil(t, out)
+		assert.NotEmpty(t, out.Challenge)
+		assert.Equal(t, "cred_whitespace", out.CredentialID)
+		ur.AssertExpectations(t)
+		cache.AssertExpectations(t)
+	})
 }

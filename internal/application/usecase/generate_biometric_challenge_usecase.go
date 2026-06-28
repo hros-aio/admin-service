@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/base64"
@@ -64,26 +65,28 @@ func (uc *GenerateBiometricChallengeUseCase) Execute(ctx context.Context, input 
 		return nil, fmt.Errorf("failed to fetch user: %w", err)
 	}
 
-	// 2. Validate webauthn_credentials column is not empty
-	if len(user.WebauthnCredentials) == 0 {
+	// 2. Validate webauthn_credentials column is not empty after trimming
+	trimmedCreds := bytes.TrimSpace(user.WebauthnCredentials)
+	if len(trimmedCreds) == 0 {
 		return nil, domainErrors.ErrBiometricNotRegistered
 	}
 
 	// 3. Parse credentials (JSONB) supporting both single-object and array schemas
 	var creds []WebAuthnCredential
-	firstChar := user.WebauthnCredentials[0]
+	firstChar := trimmedCreds[0]
 
-	if firstChar == '[' {
-		if err := json.Unmarshal(user.WebauthnCredentials, &creds); err != nil {
+	switch firstChar {
+	case '[':
+		if err := json.Unmarshal(trimmedCreds, &creds); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal credentials array: %w", err)
 		}
-	} else if firstChar == '{' {
+	case '{':
 		var singleCred WebAuthnCredential
-		if err := json.Unmarshal(user.WebauthnCredentials, &singleCred); err != nil {
+		if err := json.Unmarshal(trimmedCreds, &singleCred); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal single credential: %w", err)
 		}
 		creds = []WebAuthnCredential{singleCred}
-	} else {
+	default:
 		return nil, domainErrors.ErrBiometricNotRegistered
 	}
 
