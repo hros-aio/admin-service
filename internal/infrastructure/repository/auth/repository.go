@@ -175,5 +175,3 @@ func (r *GormAdminUserRepository) FindByEmailOrSSO(ctx context.Context, email st
 	// If neither resolved, return ErrUserNotFound
 	return nil, domainErrors.ErrUserNotFound
 }
-
-

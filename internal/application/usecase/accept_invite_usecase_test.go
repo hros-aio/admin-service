@@ -95,7 +95,6 @@ func (m *mockAdminUserRepositoryForAcceptInvite) FindByEmailOrSSO(ctx context.Co
 	return nil, args.Error(1)
 }
 
-
 // ---------------------------------------------------------------------------
 // Mock: AuditLogger (accept-invite specific; reuses struct name scoped to file)
 // ---------------------------------------------------------------------------
@@ -136,6 +135,12 @@ func (m *mockAcceptInviteAuditLogger) LogInviteAccepted(ctx context.Context, eve
 	m.Called(ctx, event)
 }
 func (m *mockAcceptInviteAuditLogger) LogAdminActivated(ctx context.Context, event events.AdminActivatedEvent) {
+	m.Called(ctx, event)
+}
+func (m *mockAcceptInviteAuditLogger) LogSSOSuccess(ctx context.Context, event events.SSOSuccessEvent) {
+	m.Called(ctx, event)
+}
+func (m *mockAcceptInviteAuditLogger) LogSSOFailed(ctx context.Context, event events.SSOFailedEvent) {
 	m.Called(ctx, event)
 }
 

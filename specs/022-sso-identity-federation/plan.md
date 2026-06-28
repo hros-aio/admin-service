@@ -6,7 +6,7 @@
 
 ## Summary
 
-This plan outlines the implementation of the Domain and Application Interface definitions, database schema updates, DTO/API contract design, Redis cache layer, user repository lookup, and SSO initiation logic for the SSO Identity Federation.
+This plan outlines the implementation of the Domain and Application Interface definitions, database schema updates, DTO/API contract design, Redis cache layer, user repository lookup, SSO initiation logic, and SSO callback processing for the SSO Identity Federation.
 
 **Phase 1 (TSK-SSO-001)**: Define `SSOStateCache` interface in `internal/application/interfaces/sso_state_cache.go`. Define domain errors `ErrNoAccountLinked` and `ErrInvalidSSOState` in `internal/domain/errors/auth_errors.go`. Define event payload structs for the `login.sso_success` and `login.sso_failed` audit events in `internal/domain/events/auth_events.go`.
 
@@ -20,6 +20,8 @@ This plan outlines the implementation of the Domain and Application Interface de
 
 **Phase 6 (TSK-SSO-006)**: Implement `InitiateSSOUseCase` in `internal/application/usecase/initiate_sso_usecase.go`. Add unit tests in `internal/application/usecase/initiate_sso_usecase_test.go`.
 
+**Phase 7 (TSK-SSO-007)**: Implement `CallbackSSOUseCase` in `internal/application/usecase/callback_sso_usecase.go`. Add unit tests in `internal/application/usecase/callback_sso_usecase_test.go`.
+
 ## Technical Context
 
 **Language/Version**: Go 1.23+
@@ -32,11 +34,11 @@ This plan outlines the implementation of the Domain and Application Interface de
 
 | Principle | Status | Evidence |
 |-----------|--------|---------|
-| **I. Clean Architecture & Strict Boundaries** | ✅ PASS | Use cases govern application workflow; configuration parameters are loaded via configuration mappings. |
+| **I. Clean Architecture & Strict Boundaries** | ✅ PASS | Usecase interacts only with abstract interfaces for repositories, cache, token generation, and audit logging. |
 | **II. Documentation-First & OpenAPI-Driven** | ✅ PASS | Specs and plans updated prior to code modification. |
-| **III. Unit-Test-Per-File (NON-NEGOTIABLE)** | ✅ PASS | Added `initiate_sso_usecase_test.go` with 100% coverage. |
-| **IV. Task-Driven & Atomic Implementation** | ✅ PASS | Focusing only on task TSK-SSO-006. |
-| **V. Observability & Structured Logging** | ✅ PASS | Proper error categorization ensures log trace links persist correctly. |
+| **III. Unit-Test-Per-File (NON-NEGOTIABLE)** | ✅ PASS | Added `callback_sso_usecase_test.go` with 100% coverage. |
+| **IV. Task-Driven & Atomic Implementation** | ✅ PASS | Focusing only on task TSK-SSO-007. |
+| **V. Observability & Structured Logging** | ✅ PASS | Log emissions for SSO success and failure are fired to Kafka via structured audit log interface. |
 
 ## Project Structure
 
@@ -69,7 +71,9 @@ internal/
 │   │   └── sso_state_cache_test.go # Unit tests/verifications for SSOStateCache interface
 │   └── usecase/
 │       ├── initiate_sso_usecase.go  # InitiateSSOUseCase business logic
-│       └── initiate_sso_usecase_test.go # Unit tests for InitiateSSOUseCase
+│       ├── initiate_sso_usecase_test.go # Unit tests for InitiateSSOUseCase
+│       ├── callback_sso_usecase.go  # CallbackSSOUseCase business logic
+│       └── callback_sso_usecase_test.go # Unit tests for CallbackSSOUseCase
 ├── domain/
 │   ├── admin_user.go               # AdminUserRepository domain interface update
 │   ├── errors/

@@ -488,4 +488,3 @@ func TestSSOCallbackRequest_Validation(t *testing.T) {
 		})
 	}
 }
-

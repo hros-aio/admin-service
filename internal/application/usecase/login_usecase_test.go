@@ -59,7 +59,6 @@ func (m *mockUserRepo) FindByEmailOrSSO(ctx context.Context, email string, ssoPr
 	return args.Get(0).(*domain.AdminUser), args.Error(1)
 }
 
-
 type mockMFACache struct{ mock.Mock }
 
 func (m *mockMFACache) StoreToken(ctx context.Context, token string, adminID string) error {
@@ -152,6 +151,12 @@ func (m *mockAuditLogger) LogInviteAccepted(ctx context.Context, event events.In
 	m.Called(ctx, event)
 }
 func (m *mockAuditLogger) LogAdminActivated(ctx context.Context, event events.AdminActivatedEvent) {
+	m.Called(ctx, event)
+}
+func (m *mockAuditLogger) LogSSOSuccess(ctx context.Context, event events.SSOSuccessEvent) {
+	m.Called(ctx, event)
+}
+func (m *mockAuditLogger) LogSSOFailed(ctx context.Context, event events.SSOFailedEvent) {
 	m.Called(ctx, event)
 }
 
