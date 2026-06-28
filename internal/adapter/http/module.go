@@ -18,6 +18,7 @@ type AcceptInviteParams struct {
 var Module = fx.Module("http-adapter",
 	fx.Provide(
 		NewAuthHandler,
+		NewAuthSSOHandler,
 		func(p AcceptInviteParams) AcceptInviteExecutor {
 			if p.UseCase == nil {
 				return nil

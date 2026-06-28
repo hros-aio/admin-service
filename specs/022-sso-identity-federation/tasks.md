@@ -69,3 +69,12 @@
 
 - [x] T019 [P] [US7] Implement `CallbackSSOUseCase` in `internal/application/usecase/callback_sso_usecase.go`.
 - [x] T020 [P] [US7] Implement unit tests for `CallbackSSOUseCase` in `internal/application/usecase/callback_sso_usecase_test.go`.
+
+---
+
+## Phase 8: SSO HTTP Handlers (TSK-SSO-008)
+
+- [x] T021 [P] [US8] Implement Echo HTTP handlers for `GET /auth/sso/initiate` and `GET /auth/sso/callback` in `internal/adapter/http/auth_sso_handler.go`.
+- [x] T022 [P] [US8] Implement unit tests for the SSO HTTP handlers in `internal/adapter/http/auth_sso_handler_test.go`.
+- [x] T023 [US8] Register the SSO HTTP handlers and routes in `internal/adapter/http/module.go`.
+

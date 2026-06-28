@@ -7,8 +7,10 @@ import (
 	"log/slog"
 
 	"github.com/hros/admin-service/internal/application/auth"
+	"github.com/hros/admin-service/internal/application/usecase"
 	"github.com/hros/admin-service/internal/config"
 	authDomain "github.com/hros/admin-service/internal/domain/auth"
+	"github.com/hros/admin-service/internal/infrastructure/cache"
 	"go.uber.org/fx"
 )
 
@@ -36,5 +38,29 @@ var Module = fx.Module("auth-infra",
 			return NewSlogAuditLogger(log)
 		},
 		NewDefaultSSOClient,
+		cache.NewRedisSSOStateCache,
+		ProvideSSOProviders,
 	),
 )
+
+// ProvideSSOProviders parses and validates the SSO providers configuration.
+func ProvideSSOProviders(cfg *config.Config) (map[string]usecase.SSOProviderConfig, error) {
+	providers := make(map[string]usecase.SSOProviderConfig)
+
+	hasClientID := cfg.SSOGoogleClientID != ""
+	hasRedirectURL := cfg.SSOGoogleRedirectURL != ""
+	hasAuthURL := cfg.SSOGoogleAuthURL != ""
+
+	if hasClientID || hasRedirectURL || hasAuthURL {
+		if !hasClientID || !hasRedirectURL || !hasAuthURL {
+			return nil, fmt.Errorf("SSO Google provider configuration is incomplete: SSOGoogleClientID, SSOGoogleRedirectURL, and SSOGoogleAuthURL must all be set together")
+		}
+		providers["google"] = usecase.SSOProviderConfig{
+			ClientID:    cfg.SSOGoogleClientID,
+			RedirectURL: cfg.SSOGoogleRedirectURL,
+			AuthURL:     cfg.SSOGoogleAuthURL,
+			Scopes:      []string{"openid", "email", "profile"},
+		}
+	}
+	return providers, nil
+}

@@ -22,6 +22,8 @@ This plan outlines the implementation of the Domain and Application Interface de
 
 **Phase 7 (TSK-SSO-007)**: Implement `CallbackSSOUseCase` in `internal/application/usecase/callback_sso_usecase.go`. Add unit tests in `internal/application/usecase/callback_sso_usecase_test.go`.
 
+**Phase 8 (TSK-SSO-008)**: Implement Echo HTTP handlers for `GET /auth/sso/initiate` and `GET /auth/sso/callback` in `internal/adapter/http/auth_sso_handler.go`. Add unit tests in `internal/adapter/http/auth_sso_handler_test.go`. Register routes and handlers in `internal/adapter/http/module.go` under the `http-adapter` module.
+
 ## Technical Context
 
 **Language/Version**: Go 1.23+
@@ -61,10 +63,12 @@ api/
 internal/
 ├── adapter/
 │   └── http/
-│       └── auth/
-│           └── dto/
-│               ├── auth_dto.go  # DTO structs including SSOCallbackRequest
-│               └── auth_dto_test.go # DTO validation unit tests
+│       ├── auth/
+│       │   └── dto/
+│       │       ├── auth_dto.go  # DTO structs including SSOCallbackRequest
+│       │       └── auth_dto_test.go # DTO validation unit tests
+│       ├── auth_sso_handler.go      # Echo handlers for SSO Initiate and Callback
+│       └── auth_sso_handler_test.go # Unit tests for SSO HTTP Handlers
 ├── application/
 │   ├── interfaces/
 │   │   ├── sso_state_cache.go      # SSOStateCache interface

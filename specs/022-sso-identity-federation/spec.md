@@ -122,6 +122,23 @@ Implement the SSO callback handling use case to consume the state, verify Identi
 
 ---
 
+### User Story 8 - SSO HTTP Handlers (Priority: P1)
+
+Implement Echo HTTP handlers for initiating and handling redirects from the Identity Provider.
+
+**Why this priority**: Handlers are the external entry point for clients, exposing the SSO endpoints over the REST API.
+
+**Independent Test**: Unit tests asserting redirect status codes, response headers, HTTP cookies, and HTTP error response mappings.
+
+**Acceptance Scenarios**:
+
+1. **Given** a valid initiate request to `GET /auth/sso/initiate`, **When** parsed, **Then** invoke the use case and redirect to the Identity Provider with HTTP 302.
+2. **Given** a callback request to `GET /auth/sso/callback`, **When** the code exchange and user mapping succeed and the `Accept` header prefers HTML, **Then** set the HTTP-only refresh cookie and redirect to the dashboard.
+3. **Given** a callback request to `GET /auth/sso/callback`, **When** the code exchange and user mapping succeed and the `Accept` header does not prefer HTML, **Then** set the HTTP-only refresh cookie and return a JSON response containing the access token.
+4. **Given** a callback request to `GET /auth/sso/callback`, **When** no account is linked to the identity, **Then** respond with HTTP 401 and the message "No admin account linked to this identity".
+
+---
+
 ### Edge Cases
 
 - **State Expiry / Tampering**: The `SSOStateCache` contract must allow storing state parameters with a short TTL to prevent replay attacks and CSRF.
@@ -158,6 +175,10 @@ Implement the SSO callback handling use case to consume the state, verify Identi
 - **FR-019**: State verification MUST atomically consume the state parameter.
 - **FR-020**: Successful SSO authentication MUST publish the `login.sso_success` audit event to Kafka.
 - **FR-021**: Unlinked identity assertions MUST publish the `login.sso_failed` audit event and return `ErrNoAccountLinked`.
+- **FR-022**: System MUST implement Echo HTTP handlers for `GET /auth/sso/initiate` and `GET /auth/sso/callback`.
+- **FR-023**: The initiate handler MUST invoke `InitiateSSOUseCase` and execute an HTTP 302 redirect.
+- **FR-024**: The callback handler MUST invoke `CallbackSSOUseCase`, set the refresh session token in an HTTP-only cookie, and either redirect to the frontend dashboard (for browser requests requesting HTML) or return a JSON response containing the access token.
+- **FR-025**: The callback handler MUST map `ErrNoAccountLinked` to HTTP 401 with the message "No admin account linked to this identity".
 
 ### Key Entities *(include if feature involves data)*
 
@@ -182,6 +203,8 @@ Implement the SSO callback handling use case to consume the state, verify Identi
 - **SC-008**: Unit tests verify that lookup by email or SSO resolves the correct record or returns conflict/not-found results appropriately.
 - **SC-009**: Unit tests verify correct generation of state/nonce, caching, and redirect URL construction for configured providers.
 - **SC-010**: Unit tests verify `CallbackSSOUseCase` workflow under successful, unlinked, conflict, and invalid-state execution flows.
+- **SC-011**: Echo handlers for SSO endpoints are successfully registered in the Fx dependency injection module.
+- **SC-012**: Unit tests in `internal/adapter/http/auth_sso_handler_test.go` achieve at least 80% coverage and assert correct HTTP status codes, redirect locations, cookies, and error response mappings.
 
 ## Assumptions
 

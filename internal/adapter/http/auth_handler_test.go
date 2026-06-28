@@ -1889,3 +1889,35 @@ func TestAuthHandler_AcceptInvite(t *testing.T) {
 		assert.Equal(t, "internal_error", errorResp.Code)
 	})
 }
+
+func TestRegisterRoutes(t *testing.T) {
+	e := echo.New()
+	h := NewAuthHandler(nil, nil, nil, nil, nil, nil, nil)
+	sso := NewAuthSSOHandler(nil, nil)
+
+	RegisterRoutes(e, h, sso)
+
+	routes := e.Routes()
+	expectedRoutes := map[string]string{
+		"/v1/auth/login":                  http.MethodPost,
+		"/v1/auth/session":                http.MethodDelete,
+		"/v1/auth/refresh":                http.MethodPost,
+		"/v1/auth/mfa/verify":             http.MethodPost,
+		"/v1/auth/password-reset/request": http.MethodPost,
+		"/v1/auth/password-reset/confirm": http.MethodPost,
+		"/v1/auth/accept-invite":          http.MethodPost,
+		"/v1/auth/sso/initiate":           http.MethodGet,
+		"/v1/auth/sso/callback":           http.MethodGet,
+	}
+
+	for path, method := range expectedRoutes {
+		found := false
+		for _, r := range routes {
+			if r.Path == path && r.Method == method {
+				found = true
+				break
+			}
+		}
+		assert.True(t, found, "expected route %s %s to be registered", method, path)
+	}
+}

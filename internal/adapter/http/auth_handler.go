@@ -57,7 +57,7 @@ func NewAuthHandler(
 }
 
 // RegisterRoutes registers the authentication routes.
-func RegisterRoutes(e *echo.Echo, h *AuthHandler) {
+func RegisterRoutes(e *echo.Echo, h *AuthHandler, sso *AuthSSOHandler) {
 	e.POST("/v1/auth/login", h.Login)
 	e.DELETE("/v1/auth/session", h.Logout)
 	e.POST("/v1/auth/refresh", h.Refresh)
@@ -65,6 +65,10 @@ func RegisterRoutes(e *echo.Echo, h *AuthHandler) {
 	e.POST("/v1/auth/password-reset/request", h.RequestPasswordReset)
 	e.POST("/v1/auth/password-reset/confirm", h.ConfirmPasswordReset)
 	e.POST("/v1/auth/accept-invite", h.AcceptInvite)
+
+	// SSO routes
+	e.GET("/v1/auth/sso/initiate", sso.Initiate)
+	e.GET("/v1/auth/sso/callback", sso.Callback)
 }
 
 // Login handles the admin login request.
