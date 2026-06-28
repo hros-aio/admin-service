@@ -524,10 +524,14 @@ components:
       type: object
       required:
         - challenge
+        - credential_id
       properties:
         challenge:
           type: string
           example: "dGhpcyBpcyBhIGNyeXB0b2dyYXBoaWMgY2hhbGxlbmdl"
+        credential_id:
+          type: string
+          example: "raw_credential_id_hex_or_base64"
 
     BiometricVerifyRequest:
       type: object
@@ -558,6 +562,9 @@ components:
           type: string
           pattern: '^[^\s]+$'
           example: "raw_signature_base64"
+        remember_me:
+          type: boolean
+          example: false
 
   responses:
     BadRequest:

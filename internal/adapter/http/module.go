@@ -19,6 +19,13 @@ var Module = fx.Module("http-adapter",
 	fx.Provide(
 		NewAuthHandler,
 		NewAuthSSOHandler,
+		NewAuthBiometricHandler,
+		func(uc *usecase.GenerateBiometricChallengeUseCase) GenerateChallengeExecutor {
+			return uc
+		},
+		func(uc *usecase.VerifyBiometricUseCase) VerifyBiometricExecutor {
+			return uc
+		},
 		func(p AcceptInviteParams) AcceptInviteExecutor {
 			if p.UseCase == nil {
 				return nil

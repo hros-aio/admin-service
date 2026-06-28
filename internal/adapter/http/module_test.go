@@ -42,6 +42,12 @@ func TestHTTPModuleWiring(t *testing.T) {
 			func() *usecase.CallbackSSOUseCase {
 				return nil
 			},
+			func() *usecase.GenerateBiometricChallengeUseCase {
+				return nil
+			},
+			func() *usecase.VerifyBiometricUseCase {
+				return nil
+			},
 		),
 	)
 

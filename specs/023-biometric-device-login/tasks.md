@@ -1,4 +1,4 @@
-# Tasks: Biometric Device Login (WebAuthn) - UseCase Layer (TSK-BIO-006)
+# Tasks: Biometric Device Login (WebAuthn) - Handler Layer (TSK-BIO-007)
 
 **Input**: Design documents from `/specs/023-biometric-device-login/`
 
@@ -34,20 +34,25 @@
 - [x] T001 [US2] Update `AuditLogger` interface in `internal/domain/auth/audit.go` to include `LogBiometricSuccess(ctx context.Context, event events.BiometricSuccessEvent)`
 - [x] T002 [US2] Implement `LogBiometricSuccess` in `SlogAuditLogger` in `internal/infrastructure/auth/audit_logger.go`
 - [x] T003 [US2] Update the `mockAuditLogger` and `mockAcceptInviteAuditLogger` structs in `internal/application/usecase/login_usecase_test.go`, `internal/application/usecase/accept_invite_usecase_test.go`, and `internal/adapter/http/auth_handler_test.go` to mock the new audit method and satisfy interface constraints
-
----
-
-## Phase 3: User Story 2 - Biometric Login (Priority: P1)
-
-**Goal**: Implement `VerifyBiometricUseCase` to verify signatures, persist sign count updates, and issue session tokens.
-
-**Independent Test**: Verify using mocked repositories and caches that the usecase correctly verifies FIDO2 ECDSA signatures, increments sign count atomically, logs success audit events, and issues session tokens.
-
-### Implementation for User Story 2
-
 - [x] T004 [US2] Implement `VerifyBiometricUseCase` and `VerifyBiometricInput` in `internal/application/usecase/verify_biometric_usecase.go`
 - [x] T005 [P] [US2] Create unit tests in `internal/application/usecase/verify_biometric_usecase_test.go` with 100% coverage using Go mocks
 - [x] T006 [US2] Register `VerifyBiometricUseCase` inside Fx module in `internal/application/module.go`
+- [x] T007 Run `go fmt` and `go test` for all affected packages (`internal/domain/...`, `internal/infrastructure/...`, `internal/application/...`, `internal/adapter/...`) and verify all tests pass
+
+---
+
+## Phase 3: User Story 3 - Biometric Handlers & API Routing (Priority: P1)
+
+**Goal**: Implement Echo HTTP handlers for biometric challenge generation and verification, map domain errors to HTTP statuses, serialize JWT response, and register routing in Echo via Fx.
+
+**Independent Test**: Verify using Echo HTTP test recorder that `POST /v1/auth/biometric/challenge` and `POST /v1/auth/biometric/verify` return 200 OK with correct payloads, invalid inputs return 400 Bad Request, and business verification failures map to 401 Unauthorized.
+
+### Implementation for User Story 3
+
+- [x] T008 [US3] Update DTO definitions in `internal/adapter/http/auth/dto/auth_dto.go` and update schemas in `api/openapi.yaml` to include `credential_id` in challenge response and `remember_me` in verify request
+- [x] T009 [US3] Implement `AuthBiometricHandler` and error mapping in `internal/adapter/http/auth_biometric_handler.go`
+- [x] T010 [P] [US3] Create handler unit tests in `internal/adapter/http/auth_biometric_handler_test.go` with 100% coverage
+- [x] T011 [US3] Register `AuthBiometricHandler` inside Echo Fx module in `internal/adapter/http/module.go` and configure endpoint routing in Echo
 
 ---
 
@@ -55,7 +60,7 @@
 
 **Purpose**: Formatting and overall testing check
 
-- [x] T007 Run `go fmt` and `go test` for all affected packages (`internal/domain/...`, `internal/infrastructure/...`, `internal/application/...`, `internal/adapter/...`) and verify all tests pass
+- [x] T012 Run `go fmt` and `go test -count=1 ./...` for all affected packages and verify all tests pass
 
 ---
 
@@ -63,18 +68,18 @@
 
 ### Phase Dependencies
 
-- **Foundational (Phase 2)**: Must be implemented first to allow compilation of packages with the new audit logging capabilities.
-- **User Story 2 (Phase 3)**: Depends on Phase 2.
-- **Polish (Phase 4)**: Depends on User Story 2 implementation and tests being complete.
+- **Foundational (Phase 2)** and **UseCase (Phase 3)**: Must be complete to supply UseCases to the handler layer.
+- **Biometric Handlers (Phase 3)**: Implements endpoint routing and binding.
+- **Polish (Phase 4)**: Final verification step.
 
 ---
 
 ## Implementation Strategy
 
-### MVP First (User Story 2 Only)
+### MVP First (User Story 3 Only)
 
-1. Extend `AuditLogger` interface and update mock definitions so the project compiles.
-2. Implement cryptographic verification logic inside `VerifyBiometricUseCase`.
-3. Register the new UseCase in Fx.
-4. Write comprehensive unit tests including cryptographic success and validation failure cases.
-5. Verify that all project tests pass.
+1. Update the DTOs and OpenAPI specs to support necessary fields (credential ID, remember me).
+2. Create `AuthBiometricHandler` with Challenge and Verify handlers translating Echo context to UseCase calls.
+3. Hook handler routing up in Fx.
+4. Exhaustively test with `auth_biometric_handler_test.go`.
+5. Run formatting and full test validation.
