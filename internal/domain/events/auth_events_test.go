@@ -293,4 +293,3 @@ func TestSSOFailedEvent_Serialization(t *testing.T) {
 	assert.Equal(t, event.UserAgent, unmarshaled.UserAgent)
 	assert.True(t, event.OccurredAt.Equal(unmarshaled.OccurredAt))
 }
-

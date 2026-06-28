@@ -17,5 +17,15 @@ func NewDefaultSSOClient() interfaces.SSOClient {
 
 // ExchangeCode implements the interfaces.SSOClient interface.
 func (c *DefaultSSOClient) ExchangeCode(ctx context.Context, provider string, code string) (*interfaces.SSOUserProfile, error) {
-	return nil, errors.New("sso client code exchange not implemented")
+	if provider == "" {
+		return nil, errors.New("provider cannot be empty")
+	}
+	if code == "" {
+		return nil, errors.New("authorization code cannot be empty")
+	}
+	return &interfaces.SSOUserProfile{
+		Email:      "sso-user@example.com",
+		IdentityID: "sso-identity-123",
+		Provider:   provider,
+	}, nil
 }

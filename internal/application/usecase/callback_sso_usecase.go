@@ -77,13 +77,26 @@ func (uc *CallbackSSOUseCase) Execute(ctx context.Context, input CallbackSSOInpu
 		// Log failed SSO login due to exchange error
 		auditEvent := events.SSOFailedEvent{
 			Provider:   input.Provider,
-			Reason:     fmt.Sprintf("code exchange failed: %v", err),
+			Reason:     "code exchange failed",
 			IPAddress:  input.IPAddress,
 			UserAgent:  input.UserAgent,
 			OccurredAt: time.Now().UTC(),
 		}
 		uc.audit.LogSSOFailed(ctx, auditEvent)
 		return nil, fmt.Errorf("exchange code: %w", err)
+	}
+
+	if profile == nil {
+		// Log failed SSO login due to nil profile
+		auditEvent := events.SSOFailedEvent{
+			Provider:   input.Provider,
+			Reason:     "code exchange returned nil profile",
+			IPAddress:  input.IPAddress,
+			UserAgent:  input.UserAgent,
+			OccurredAt: time.Now().UTC(),
+		}
+		uc.audit.LogSSOFailed(ctx, auditEvent)
+		return nil, errors.New("sso profile is nil")
 	}
 
 	// 3. Lookup local admin user account by email or SSO ID

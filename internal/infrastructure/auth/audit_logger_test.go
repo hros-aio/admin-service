@@ -226,13 +226,14 @@ func TestSlogAuditLogger(t *testing.T) {
 
 	t.Run("LogSSOSuccess", func(t *testing.T) {
 		buf.Reset()
+		occurredAt := time.Now().Round(time.Second).UTC()
 		event := events.SSOSuccessEvent{
 			AdminID:    "admin-uuid-001",
 			Email:      "sso-user@example.com",
 			Provider:   "google",
 			IPAddress:  "192.168.1.1",
 			UserAgent:  "Go-test/1.0",
-			OccurredAt: time.Now(),
+			OccurredAt: occurredAt,
 		}
 		auditLogger.LogSSOSuccess(ctx, event)
 
@@ -240,6 +241,7 @@ func TestSlogAuditLogger(t *testing.T) {
 		err := json.Unmarshal(buf.Bytes(), &logMap)
 		assert.NoError(t, err)
 
+		assert.Equal(t, "INFO", logMap["level"])
 		assert.Equal(t, "SSO success", logMap["msg"])
 		assert.Equal(t, "login.sso_success", logMap["event"])
 		assert.Equal(t, "admin-uuid-001", logMap["admin_id"])
@@ -247,17 +249,19 @@ func TestSlogAuditLogger(t *testing.T) {
 		assert.Equal(t, "google", logMap["provider"])
 		assert.Equal(t, "192.168.1.1", logMap["ip_address"])
 		assert.Equal(t, "Go-test/1.0", logMap["user_agent"])
+		assert.Equal(t, occurredAt.Format(time.RFC3339), logMap["occurred_at"])
 	})
 
 	t.Run("LogSSOFailed", func(t *testing.T) {
 		buf.Reset()
+		occurredAt := time.Now().Round(time.Second).UTC()
 		event := events.SSOFailedEvent{
 			Email:      "sso-user@example.com",
 			Provider:   "google",
 			Reason:     "no account linked",
 			IPAddress:  "192.168.1.1",
 			UserAgent:  "Go-test/1.0",
-			OccurredAt: time.Now(),
+			OccurredAt: occurredAt,
 		}
 		auditLogger.LogSSOFailed(ctx, event)
 
@@ -265,6 +269,7 @@ func TestSlogAuditLogger(t *testing.T) {
 		err := json.Unmarshal(buf.Bytes(), &logMap)
 		assert.NoError(t, err)
 
+		assert.Equal(t, "WARN", logMap["level"])
 		assert.Equal(t, "SSO failed", logMap["msg"])
 		assert.Equal(t, "login.sso_failed", logMap["event"])
 		assert.Equal(t, "sso-user@example.com", logMap["email"])
@@ -272,6 +277,6 @@ func TestSlogAuditLogger(t *testing.T) {
 		assert.Equal(t, "no account linked", logMap["reason"])
 		assert.Equal(t, "192.168.1.1", logMap["ip_address"])
 		assert.Equal(t, "Go-test/1.0", logMap["user_agent"])
+		assert.Equal(t, occurredAt.Format(time.RFC3339), logMap["occurred_at"])
 	})
 }
-

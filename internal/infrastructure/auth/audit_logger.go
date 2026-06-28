@@ -159,4 +159,3 @@ func (l *SlogAuditLogger) LogSSOFailed(ctx context.Context, event events.SSOFail
 		slog.Time("occurred_at", event.OccurredAt),
 	)
 }
-

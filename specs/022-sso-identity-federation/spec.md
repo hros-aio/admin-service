@@ -154,7 +154,7 @@ Implement the SSO callback handling use case to consume the state, verify Identi
 - **FR-015**: System MUST implement `InitiateSSOUseCase` to generate state/nonce, cache them, and construct the redirect URL.
 - **FR-016**: State and nonce parameters MUST be generated using a cryptographically secure random source.
 - **FR-017**: The constructed redirect URL MUST include client ID, redirect URI, response type, scope, state, and nonce parameters.
-- **FR-018**: System MUST implement `CallbackSSOUseCase` to verify state/code, fetch provider profile, lookup admin user, create session, and issue JWT tokens.
+- **FR-018**: System MUST implement `CallbackSSOUseCase` to verify state/code, fetch provider profile, perform a provider-scoped admin-user lookup referencing the provider identifier and identity ID, create session, and issue JWT tokens.
 - **FR-019**: State verification MUST atomically consume the state parameter.
 - **FR-020**: Successful SSO authentication MUST publish the `login.sso_success` audit event to Kafka.
 - **FR-021**: Unlinked identity assertions MUST publish the `login.sso_failed` audit event and return `ErrNoAccountLinked`.

@@ -59,7 +59,6 @@ func (m *mockUserRepo) FindByEmailOrSSO(ctx context.Context, email string, ssoPr
 	return args.Get(0).(*domain.AdminUser), args.Error(1)
 }
 
-
 type mockMFACache struct{ mock.Mock }
 
 func (m *mockMFACache) StoreToken(ctx context.Context, token string, adminID string) error {

@@ -136,13 +136,36 @@ func TestCallbackSSOUseCase_Execute(t *testing.T) {
 		ssoClient.On("ExchangeCode", ctx, "google", "code-123").Return((*interfaces.SSOUserProfile)(nil), errors.New("idp error")).Once()
 
 		audit.On("LogSSOFailed", ctx, mock.MatchedBy(func(e events.SSOFailedEvent) bool {
-			return e.Provider == "google" && e.Reason == "code exchange failed: idp error"
+			return e.Provider == "google" && e.Reason == "code exchange failed"
 		})).Return().Once()
 
 		_, err := uc.Execute(ctx, input)
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "exchange code")
+		stateCache.AssertExpectations(t)
+		ssoClient.AssertExpectations(t)
+		audit.AssertExpectations(t)
+	})
+
+	t.Run("failure - exchange code returns nil profile", func(t *testing.T) {
+		stateCache := new(mockSSOStateCache)
+		ssoClient := new(mockSSOClient)
+		audit := new(mockAuditLogger)
+
+		uc := NewCallbackSSOUseCase(stateCache, nil, nil, nil, ssoClient, audit)
+
+		stateCache.On("VerifyAndConsumeState", ctx, "state-abc").Return("nonce-123", nil).Once()
+		ssoClient.On("ExchangeCode", ctx, "google", "code-123").Return((*interfaces.SSOUserProfile)(nil), nil).Once()
+
+		audit.On("LogSSOFailed", ctx, mock.MatchedBy(func(e events.SSOFailedEvent) bool {
+			return e.Provider == "google" && e.Reason == "code exchange returned nil profile"
+		})).Return().Once()
+
+		_, err := uc.Execute(ctx, input)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "sso profile is nil")
 		stateCache.AssertExpectations(t)
 		ssoClient.AssertExpectations(t)
 		audit.AssertExpectations(t)

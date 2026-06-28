@@ -110,4 +110,3 @@ type SSOFailedEvent struct {
 	UserAgent  string    `json:"user_agent"`
 	OccurredAt time.Time `json:"occurred_at"`
 }
-

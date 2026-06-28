@@ -130,4 +130,3 @@ func getPointerVal(s string) *string {
 	}
 	return &s
 }
-

@@ -95,7 +95,6 @@ func (m *mockAdminUserRepositoryForAcceptInvite) FindByEmailOrSSO(ctx context.Co
 	return nil, args.Error(1)
 }
 
-
 // ---------------------------------------------------------------------------
 // Mock: AuditLogger (accept-invite specific; reuses struct name scoped to file)
 // ---------------------------------------------------------------------------

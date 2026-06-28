@@ -303,4 +303,3 @@ func TestGormAdminUserRepository_FindByEmailOrSSO(t *testing.T) {
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }
-
