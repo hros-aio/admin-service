@@ -175,3 +175,23 @@ func (r *GormAdminUserRepository) FindByEmailOrSSO(ctx context.Context, email st
 	// If neither resolved, return ErrUserNotFound
 	return nil, domainErrors.ErrUserNotFound
 }
+
+// UpdateWebAuthnSignCount updates the signature count inside the webauthn_credentials JSONB column to mitigate authenticator cloning.
+func (r *GormAdminUserRepository) UpdateWebAuthnSignCount(ctx context.Context, adminID string, newCount uint32) error {
+	db := platformDB.GetTx(ctx, r.db)
+
+	result := db.Model(&adminUserModel{}).
+		Where("id = ?", adminID).
+		Update("webauthn_credentials", gorm.Expr(
+			"jsonb_set(COALESCE(webauthn_credentials, '{}'::jsonb), '{sign_count}', to_jsonb(GREATEST(COALESCE((webauthn_credentials->>'sign_count')::integer, 0), ?::integer)))",
+			newCount,
+		))
+
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return domainErrors.ErrUserNotFound
+	}
+	return nil
+}

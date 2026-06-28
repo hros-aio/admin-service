@@ -303,3 +303,53 @@ func TestGormAdminUserRepository_FindByEmailOrSSO(t *testing.T) {
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }
+
+func TestGormAdminUserRepository_UpdateWebAuthnSignCount(t *testing.T) {
+	adminID := "admin-uuid"
+	newCount := uint32(42)
+
+	t.Run("success", func(t *testing.T) {
+		gormDB, mock := setupTestDB(t)
+		repo := NewGormAdminUserRepository(gormDB)
+
+		mock.ExpectBegin()
+		mock.ExpectExec(regexp.QuoteMeta(`UPDATE "admin_users" SET "webauthn_credentials"=jsonb_set(COALESCE(webauthn_credentials, '{}'::jsonb), '{sign_count}', to_jsonb(GREATEST(COALESCE((webauthn_credentials->>'sign_count')::integer, 0), $1::integer))),"updated_at"=$2 WHERE id = $3`)).
+			WithArgs(newCount, sqlmock.AnyArg(), adminID).
+			WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectCommit()
+
+		err := repo.UpdateWebAuthnSignCount(context.Background(), adminID, newCount)
+		assert.NoError(t, err)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		gormDB, mock := setupTestDB(t)
+		repo := NewGormAdminUserRepository(gormDB)
+
+		mock.ExpectBegin()
+		mock.ExpectExec(regexp.QuoteMeta(`UPDATE "admin_users" SET "webauthn_credentials"=jsonb_set(COALESCE(webauthn_credentials, '{}'::jsonb), '{sign_count}', to_jsonb(GREATEST(COALESCE((webauthn_credentials->>'sign_count')::integer, 0), $1::integer))),"updated_at"=$2 WHERE id = $3`)).
+			WithArgs(newCount, sqlmock.AnyArg(), adminID).
+			WillReturnResult(sqlmock.NewResult(0, 0))
+		mock.ExpectCommit()
+
+		err := repo.UpdateWebAuthnSignCount(context.Background(), adminID, newCount)
+		assert.ErrorIs(t, err, domainErrors.ErrUserNotFound)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("database error", func(t *testing.T) {
+		gormDB, mock := setupTestDB(t)
+		repo := NewGormAdminUserRepository(gormDB)
+
+		mock.ExpectBegin()
+		mock.ExpectExec(regexp.QuoteMeta(`UPDATE "admin_users" SET "webauthn_credentials"=jsonb_set(COALESCE(webauthn_credentials, '{}'::jsonb), '{sign_count}', to_jsonb(GREATEST(COALESCE((webauthn_credentials->>'sign_count')::integer, 0), $1::integer))),"updated_at"=$2 WHERE id = $3`)).
+			WithArgs(newCount, sqlmock.AnyArg(), adminID).
+			WillReturnError(sql.ErrConnDone)
+		mock.ExpectRollback()
+
+		err := repo.UpdateWebAuthnSignCount(context.Background(), adminID, newCount)
+		assert.Error(t, err)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+}

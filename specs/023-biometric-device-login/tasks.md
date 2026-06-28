@@ -1,4 +1,4 @@
-# Tasks: Biometric Device Login (WebAuthn) - Cache Layer
+# Tasks: Biometric Device Login (WebAuthn) - Repository Layer (TSK-BIO-004)
 
 **Input**: Design documents from `/specs/023-biometric-device-login/`
 
@@ -17,34 +17,43 @@
 - **Single project**: `internal/`, `tests/` at repository root
 - Paths shown below assume single project - adjust based on plan.md structure
 
+---
+
 ## Phase 1: Setup (Shared Infrastructure)
 
-**Purpose**: Domain definition and basic error structure
+**Purpose**: Project initialization and basic structure
 
-- [x] T001 [P] Define `ErrChallengeNotFoundOrExpired` domain error in `internal/domain/errors/auth_errors.go` and add `VerifyAndConsumeChallenge` method to `internal/application/interfaces/webauthn_cache.go`
+*(No setup tasks required for this repository update; using existing infrastructure)*
+
+---
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-**Purpose**: Core interface stubs that must be complete before implementation begins
+**Purpose**: Core infrastructure that MUST be complete before ANY user story can be implemented
 
-- [x] T002 Update `fakeWebAuthnChallengeCache` stub in `internal/application/interfaces/webauthn_cache_test.go` to implement `VerifyAndConsumeChallenge` and verify compilation
+*(No foundational schema migrations or routing setup required; `webauthn_credentials` JSONB column already exists)*
 
-## Phase 3: User Story 1 - WebAuthn Redis Cache Implementation (Priority: P1) 🎯 MVP
+---
 
-**Goal**: Implement the Redis-backed challenge cache with a 5-minute TTL and atomic Lua script verification.
+## Phase 3: User Story 2 - Biometric Login (Priority: P1)
 
-**Independent Test**: Verify that all Cache unit tests pass with `miniredis` stubbing.
+**Goal**: Implement `UpdateWebAuthnSignCount` repository method to persist WebAuthn sign counts and mitigate authenticator cloning attacks.
 
-### Implementation for User Story 1
+**Independent Test**: Verify using `sqlmock` that the GORM query correctly performs a PostgreSQL `jsonb_set` atomic update on the `webauthn_credentials` column.
 
-- [x] T003 [P] [US1] Create `internal/infrastructure/cache/webauthn_redis.go` implementing `WebAuthnChallengeCache` interface using Go-Redis and Lua script
-- [x] T004 [P] [US1] Create unit tests in `internal/infrastructure/cache/webauthn_redis_test.go` using `miniredis` to verify storage, TTL, deletion, and atomic verification
+### Implementation for User Story 2
+
+- [x] T001 [US2] Define `UpdateWebAuthnSignCount(ctx context.Context, adminID string, newCount uint32) error` in `AdminUserRepository` interface in `internal/domain/admin_user.go`
+- [x] T002 [US2] Implement `UpdateWebAuthnSignCount(ctx context.Context, adminID string, newCount uint32) error` method in `GormAdminUserRepository` inside `internal/infrastructure/repository/auth/repository.go`
+- [x] T003 [P] [US2] Create unit tests in `internal/infrastructure/repository/auth/repository_test.go` using `sqlmock` to verify the GORM query structure, parameters, rows affected matching, and database error handling for `UpdateWebAuthnSignCount`
+
+---
 
 ## Phase 4: Polish & Cross-Cutting Concerns
 
 **Purpose**: Formatting and overall testing check
 
-- [x] T005 Run `go fmt` and `go test` for both `internal/infrastructure/cache/...` and `internal/application/interfaces/...` (exercising interface tests modified in T002) to confirm compilation and test correctness
+- [x] T004 Run `go fmt` and `go test` for all affected packages, including `internal/infrastructure/repository/auth/...`, `internal/adapter/http/auth_handler_test.go`, `internal/application/usecase/login_usecase_test.go`, and `internal/application/usecase/accept_invite_usecase_test.go` to confirm mock compilation and test correctness
 
 ---
 
@@ -52,32 +61,20 @@
 
 ### Phase Dependencies
 
-- **Setup (Phase 1)**: No dependencies - can start immediately
-- **Foundational (Phase 2)**: Depends on Setup (Phase 1)
-- **User Story 1 (Phase 3)**: Depends on Foundational (Phase 2)
-- **Polish (Phase 4)**: Depends on User Story 1 (Phase 3)
+- **User Story 2 (Phase 3)**: Can start immediately since database and code frameworks are already set up.
+- **Polish (Phase 4)**: Depends on User Story 2 implementation and tests being complete.
 
 ### Parallel Opportunities
 
-- Tasks T003 and T004 can be implemented concurrently by preparing interface stubs first.
-
----
-
-## Parallel Example: User Story 1
-
-```bash
-# Verify compilation and unit tests:
-go test ./internal/application/interfaces/...
-go test ./internal/infrastructure/cache/...
-```
+- Unit tests (T003) and implementation (T002) can be drafted concurrently after interface definition (T001) is complete.
 
 ---
 
 ## Implementation Strategy
 
-### MVP First (User Story 1 Only)
+### MVP First (User Story 2 Only)
 
-1. Define error and updated interface.
-2. Update interface compilation stubs.
-3. Write Redis implementation and corresponding unit tests.
+1. Define interface method.
+2. Write GORM implementation.
+3. Write `sqlmock` unit tests.
 4. Verify all tests pass.

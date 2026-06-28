@@ -86,4 +86,5 @@ type AdminUserRepository interface {
 	UpdatePassword(ctx context.Context, id string, newHash string) error
 	ActivateAccount(ctx context.Context, adminID string, newHash string) error
 	FindByEmailOrSSO(ctx context.Context, email string, ssoProvider string, ssoID string) (*AdminUser, error)
+	UpdateWebAuthnSignCount(ctx context.Context, adminID string, newCount uint32) error
 }
