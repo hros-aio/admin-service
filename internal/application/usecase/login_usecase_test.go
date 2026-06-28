@@ -162,6 +162,9 @@ func (m *mockAuditLogger) LogSSOSuccess(ctx context.Context, event events.SSOSuc
 func (m *mockAuditLogger) LogSSOFailed(ctx context.Context, event events.SSOFailedEvent) {
 	m.Called(ctx, event)
 }
+func (m *mockAuditLogger) LogBiometricSuccess(ctx context.Context, event events.BiometricSuccessEvent) {
+	m.Called(ctx, event)
+}
 
 type mockBruteForceCache struct{ mock.Mock }
 

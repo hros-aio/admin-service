@@ -1,61 +1,35 @@
-# Implementation Plan: Biometric Device Login (WebAuthn) - UseCase Layer (TSK-BIO-005)
+# Implementation Plan: Biometric Device Login (WebAuthn) - UseCase Layer (TSK-BIO-006)
 
 **Branch**: `023-biometric-device-login` | **Date**: 2026-06-28 | **Spec**: [spec.md](./spec.md)
 
 ## Summary
 
-Implement `GenerateBiometricChallengeUseCase` which accepts an email, validates the user has a registered biometric credential, generates a 32-byte secure random challenge, stores it in the `WebAuthnChallengeCache` for 5 minutes, and returns the base64url-encoded challenge along with the credential ID to the client.
+Implement `VerifyBiometricUseCase` which verifies WebAuthn cryptographic signatures against the stored public key, handles replay prevention using cached challenges, updates the credential sign count monotonically, logs audit trails, and issues a valid session (JWT + database-persisted session token).
 
 ## Technical Context
 
 **Language/Version**: Go 1.23+
 
-**Primary Dependencies**: `crypto/rand`, `encoding/base64`, `encoding/json`
+**Primary Dependencies**: `crypto/ecdsa`, `crypto/sha256`, `crypto/x509`, `encoding/asn1`, `encoding/base64`, `encoding/json`, `encoding/pem`
 
-**Storage**: Redis (WebAuthn Challenge Cache) and PostgreSQL (Admin User Repository)
+**Verification Flow (W3C WebAuthn compliant)**:
+1. Accept email, credentialID, clientDataJSON, authenticatorData, and signature.
+2. Retrieve and consume the cached challenge from Redis via `WebAuthnChallengeCache.VerifyAndConsumeChallenge()`.
+3. Unmarshal `clientDataJSON` and compare the base64url-decoded challenge field with the cached challenge bytes.
+4. Retrieve the `AdminUser` from Postgres, parse their PEM public key from `webauthn_credentials`, and verify the credential ID matches.
+5. Compute the hash of `clientDataJSON` using SHA-256.
+6. Verify the ECDSA signature over the concatenation of `authenticatorData` and the client data hash using the user's public key.
+7. Upon successful validation, update the sign count in the repository via `UpdateWebAuthnSignCount()`.
+8. Log a `login.biometric_success` event.
+9. Generate JWT access and refresh tokens, persist a `SessionToken` record to the database, and return the session details.
 
-**Testing**: Standard library testing with Go mocks (`github.com/stretchr/testify/mock`)
-
-**Target Platform**: Linux server
-
-**Project Type**: web-service
-
-**Performance Goals**: Sub-millisecond execution for memory-bound challenge generation
-
-**Constraints**: Clean Architecture. Usecase logic goes into `internal/application/usecase/generate_biometric_challenge_usecase.go`, and tests in `internal/application/usecase/generate_biometric_challenge_usecase_test.go`.
+**Testing**: Mocked tests in `verify_biometric_usecase_test.go` with 100% coverage using mock repositories/caches/loggers.
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
-
-- [x] Clean Architecture: UseCase layer depends only on domain boundaries. Infrastructure components are mocked.
-- [x] Documentation-First: Requirements and outcomes documented in `specs/023-biometric-device-login/spec.md`.
-- [x] Unit-Test-Per-File: Unit tests for the usecase are located in `generate_biometric_challenge_usecase_test.go`.
-- [x] Task-Driven: Focus strictly on TSK-BIO-005.
-- [x] Observability: Structured logs for success/failure in challenge generation.
-
-## Project Structure
-
-### Documentation (this feature)
-
-```text
-specs/023-biometric-device-login/
-├── plan.md              # This file
-├── research.md          # Research (Phase 0)
-├── data-model.md        # Data model (Phase 1)
-├── quickstart.md        # Quickstart validation guide (Phase 1)
-└── tasks.md             # Tasks (Phase 2)
-```
-
-### Source Code (repository root)
-
-```text
-internal/
-└── application/
-    └── usecase/
-        ├── generate_biometric_challenge_usecase.go        # UseCase implementation
-        └── generate_biometric_challenge_usecase_test.go   # UseCase Unit Tests (mocked)
-```
+- [x] Clean Architecture: All repository, cache, token generation, and audit logging actions are decoupled via interfaces.
+- [x] Security-First: Challenge verification uses single-use consumption and cryptographically secure ECDSA P-256 checks.
+- [x] Unit-Test-Per-File: Unit tests located in `verify_biometric_usecase_test.go`.
 
 ## Complexity Tracking
 

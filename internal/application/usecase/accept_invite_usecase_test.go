@@ -147,6 +147,10 @@ func (m *mockAcceptInviteAuditLogger) LogSSOFailed(ctx context.Context, event ev
 	m.Called(ctx, event)
 }
 
+func (m *mockAcceptInviteAuditLogger) LogBiometricSuccess(ctx context.Context, event events.BiometricSuccessEvent) {
+	m.Called(ctx, event)
+}
+
 // ---------------------------------------------------------------------------
 // Mock: NotificationPublisher
 // ---------------------------------------------------------------------------

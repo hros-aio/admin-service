@@ -18,5 +18,6 @@ var Module = fx.Module("application",
 		usecase.NewInitiateSSOUseCase,
 		usecase.NewCallbackSSOUseCase,
 		usecase.NewGenerateBiometricChallengeUseCase,
+		usecase.NewVerifyBiometricUseCase,
 	),
 )

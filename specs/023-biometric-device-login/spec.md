@@ -78,6 +78,7 @@ Clients and automated integrators must be able to use standardized, fully-valida
 - **FR-010**: The OpenAPI contract MUST document the biometric challenge and verification endpoints, including successful outcomes and failure codes (such as 400 Bad Request and 401 Unauthorized).
 - **FR-011**: The system MUST monotonically advance the sign count inside the user's persistent `webauthn_credentials` JSONB field post-verification to mitigate authenticator cloning attacks.
 - **FR-012**: The biometric challenge generation flow MUST return the generated cryptographic challenge alongside the registered biometric credential ID to the client.
+- **FR-013**: The system MUST emit a 'login.biometric_success' audit event containing the admin ID, email, credential ID, IP address, and user agent upon successful biometric signature verification.
 
 ### Key Entities *(include if feature involves data)*
 

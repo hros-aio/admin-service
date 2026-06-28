@@ -159,3 +159,16 @@ func (l *SlogAuditLogger) LogSSOFailed(ctx context.Context, event events.SSOFail
 		slog.Time("occurred_at", event.OccurredAt),
 	)
 }
+
+// LogBiometricSuccess logs a successful biometric login event.
+func (l *SlogAuditLogger) LogBiometricSuccess(ctx context.Context, event events.BiometricSuccessEvent) {
+	l.logger.InfoContext(ctx, "biometric login success",
+		slog.String("event", "login.biometric_success"),
+		slog.String("admin_id", event.AdminID),
+		slog.String("email", event.Email),
+		slog.String("credential_id", event.CredentialID),
+		slog.String("ip_address", event.IPAddress),
+		slog.String("user_agent", event.UserAgent),
+		slog.Time("occurred_at", event.OccurredAt),
+	)
+}

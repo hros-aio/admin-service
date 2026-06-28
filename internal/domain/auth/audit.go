@@ -32,4 +32,6 @@ type AuditLogger interface {
 	LogSSOSuccess(ctx context.Context, event events.SSOSuccessEvent)
 	// LogSSOFailed records a failed SSO login event.
 	LogSSOFailed(ctx context.Context, event events.SSOFailedEvent)
+	// LogBiometricSuccess records a successful biometric login event.
+	LogBiometricSuccess(ctx context.Context, event events.BiometricSuccessEvent)
 }

@@ -213,6 +213,10 @@ func (m *mockAuditLogger) LogSSOFailed(ctx context.Context, event events.SSOFail
 	m.Called(ctx, event)
 }
 
+func (m *mockAuditLogger) LogBiometricSuccess(ctx context.Context, event events.BiometricSuccessEvent) {
+	m.Called(ctx, event)
+}
+
 type mockPasswordResetCache struct {
 	mock.Mock
 }
