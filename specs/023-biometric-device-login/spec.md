@@ -40,6 +40,21 @@ Admins can log in to the administrative portal using their registered biometric 
 
 ---
 
+### User Story 3 - Biometric API Payload & Validation (Priority: P2)
+
+Clients and automated integrators must be able to use standardized, fully-validated request and response payloads when interacting with the biometric login endpoints.
+
+**Why this priority**: Ensures API contract robustness, validation of client parameters, and clear error responses for integration correctness.
+
+**Independent Test**: Test with valid and invalid requests to challenge and verification endpoints to confirm strict validator constraints and OpenAPI spec conformance.
+
+**Acceptance Scenarios**:
+
+1. **Given** an invalid email in a challenge request, **When** submitted to the challenge endpoint, **Then** the system rejects it with a 400 Bad Request response.
+2. **Given** missing cryptographic fields (e.g. credential ID or signature) in a verification request, **When** submitted to the verify endpoint, **Then** the system rejects it with a 400 Bad Request response.
+
+---
+
 ### Edge Cases
 
 - **Unregistered Biometric Device**: The admin attempts to log in using biometrics but has no registered biometric credentials.
@@ -57,11 +72,16 @@ Admins can log in to the administrative portal using their registered biometric 
 - **FR-005**: The system MUST log an audit event for successful biometric login containing the admin ID, email, and credential ID.
 - **FR-006**: The system MUST fail the login attempt with a clear error indicating the device is not registered if a biometric login is requested for an account with no biometric credentials.
 - **FR-007**: The system MUST fail the login attempt with a clear signature verification error if the cryptographic signature check fails.
+- **FR-008**: The system MUST define request schemas validating client-supplied parameters for the biometric challenge endpoint (requiring a valid email).
+- **FR-009**: The system MUST define request schemas validating client-supplied parameters for the biometric verification endpoint (requiring email, credential ID, authenticator data, client data JSON, and cryptographic signature).
+- **FR-010**: The OpenAPI contract MUST document the biometric challenge and verification endpoints, including successful outcomes and failure codes (such as 400 Bad Request and 401 Unauthorized).
 
 ### Key Entities *(include if feature involves data)*
 
-- **Transient Challenge Storage**: A short-lived memory store holding challenge payloads associated with an admin during the multi-step handshake.
+- **Transient Challenge Storage**: A temporary storage mechanism holding challenge payloads associated with an admin, subject to a short-lived expiration TTL during the multi-step authentication handshake.
 - **Biometric Credential**: Information representing a registered authenticator containing Credential ID, Public Key, and Sign Count.
+- **Biometric Challenge Payload**: Structured parameters containing the target email.
+- **Biometric Verification Payload**: Structured parameters containing the target email, credential ID, signature, and client/authenticator context.
 
 ## Success Criteria *(mandatory)*
 
@@ -70,6 +90,7 @@ Admins can log in to the administrative portal using their registered biometric 
 - **SC-001**: Admins can log in using biometric verification in under 3 seconds.
 - **SC-002**: Cryptographic challenges are automatically cleared from cache after 60 seconds.
 - **SC-003**: Unauthorized login attempts using modified challenges or signatures are rejected 100% of the time.
+- **SC-004**: All malformed or incomplete client request payloads are rejected by API validation gates.
 
 ## Assumptions
 

@@ -50,17 +50,29 @@
 
 - [x] T008 [P] Run go formatting and all tests to confirm zero regressions
 
+## Phase 5: User Story 2 - Biometric DTO Definition (Priority: P2)
+
+**Goal**: Define the HTTP request and response DTOs for the WebAuthn endpoints and document them in the OpenAPI contract.
+
+**Independent Test**: Verification that the DTO validation tests pass and the OpenAPI contract syntax is valid.
+
+### Implementation for User Story 2
+
+- [x] T009 [P] [US2] Update `api/openapi.yaml` to define `/v1/auth/biometric/challenge` and `/v1/auth/biometric/verify` endpoints and schemas.
+- [x] T010 [P] [US2] Define `BiometricChallengeRequest`, `BiometricChallengeResponse`, and `BiometricVerifyRequest` DTO structs in `internal/adapter/http/auth/dto/auth_dto.go`
+- [x] T011 [P] [US2] Create unit tests for validation of biometric DTOs in `internal/adapter/http/auth/dto/auth_dto_test.go`
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
 
 - **Setup (Phase 1)**: No dependencies - can start immediately
 - **User Story 1 (Phase 3)**: Depends on Phase 1 Setup.
+- **User Story 2 (Phase 5)**: Depends on Phase 1 Setup.
 
 ### Parallel Opportunities
 
-- Tasks T002, T003, and T004 can be started in parallel as they define independent types/interfaces.
-- Tests T005, T006, and T007 can be written in parallel.
+- Tasks T009, T010, and T011 can be worked on in parallel.
 
 ## Implementation Strategy
 

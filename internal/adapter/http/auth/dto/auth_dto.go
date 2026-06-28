@@ -59,3 +59,22 @@ type SSOCallbackRequest struct {
 	Code  string `json:"code" query:"code" validate:"required"`
 	State string `json:"state" query:"state" validate:"required"`
 }
+
+// BiometricChallengeRequest represents the payload to request a biometric login challenge.
+type BiometricChallengeRequest struct {
+	Email string `json:"email" validate:"required,email"`
+}
+
+// BiometricChallengeResponse represents the public key/challenge options returned to the client.
+type BiometricChallengeResponse struct {
+	Challenge string `json:"challenge"`
+}
+
+// BiometricVerifyRequest represents the payload to verify a biometric login signature.
+type BiometricVerifyRequest struct {
+	Email             string `json:"email" validate:"required,email"`
+	CredentialID      string `json:"credential_id" validate:"required,notblank"`
+	AuthenticatorData string `json:"authenticator_data" validate:"required,notblank"`
+	ClientDataJSON    string `json:"client_data_json" validate:"required,notblank"`
+	Signature         string `json:"signature" validate:"required,notblank"`
+}

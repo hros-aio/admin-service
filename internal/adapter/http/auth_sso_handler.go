@@ -25,10 +25,14 @@ func NewAuthSSOHandler(
 	initiateUC *usecase.InitiateSSOUseCase,
 	callbackUC *usecase.CallbackSSOUseCase,
 ) *AuthSSOHandler {
+	v := validator.New()
+	_ = v.RegisterValidation("notblank", func(fl validator.FieldLevel) bool {
+		return len(strings.TrimSpace(fl.Field().String())) > 0
+	})
 	return &AuthSSOHandler{
 		initiateUC: initiateUC,
 		callbackUC: callbackUC,
-		validate:   validator.New(),
+		validate:   v,
 	}
 }
 

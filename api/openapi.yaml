@@ -301,6 +301,58 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /v1/auth/biometric/challenge:
+    post:
+      operationId: biometricChallenge
+      tags:
+        - Authentication
+      summary: Biometric Challenge
+      description: Generate a WebAuthn challenge for biometric authentication.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BiometricChallengeRequest'
+      responses:
+        '200':
+          description: Challenge generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BiometricChallengeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/auth/biometric/verify:
+    post:
+      operationId: biometricVerify
+      tags:
+        - Authentication
+      summary: Biometric Verification
+      description: Verify WebAuthn cryptographic signature and authenticate the user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BiometricVerifyRequest'
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -457,6 +509,55 @@ components:
         trace_id:
           type: string
           example: 01HZX3QK0YS6M2Z1WD9S7VN9VJ
+
+    BiometricChallengeRequest:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+          example: admin@hros.com
+
+    BiometricChallengeResponse:
+      type: object
+      required:
+        - challenge
+      properties:
+        challenge:
+          type: string
+          example: "dGhpcyBpcyBhIGNyeXB0b2dyYXBoaWMgY2hhbGxlbmdl"
+
+    BiometricVerifyRequest:
+      type: object
+      required:
+        - email
+        - credential_id
+        - authenticator_data
+        - client_data_json
+        - signature
+      properties:
+        email:
+          type: string
+          format: email
+          example: admin@hros.com
+        credential_id:
+          type: string
+          pattern: '^[^\s]+$'
+          example: "raw_credential_id_hex_or_base64"
+        authenticator_data:
+          type: string
+          pattern: '^[^\s]+$'
+          example: "raw_authenticator_data_base64"
+        client_data_json:
+          type: string
+          pattern: '^[^\s]+$'
+          example: "raw_client_data_json_base64"
+        signature:
+          type: string
+          pattern: '^[^\s]+$'
+          example: "raw_signature_base64"
 
   responses:
     BadRequest:
