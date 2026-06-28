@@ -1,39 +1,38 @@
-# Implementation Plan: Biometric Device Login (WebAuthn) - Repository Layer (TSK-BIO-004)
+# Implementation Plan: Biometric Device Login (WebAuthn) - UseCase Layer (TSK-BIO-005)
 
 **Branch**: `023-biometric-device-login` | **Date**: 2026-06-28 | **Spec**: [spec.md](./spec.md)
 
 ## Summary
 
-Update the `AdminUserRepository` interface and its GORM implementation `GormAdminUserRepository` with the `UpdateWebAuthnSignCount(ctx, adminID, newCount)` method.
-This method performs an atomic PostgreSQL JSONB update to set the `sign_count` value inside the `webauthn_credentials` JSONB column of the `admin_users` table for the specified user. This is crucial for verifying that authenticators are not cloned during subsequent WebAuthn log in handshakes.
+Implement `GenerateBiometricChallengeUseCase` which accepts an email, validates the user has a registered biometric credential, generates a 32-byte secure random challenge, stores it in the `WebAuthnChallengeCache` for 5 minutes, and returns the base64url-encoded challenge along with the credential ID to the client.
 
 ## Technical Context
 
 **Language/Version**: Go 1.23+
 
-**Primary Dependencies**: `gorm.io/gorm`, `gorm.io/driver/postgres`
+**Primary Dependencies**: `crypto/rand`, `encoding/base64`, `encoding/json`
 
-**Storage**: PostgreSQL (GORM JSONB update)
+**Storage**: Redis (WebAuthn Challenge Cache) and PostgreSQL (Admin User Repository)
 
-**Testing**: `github.com/DATA-DOG/go-sqlmock` for GORM SQL mock tests
+**Testing**: Standard library testing with Go mocks (`github.com/stretchr/testify/mock`)
 
 **Target Platform**: Linux server
 
 **Project Type**: web-service
 
-**Performance Goals**: Sub-millisecond database updates for sign count updates
+**Performance Goals**: Sub-millisecond execution for memory-bound challenge generation
 
-**Constraints**: Clean Architecture. Interface in `internal/domain/admin_user.go`, implementation in `internal/infrastructure/repository/auth/repository.go` (existing architectural structure), and unit tests in `internal/infrastructure/repository/auth/repository_test.go` using `sqlmock`.
+**Constraints**: Clean Architecture. Usecase logic goes into `internal/application/usecase/generate_biometric_challenge_usecase.go`, and tests in `internal/application/usecase/generate_biometric_challenge_usecase_test.go`.
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-- [x] Clean Architecture: Database interfaces remain in `internal/domain/`, GORM implementation in `internal/infrastructure/repository/auth/`.
+- [x] Clean Architecture: UseCase layer depends only on domain boundaries. Infrastructure components are mocked.
 - [x] Documentation-First: Requirements and outcomes documented in `specs/023-biometric-device-login/spec.md`.
-- [x] Unit-Test-Per-File: Unit tests for repository methods implemented in `repository_test.go`.
-- [x] Task-Driven: Focus strictly on TSK-BIO-004.
-- [x] Observability: Structured logging is NOT required at the raw repository level, but any database errors will be propagated.
+- [x] Unit-Test-Per-File: Unit tests for the usecase are located in `generate_biometric_challenge_usecase_test.go`.
+- [x] Task-Driven: Focus strictly on TSK-BIO-005.
+- [x] Observability: Structured logs for success/failure in challenge generation.
 
 ## Project Structure
 
@@ -52,16 +51,11 @@ specs/023-biometric-device-login/
 
 ```text
 internal/
-├── domain/
-│   └── admin_user.go                        # AdminUserRepository interface
-└── infrastructure/
-    └── repository/
-        └── auth/
-            ├── repository.go                # GormAdminUserRepository implementation
-            └── repository_test.go           # Repository Unit Tests (sqlmock)
+└── application/
+    └── usecase/
+        ├── generate_biometric_challenge_usecase.go        # UseCase implementation
+        └── generate_biometric_challenge_usecase_test.go   # UseCase Unit Tests (mocked)
 ```
-
-**Structure Decision**: Single project layout matching existing repository structure. Although the task prompt specified `internal/infrastructure/database/admin_user_repository.go`, we will adhere to the existing architecture where `GormAdminUserRepository` is located in `internal/infrastructure/repository/auth/repository.go` to avoid codebase pollution and duplicate code.
 
 ## Complexity Tracking
 
