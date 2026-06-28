@@ -32,3 +32,4 @@
 ## Notes
 
 - Spec verified for DTO and OpenAPI path requirements (TSK-BIO-002).
+- Spec verified for Redis challenge cache interface and implementation requirements (TSK-BIO-003).

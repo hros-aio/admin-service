@@ -66,7 +66,7 @@ Clients and automated integrators must be able to use standardized, fully-valida
 ### Functional Requirements
 
 - **FR-001**: The system MUST generate a cryptographically secure challenge for WebAuthn authentication.
-- **FR-002**: The system MUST cache the challenge in a transient store with a short TTL (e.g., 60 seconds).
+- **FR-002**: The system MUST cache the challenge in a transient store with a short TTL (e.g., 5 minutes).
 - **FR-003**: The system MUST support storing multiple biometric credentials per admin user.
 - **FR-004**: The system MUST verify biometric signatures during the login phase using the cached challenge and registered public keys.
 - **FR-005**: The system MUST log an audit event for successful biometric login containing the admin ID, email, and credential ID.
@@ -88,7 +88,7 @@ Clients and automated integrators must be able to use standardized, fully-valida
 ### Measurable Outcomes
 
 - **SC-001**: Admins can log in using biometric verification in under 3 seconds.
-- **SC-002**: Cryptographic challenges are automatically cleared from cache after 60 seconds.
+- **SC-002**: Cryptographic challenges are automatically cleared from cache after 5 minutes.
 - **SC-003**: Unauthorized login attempts using modified challenges or signatures are rejected 100% of the time.
 - **SC-004**: All malformed or incomplete client request payloads are rejected by API validation gates.
 

@@ -2,10 +2,10 @@ package interfaces
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
+	domainErrors "github.com/hros/admin-service/internal/domain/errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,74 +21,95 @@ func newFakeWebAuthnChallengeCache() *fakeWebAuthnChallengeCache {
 	}
 }
 
-func (f *fakeWebAuthnChallengeCache) StoreChallenge(ctx context.Context, key string, challenge []byte, ttl time.Duration) error {
+func (f *fakeWebAuthnChallengeCache) StoreChallenge(ctx context.Context, email string, challenge []byte, ttl time.Duration) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	f.store[key] = challenge
-	f.ttls[key] = ttl
+	f.store[email] = challenge
+	f.ttls[email] = ttl
 	return nil
 }
 
-func (f *fakeWebAuthnChallengeCache) GetChallenge(ctx context.Context, key string) ([]byte, error) {
+func (f *fakeWebAuthnChallengeCache) GetChallenge(ctx context.Context, email string) ([]byte, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	challenge, exists := f.store[key]
+	challenge, exists := f.store[email]
 	if !exists {
-		return nil, errors.New("challenge not found or expired")
+		return nil, domainErrors.ErrChallengeNotFoundOrExpired
 	}
 	return challenge, nil
 }
 
-func (f *fakeWebAuthnChallengeCache) DeleteChallenge(ctx context.Context, key string) error {
+func (f *fakeWebAuthnChallengeCache) DeleteChallenge(ctx context.Context, email string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	delete(f.store, key)
-	delete(f.ttls, key)
+	delete(f.store, email)
+	delete(f.ttls, email)
 	return nil
+}
+
+func (f *fakeWebAuthnChallengeCache) VerifyAndConsumeChallenge(ctx context.Context, email string) ([]byte, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	challenge, exists := f.store[email]
+	if !exists {
+		return nil, domainErrors.ErrChallengeNotFoundOrExpired
+	}
+	delete(f.store, email)
+	delete(f.ttls, email)
+	return challenge, nil
 }
 
 func TestWebAuthnChallengeCache_Workflow(t *testing.T) {
 	cache := newFakeWebAuthnChallengeCache()
 	ctx := context.Background()
-	key := "challenge_key_123"
+	email := "admin@hros.com"
 	challenge := []byte("cryptographic_challenge_payload")
 	ttl := 60 * time.Second
 
 	// 1. Store
-	err := cache.StoreChallenge(ctx, key, challenge, ttl)
+	err := cache.StoreChallenge(ctx, email, challenge, ttl)
 	assert.NoError(t, err)
 
 	// 2. Get
-	retrieved, err := cache.GetChallenge(ctx, key)
+	retrieved, err := cache.GetChallenge(ctx, email)
 	assert.NoError(t, err)
 	assert.Equal(t, challenge, retrieved)
 
-	// 3. Delete
-	err = cache.DeleteChallenge(ctx, key)
+	// 3. Verify and Consume
+	consumed, err := cache.VerifyAndConsumeChallenge(ctx, email)
 	assert.NoError(t, err)
+	assert.Equal(t, challenge, consumed)
 
-	// 4. Get after delete
-	_, err = cache.GetChallenge(ctx, key)
-	assert.Error(t, err)
+	// 4. Verify and Consume again (fails because it is deleted)
+	_, err = cache.VerifyAndConsumeChallenge(ctx, email)
+	assert.ErrorIs(t, err, domainErrors.ErrChallengeNotFoundOrExpired)
+
+	// 5. Get after delete
+	_, err = cache.GetChallenge(ctx, email)
+	assert.ErrorIs(t, err, domainErrors.ErrChallengeNotFoundOrExpired)
 }
 
 func TestWebAuthnChallengeCache_ContextCancellation(t *testing.T) {
 	cache := newFakeWebAuthnChallengeCache()
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	key := "challenge_key_123"
+	email := "admin@hros.com"
 	challenge := []byte("cryptographic_challenge_payload")
 	ttl := 60 * time.Second
 
-	err := cache.StoreChallenge(ctx, key, challenge, ttl)
+	err := cache.StoreChallenge(ctx, email, challenge, ttl)
 	assert.ErrorIs(t, err, context.Canceled)
 
-	_, err = cache.GetChallenge(ctx, key)
+	_, err = cache.GetChallenge(ctx, email)
 	assert.ErrorIs(t, err, context.Canceled)
 
-	err = cache.DeleteChallenge(ctx, key)
+	err = cache.DeleteChallenge(ctx, email)
+	assert.ErrorIs(t, err, context.Canceled)
+
+	_, err = cache.VerifyAndConsumeChallenge(ctx, email)
 	assert.ErrorIs(t, err, context.Canceled)
 }
