@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-28
 
-**Status**: Draft
+**Status**: Active
 
 **Input**: User description: "Biometric Device Login (WebAuthn)"
 
@@ -55,6 +55,23 @@ Clients and automated integrators must be able to use standardized, fully-valida
 
 ---
 
+### User Story 4 - Full Biometric Flow Integration Test (Priority: P1)
+
+The biometric login system must be proven to work end-to-end with real infrastructure dependencies (PostgreSQL and Redis) using cryptographically valid FIDO2 operations, ensuring that challenge state management, signature verification, session issuance, and sign count persistence all function correctly together.
+
+**Why this priority**: Unit tests validate individual components in isolation; integration tests are required to confirm the correct wiring of all layers, the persistence of credential state across requests, and the correctness of the full cryptographic handshake with real backends.
+
+**Independent Test**: Can be run in isolation using testcontainers for PostgreSQL and Redis, with a seeded admin user bearing a mock FIDO2 public key in the `webauthn_credentials` JSONB field.
+
+**Acceptance Scenarios**:
+
+1. **Given** a running PostgreSQL and Redis instance (via testcontainers), a seeded admin user with a mock FIDO2 public key, **When** the test POSTs to `/auth/biometric/challenge` with that admin's email, **Then** the system stores a cryptographic challenge in Redis and returns it in the response.
+2. **Given** a challenge stored in Redis and the corresponding mock private key in the test, **When** the test signs the challenge and POSTs to `/auth/biometric/verify`, **Then** the system validates the signature, issues a valid JWT access token and refresh token, and increments the `sign_count` in the `webauthn_credentials` JSONB column.
+3. **Given** an invalid or tampered signature submitted to the verify endpoint, **When** the system processes the request, **Then** it returns HTTP 401 Unauthorized and does not issue a session.
+4. **Given** a challenge that has expired or is not present in Redis, **When** the verify request is submitted, **Then** the system returns HTTP 401 Unauthorized.
+
+---
+
 ### Edge Cases
 
 - **Unregistered Biometric Device**: The admin attempts to log in using biometrics but has no registered biometric credentials.
@@ -77,6 +94,11 @@ Clients and automated integrators must be able to use standardized, fully-valida
 - **FR-009**: The system MUST define request schemas validating client-supplied parameters for the biometric verification endpoint (requiring email, credential ID, authenticator data, client data JSON, and cryptographic signature).
 - **FR-010**: The OpenAPI contract MUST document the biometric challenge and verification endpoints, including successful outcomes and failure codes (such as 400 Bad Request and 401 Unauthorized).
 - **FR-011**: The system MUST monotonically advance the sign count inside the user's persistent `webauthn_credentials` JSONB field post-verification to mitigate authenticator cloning attacks.
+- **FR-014**: The integration test suite MUST provision real PostgreSQL and Redis backends via testcontainers and tear them down after the test run completes.
+- **FR-015**: The integration test MUST seed a valid admin user record with a pre-generated FIDO2 public key in the `webauthn_credentials` JSONB column before each test scenario.
+- **FR-016**: The integration test MUST perform a real HTTP challenge request and extract the cryptographic challenge from the response.
+- **FR-017**: The integration test MUST cryptographically sign the extracted challenge using the matching mock private key and submit a valid verify request.
+- **FR-018**: The integration test MUST assert that after a successful verify, the `sign_count` in the database is incremented and valid JWT tokens are present in the response.
 - **FR-012**: The biometric challenge generation flow MUST return the generated cryptographic challenge alongside the registered biometric credential ID to the client.
 - **FR-013**: The system MUST emit a 'login.biometric_success' audit event containing the admin ID, email, credential ID, IP address, and user agent upon successful biometric signature verification.
 
@@ -96,6 +118,7 @@ Clients and automated integrators must be able to use standardized, fully-valida
 - **SC-003**: Unauthorized login attempts using modified challenges or signatures are rejected 100% of the time.
 - **SC-004**: All malformed or incomplete client request payloads are rejected by API validation gates.
 - **SC-005**: 100% of successful WebAuthn authentications result in the persistent update of the credential's sign count.
+- **SC-006**: The integration test suite executes consistently with no flakiness, demonstrating that Redis challenge state, cryptographic validation, session issuance, and audit logging work correctly together against real infrastructure.
 
 ## Assumptions
 

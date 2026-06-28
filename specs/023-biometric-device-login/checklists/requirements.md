@@ -37,3 +37,4 @@
 - Spec verified for UseCase layer biometric challenge generation (TSK-BIO-005).
 - Spec verified for UseCase layer biometric verification (TSK-BIO-006).
 - Spec verified for Echo HTTP handlers (POST /auth/biometric/challenge and POST /auth/biometric/verify) and Fx routing (TSK-BIO-007).
+- Spec updated for full biometric flow integration test (TSK-BIO-008): added User Story 4, FR-014 through FR-018, and SC-006. All checklist items pass.
