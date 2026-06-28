@@ -1,43 +1,40 @@
-# Implementation Plan: Biometric Device Login (WebAuthn)
+# Implementation Plan: Biometric Device Login (WebAuthn) - Cache Layer
 
 **Branch**: `023-biometric-device-login` | **Date**: 2026-06-28 | **Spec**: [spec.md](./spec.md)
 
-**Input**: Feature specification from `/specs/023-biometric-device-login/spec.md`
-
 ## Summary
 
-Implement biometric device login (WebAuthn) to support passwordless logins using TouchID, FaceID, or platform authenticators.
-This task defines the request and response Data Transfer Objects (DTOs) for the biometric login endpoints and registers them in the OpenAPI contract.
+Implement the `WebAuthnChallengeCache` interface using Redis.
+Define `StoreChallenge(ctx, email, challenge, ttl)` mapping the email to the secure challenge string with a strict short TTL (e.g., 5 minutes).
+Define `VerifyAndConsumeChallenge(ctx, email)` to fetch and delete the challenge atomically.
 
 ## Technical Context
 
 **Language/Version**: Go 1.23+
 
-**Primary Dependencies**: Standard library, `github.com/go-playground/validator/v10`
+**Primary Dependencies**: `github.com/redis/go-redis/v9`
 
-**Storage**: Redis for Challenge Cache, PostgreSQL (GORM) for credential mapping
+**Storage**: Redis for Challenge Cache
 
-**Testing**: go test validator struct checks and JSON marshalling tests
+**Testing**: `github.com/alicebob/miniredis/v2` for local mocked Redis client unit tests
 
 **Target Platform**: Linux server
 
 **Project Type**: web-service
 
-**Performance Goals**: N/A (compile-time definitions and validation)
+**Performance Goals**: Sub-millisecond Redis response time for cache hits
 
-**Constraints**: Clean architecture, zero framework leakage in core layers, HTTP DTOs kept within the adapter layer
-
-**Scale/Scope**: Input validation structures for `/v1/auth/biometric/challenge` and `/v1/auth/biometric/verify`
+**Constraints**: Clean architecture, interface in `application/interfaces`, implementation in `infrastructure/cache`
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-- [x] Clean Architecture: DTOs are defined within `internal/adapter/http/auth/dto/`, isolated from application/domain logic.
-- [x] Documentation-First: API paths and schemas documented in `api/openapi.yaml`.
-- [x] Unit-Test-Per-File: validation rules and JSON mapping tested in `internal/adapter/http/auth/dto/auth_dto_test.go`.
-- [x] Task-Driven: Focus strictly on TSK-BIO-002.
-- [x] Observability: N/A.
+- [x] Clean Architecture: Cache interface in `internal/application/interfaces/webauthn_cache.go`, implementation in `internal/infrastructure/cache/webauthn_redis.go`.
+- [x] Documentation-First: TTL and lifecycle documented in `specs/023-biometric-device-login/spec.md`.
+- [x] Unit-Test-Per-File: `webauthn_redis_test.go` corresponding to `webauthn_redis.go`.
+- [x] Task-Driven: Focus strictly on TSK-BIO-003.
+- [x] Observability: Structured logging for store/fetch/consume events.
 
 ## Project Structure
 
@@ -55,18 +52,16 @@ specs/023-biometric-device-login/
 ### Source Code (repository root)
 
 ```text
-api/
-└── openapi.yaml
 internal/
-└── adapter/
-    └── http/
-        └── auth/
-            └── dto/
-                ├── auth_dto.go
-                └── auth_dto_test.go
+├── application/
+│   └── interfaces/
+│       ├── webauthn_cache.go          # Cache Interface
+│       └── webauthn_cache_test.go     # Compilation fake/mock check
+└── infrastructure/
+    └── cache/
+        ├── webauthn_redis.go          # Redis Implementation
+        └── webauthn_redis_test.go     # Cache Unit Tests
 ```
-
-**Structure Decision**: HTTP adapter layout. DTOs are mapped inside the authentication module's `dto` package.
 
 ## Complexity Tracking
 

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	domainErrors "github.com/hros/admin-service/internal/domain/errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -50,6 +51,19 @@ func (f *fakeWebAuthnChallengeCache) DeleteChallenge(ctx context.Context, key st
 	return nil
 }
 
+func (f *fakeWebAuthnChallengeCache) VerifyAndConsumeChallenge(ctx context.Context, key string) ([]byte, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	challenge, exists := f.store[key]
+	if !exists {
+		return nil, domainErrors.ErrChallengeNotFoundOrExpired
+	}
+	delete(f.store, key)
+	delete(f.ttls, key)
+	return challenge, nil
+}
+
 func TestWebAuthnChallengeCache_Workflow(t *testing.T) {
 	cache := newFakeWebAuthnChallengeCache()
 	ctx := context.Background()
@@ -66,11 +80,16 @@ func TestWebAuthnChallengeCache_Workflow(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, challenge, retrieved)
 
-	// 3. Delete
-	err = cache.DeleteChallenge(ctx, key)
+	// 3. Verify and Consume
+	consumed, err := cache.VerifyAndConsumeChallenge(ctx, key)
 	assert.NoError(t, err)
+	assert.Equal(t, challenge, consumed)
 
-	// 4. Get after delete
+	// 4. Verify and Consume again (fails because it is deleted)
+	_, err = cache.VerifyAndConsumeChallenge(ctx, key)
+	assert.ErrorIs(t, err, domainErrors.ErrChallengeNotFoundOrExpired)
+
+	// 5. Get after delete
 	_, err = cache.GetChallenge(ctx, key)
 	assert.Error(t, err)
 }
@@ -90,5 +109,8 @@ func TestWebAuthnChallengeCache_ContextCancellation(t *testing.T) {
 	assert.ErrorIs(t, err, context.Canceled)
 
 	err = cache.DeleteChallenge(ctx, key)
+	assert.ErrorIs(t, err, context.Canceled)
+
+	_, err = cache.VerifyAndConsumeChallenge(ctx, key)
 	assert.ErrorIs(t, err, context.Canceled)
 }

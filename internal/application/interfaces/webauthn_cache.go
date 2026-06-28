@@ -17,4 +17,8 @@ type WebAuthnChallengeCache interface {
 
 	// DeleteChallenge removes the cached challenge for the given key to prevent reuse.
 	DeleteChallenge(ctx context.Context, key string) error
+
+	// VerifyAndConsumeChallenge atomically retrieves and deletes the cached challenge bytes for the given key.
+	// Returns ErrChallengeNotFoundOrExpired if the challenge does not exist or has expired.
+	VerifyAndConsumeChallenge(ctx context.Context, key string) ([]byte, error)
 }

@@ -72,4 +72,7 @@ var (
 
 	// ErrInvalidBiometricSignature is returned when biometric cryptographic verification fails.
 	ErrInvalidBiometricSignature = errors.New("invalid biometric signature")
+
+	// ErrChallengeNotFoundOrExpired is returned when a biometric authentication challenge is not found or has expired.
+	ErrChallengeNotFoundOrExpired = errors.New("cryptographic challenge not found or expired")
 )
