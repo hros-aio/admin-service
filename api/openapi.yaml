@@ -544,15 +544,19 @@ components:
           example: admin@hros.com
         credential_id:
           type: string
+          pattern: '^[^\s]+$'
           example: "raw_credential_id_hex_or_base64"
         authenticator_data:
           type: string
+          pattern: '^[^\s]+$'
           example: "raw_authenticator_data_base64"
         client_data_json:
           type: string
+          pattern: '^[^\s]+$'
           example: "raw_client_data_json_base64"
         signature:
           type: string
+          pattern: '^[^\s]+$'
           example: "raw_signature_base64"
 
   responses:

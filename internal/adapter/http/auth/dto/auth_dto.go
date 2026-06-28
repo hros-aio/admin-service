@@ -73,8 +73,8 @@ type BiometricChallengeResponse struct {
 // BiometricVerifyRequest represents the payload to verify a biometric login signature.
 type BiometricVerifyRequest struct {
 	Email             string `json:"email" validate:"required,email"`
-	CredentialID      string `json:"credential_id" validate:"required"`
-	AuthenticatorData string `json:"authenticator_data" validate:"required"`
-	ClientDataJSON    string `json:"client_data_json" validate:"required"`
-	Signature         string `json:"signature" validate:"required"`
+	CredentialID      string `json:"credential_id" validate:"required,notblank"`
+	AuthenticatorData string `json:"authenticator_data" validate:"required,notblank"`
+	ClientDataJSON    string `json:"client_data_json" validate:"required,notblank"`
+	Signature         string `json:"signature" validate:"required,notblank"`
 }

@@ -44,6 +44,10 @@ func NewAuthHandler(
 	confirmPasswordResetUC *usecase.ConfirmPasswordResetUseCase,
 	acceptInviteUC AcceptInviteExecutor,
 ) *AuthHandler {
+	v := validator.New()
+	_ = v.RegisterValidation("notblank", func(fl validator.FieldLevel) bool {
+		return len(strings.TrimSpace(fl.Field().String())) > 0
+	})
 	return &AuthHandler{
 		loginUC:                loginUC,
 		logoutUC:               logoutUC,
@@ -52,7 +56,7 @@ func NewAuthHandler(
 		requestPasswordResetUC: requestPasswordResetUC,
 		confirmPasswordResetUC: confirmPasswordResetUC,
 		acceptInviteUC:         acceptInviteUC,
-		validate:               validator.New(),
+		validate:               v,
 	}
 }
 

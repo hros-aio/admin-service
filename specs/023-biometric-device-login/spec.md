@@ -78,7 +78,7 @@ Clients and automated integrators must be able to use standardized, fully-valida
 
 ### Key Entities *(include if feature involves data)*
 
-- **Transient Challenge Storage**: A short-lived memory store holding challenge payloads associated with an admin during the multi-step handshake.
+- **Transient Challenge Storage**: A temporary storage mechanism holding challenge payloads associated with an admin, subject to a short-lived expiration TTL during the multi-step authentication handshake.
 - **Biometric Credential**: Information representing a registered authenticator containing Credential ID, Public Key, and Sign Count.
 - **Biometric Challenge Payload**: Structured parameters containing the target email.
 - **Biometric Verification Payload**: Structured parameters containing the target email, credential ID, signature, and client/authenticator context.
