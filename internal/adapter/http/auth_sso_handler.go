@@ -54,8 +54,12 @@ func (h *AuthSSOHandler) Initiate(c echo.Context) error {
 	output, err := h.initiateUC.Execute(c.Request().Context(), input)
 	if err != nil {
 		traceID := c.Response().Header().Get(echo.HeaderXRequestID)
-		resp := sharedErrors.NewErrorResponse("bad_request", err.Error(), nil, traceID)
-		return c.JSON(http.StatusBadRequest, resp)
+		if strings.Contains(err.Error(), "provider cannot be empty") || strings.Contains(err.Error(), "unsupported or unconfigured provider") {
+			resp := sharedErrors.NewErrorResponse("bad_request", err.Error(), nil, traceID)
+			return c.JSON(http.StatusBadRequest, resp)
+		}
+		resp := sharedErrors.NewErrorResponse("internal_error", "Internal server error", nil, traceID)
+		return c.JSON(http.StatusInternalServerError, resp)
 	}
 
 	return c.Redirect(http.StatusFound, output.RedirectURL)
@@ -131,7 +135,7 @@ func (h *AuthSSOHandler) Callback(c echo.Context) error {
 
 	resp := dto.LoginResponse{
 		AccessToken:  output.AccessToken,
-		RefreshToken: output.RefreshToken,
+		RefreshToken: "", // Keep refresh token exclusively in the cookie
 	}
 	return c.JSON(http.StatusOK, resp)
 }

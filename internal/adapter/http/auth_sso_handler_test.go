@@ -117,6 +117,30 @@ func TestAuthSSOHandler_Initiate(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "bad_request", resp.Code)
 	})
+
+	t.Run("failure - cache/state store error", func(t *testing.T) {
+		cache := new(mockSSOStateCache)
+		cache.On("StoreState", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string"), 10*time.Minute).Return(errors.New("redis connection refused")).Once()
+
+		initUC := usecase.NewInitiateSSOUseCase(cache, providers)
+		h := NewAuthSSOHandler(initUC, nil)
+
+		req := httptest.NewRequest(http.MethodGet, "/v1/auth/sso/initiate?provider=google", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		err := h.Initiate(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+
+		var resp sharedErrors.ErrorResponse
+		err = json.Unmarshal(rec.Body.Bytes(), &resp)
+		assert.NoError(t, err)
+		assert.Equal(t, "internal_error", resp.Code)
+		assert.Equal(t, "Internal server error", resp.Message)
+
+		cache.AssertExpectations(t)
+	})
 }
 
 func TestAuthSSOHandler_Callback(t *testing.T) {
@@ -171,7 +195,7 @@ func TestAuthSSOHandler_Callback(t *testing.T) {
 		err = json.Unmarshal(rec.Body.Bytes(), &resp)
 		assert.NoError(t, err)
 		assert.Equal(t, "access-token-jwt", resp.AccessToken)
-		assert.Equal(t, "refresh-token-session", resp.RefreshToken)
+		assert.Empty(t, resp.RefreshToken)
 
 		// Assert cookie
 		cookies := rec.Result().Cookies()

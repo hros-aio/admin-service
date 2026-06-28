@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-06-28
-**Feature**: [spec.md](file:///home/ren0503/new-hros/admin-service/specs/022-sso-identity-federation/spec.md)
+**Feature**: [spec.md](../spec.md)
 
 ## Content Quality
 

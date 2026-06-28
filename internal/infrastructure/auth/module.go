@@ -39,17 +39,28 @@ var Module = fx.Module("auth-infra",
 		},
 		NewDefaultSSOClient,
 		cache.NewRedisSSOStateCache,
-		func(cfg *config.Config) map[string]usecase.SSOProviderConfig {
-			providers := make(map[string]usecase.SSOProviderConfig)
-			if cfg.SSOGoogleClientID != "" && cfg.SSOGoogleRedirectURL != "" && cfg.SSOGoogleAuthURL != "" {
-				providers["google"] = usecase.SSOProviderConfig{
-					ClientID:    cfg.SSOGoogleClientID,
-					RedirectURL: cfg.SSOGoogleRedirectURL,
-					AuthURL:     cfg.SSOGoogleAuthURL,
-					Scopes:      []string{"openid", "email", "profile"},
-				}
-			}
-			return providers
-		},
+		ProvideSSOProviders,
 	),
 )
+
+// ProvideSSOProviders parses and validates the SSO providers configuration.
+func ProvideSSOProviders(cfg *config.Config) (map[string]usecase.SSOProviderConfig, error) {
+	providers := make(map[string]usecase.SSOProviderConfig)
+
+	hasClientID := cfg.SSOGoogleClientID != ""
+	hasRedirectURL := cfg.SSOGoogleRedirectURL != ""
+	hasAuthURL := cfg.SSOGoogleAuthURL != ""
+
+	if hasClientID || hasRedirectURL || hasAuthURL {
+		if !hasClientID || !hasRedirectURL || !hasAuthURL {
+			return nil, fmt.Errorf("SSO Google provider configuration is incomplete: SSOGoogleClientID, SSOGoogleRedirectURL, and SSOGoogleAuthURL must all be set together")
+		}
+		providers["google"] = usecase.SSOProviderConfig{
+			ClientID:    cfg.SSOGoogleClientID,
+			RedirectURL: cfg.SSOGoogleRedirectURL,
+			AuthURL:     cfg.SSOGoogleAuthURL,
+			Scopes:      []string{"openid", "email", "profile"},
+		}
+	}
+	return providers, nil
+}
