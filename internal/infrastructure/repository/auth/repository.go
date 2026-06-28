@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/hros/admin-service/internal/domain"
@@ -174,4 +175,23 @@ func (r *GormAdminUserRepository) FindByEmailOrSSO(ctx context.Context, email st
 
 	// If neither resolved, return ErrUserNotFound
 	return nil, domainErrors.ErrUserNotFound
+}
+
+// UpdateWebAuthnSignCount updates the signature count inside the webauthn_credentials JSONB column to mitigate authenticator cloning.
+func (r *GormAdminUserRepository) UpdateWebAuthnSignCount(ctx context.Context, adminID string, newCount uint32) error {
+	db := platformDB.GetTx(ctx, r.db)
+
+	newCountJSON := []byte(fmt.Sprintf("%d", newCount))
+
+	result := db.Model(&adminUserModel{}).
+		Where("id = ?", adminID).
+		Update("webauthn_credentials", gorm.Expr("jsonb_set(COALESCE(webauthn_credentials, '{}'::jsonb), '{sign_count}', ?::jsonb)", newCountJSON))
+
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return domainErrors.ErrUserNotFound
+	}
+	return nil
 }

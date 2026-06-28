@@ -36,7 +36,7 @@ Admins can log in to the administrative portal using their registered biometric 
 **Acceptance Scenarios**:
 
 1. **Given** an admin email, **When** they request an authentication challenge, **Then** the system generates a challenge, caches it, and returns it to the client.
-2. **Given** a cached authentication challenge, **When** the admin submits a valid signature matching their registered biometric credential, **Then** the system authenticates the user and logs a biometric success event.
+2. **Given** a cached authentication challenge, **When** the admin submits a valid signature matching their registered biometric credential, **Then** the system authenticates the user, logs a biometric success event, and updates the stored biometric credential sign count.
 
 ---
 
@@ -60,6 +60,7 @@ Clients and automated integrators must be able to use standardized, fully-valida
 - **Unregistered Biometric Device**: The admin attempts to log in using biometrics but has no registered biometric credentials.
 - **Invalid Cryptographic Signature**: The signature submitted during verification does not match the cached challenge or stored public key.
 - **Challenge Expired or Missing**: The cryptographic challenge has expired or is not found in transient storage, rejecting the verification step.
+- **Cloned Authenticator Detection**: The sign count returned by the authenticator is less than or equal to the stored sign count, indicating potential device cloning.
 
 ## Requirements *(mandatory)*
 
@@ -75,6 +76,7 @@ Clients and automated integrators must be able to use standardized, fully-valida
 - **FR-008**: The system MUST define request schemas validating client-supplied parameters for the biometric challenge endpoint (requiring a valid email).
 - **FR-009**: The system MUST define request schemas validating client-supplied parameters for the biometric verification endpoint (requiring email, credential ID, authenticator data, client data JSON, and cryptographic signature).
 - **FR-010**: The OpenAPI contract MUST document the biometric challenge and verification endpoints, including successful outcomes and failure codes (such as 400 Bad Request and 401 Unauthorized).
+- **FR-011**: The system MUST update the sign count of the verified biometric credential in persistent storage (e.g., inside the user's `webauthn_credentials` JSONB field) post-verification to mitigate authenticator cloning attacks.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -91,6 +93,7 @@ Clients and automated integrators must be able to use standardized, fully-valida
 - **SC-002**: Cryptographic challenges are automatically cleared from cache after 5 minutes.
 - **SC-003**: Unauthorized login attempts using modified challenges or signatures are rejected 100% of the time.
 - **SC-004**: All malformed or incomplete client request payloads are rejected by API validation gates.
+- **SC-005**: 100% of successful WebAuthn authentications result in the persistent update of the credential's sign count.
 
 ## Assumptions
 

@@ -1,40 +1,39 @@
-# Implementation Plan: Biometric Device Login (WebAuthn) - Cache Layer
+# Implementation Plan: Biometric Device Login (WebAuthn) - Repository Layer (TSK-BIO-004)
 
 **Branch**: `023-biometric-device-login` | **Date**: 2026-06-28 | **Spec**: [spec.md](./spec.md)
 
 ## Summary
 
-Implement the `WebAuthnChallengeCache` interface using Redis.
-Define `StoreChallenge(ctx, email, challenge, ttl)` keeping the email at the API boundary, but mapping it internally to an opaque challenge/session identifier (one-way SHA-256 hash of the email) in the Redis keyspace with a strict short TTL (e.g., 5 minutes) to protect PII.
-Define `VerifyAndConsumeChallenge(ctx, email)` to atomically fetch and delete the challenge entry using the opaque identifier.
+Update the `AdminUserRepository` interface and its GORM implementation `GormAdminUserRepository` with the `UpdateWebAuthnSignCount(ctx, adminID, newCount)` method.
+This method performs an atomic PostgreSQL JSONB update to set the `sign_count` value inside the `webauthn_credentials` JSONB column of the `admin_users` table for the specified user. This is crucial for verifying that authenticators are not cloned during subsequent WebAuthn log in handshakes.
 
 ## Technical Context
 
 **Language/Version**: Go 1.23+
 
-**Primary Dependencies**: `github.com/redis/go-redis/v9`
+**Primary Dependencies**: `gorm.io/gorm`, `gorm.io/driver/postgres`
 
-**Storage**: Redis for Challenge Cache
+**Storage**: PostgreSQL (GORM JSONB update)
 
-**Testing**: `github.com/alicebob/miniredis/v2` for local mocked Redis client unit tests
+**Testing**: `github.com/DATA-DOG/go-sqlmock` for GORM SQL mock tests
 
 **Target Platform**: Linux server
 
 **Project Type**: web-service
 
-**Performance Goals**: Sub-millisecond Redis response time for cache hits
+**Performance Goals**: Sub-millisecond database updates for sign count updates
 
-**Constraints**: Clean architecture, interface in `application/interfaces`, implementation in `infrastructure/cache`
+**Constraints**: Clean Architecture. Interface in `internal/domain/admin_user.go`, implementation in `internal/infrastructure/repository/auth/repository.go` (existing architectural structure), and unit tests in `internal/infrastructure/repository/auth/repository_test.go` using `sqlmock`.
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-- [x] Clean Architecture: Cache interface in `internal/application/interfaces/webauthn_cache.go`, implementation in `internal/infrastructure/cache/webauthn_redis.go`.
-- [x] Documentation-First: TTL and lifecycle documented in `specs/023-biometric-device-login/spec.md`.
-- [x] Unit-Test-Per-File: `webauthn_redis_test.go` corresponding to `webauthn_redis.go`.
-- [x] Task-Driven: Focus strictly on TSK-BIO-003.
-- [x] Observability: Structured logging for store/fetch/consume events.
+- [x] Clean Architecture: Database interfaces remain in `internal/domain/`, GORM implementation in `internal/infrastructure/repository/auth/`.
+- [x] Documentation-First: Requirements and outcomes documented in `specs/023-biometric-device-login/spec.md`.
+- [x] Unit-Test-Per-File: Unit tests for repository methods implemented in `repository_test.go`.
+- [x] Task-Driven: Focus strictly on TSK-BIO-004.
+- [x] Observability: Structured logging is NOT required at the raw repository level, but any database errors will be propagated.
 
 ## Project Structure
 
@@ -53,18 +52,16 @@ specs/023-biometric-device-login/
 
 ```text
 internal/
-├── application/
-│   └── interfaces/
-│       ├── webauthn_cache.go          # Cache Interface
-│       └── webauthn_cache_test.go     # Compilation fake/mock check
 ├── domain/
-│   └── errors/
-│       └── auth_errors.go             # Domain Errors
+│   └── admin_user.go                        # AdminUserRepository interface
 └── infrastructure/
-    └── cache/
-        ├── webauthn_redis.go          # Redis Implementation
-        └── webauthn_redis_test.go     # Cache Unit Tests
+    └── repository/
+        └── auth/
+            ├── repository.go                # GormAdminUserRepository implementation
+            └── repository_test.go           # Repository Unit Tests (sqlmock)
 ```
+
+**Structure Decision**: Single project layout matching existing repository structure. Although the task prompt specified `internal/infrastructure/database/admin_user_repository.go`, we will adhere to the existing architecture where `GormAdminUserRepository` is located in `internal/infrastructure/repository/auth/repository.go` to avoid codebase pollution and duplicate code.
 
 ## Complexity Tracking
 
