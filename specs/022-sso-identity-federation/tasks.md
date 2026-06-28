@@ -78,3 +78,10 @@
 - [x] T022 [P] [US8] Implement unit tests for the SSO HTTP handlers in `internal/adapter/http/auth_sso_handler_test.go`.
 - [x] T023 [US8] Register the SSO HTTP handlers and routes in `internal/adapter/http/module.go`.
 
+---
+
+## Phase 9: SSO Full Integration Test (TSK-SSO-009)
+
+- [x] T024 [P] [US9] Implement the full SSO integration test in `test/integration/sso_flow_test.go` using containerized PostgreSQL and Redis.
+
+

@@ -31,5 +31,6 @@
 
 ## Notes
 
-- The specification has been successfully updated to include User Story 8, FR-022 to FR-025, and SC-011 to SC-012 for the handler layer.
+- The specification has been successfully updated to include User Story 9, FR-026 to FR-028, and SC-013 for the integration testing layer, in addition to the prior handler layer updates.
 - All checklist items pass. No needs-clarification markers remain.
+

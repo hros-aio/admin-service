@@ -24,6 +24,8 @@ This plan outlines the implementation of the Domain and Application Interface de
 
 **Phase 8 (TSK-SSO-008)**: Implement Echo HTTP handlers for `GET /auth/sso/initiate` and `GET /auth/sso/callback` in `internal/adapter/http/auth_sso_handler.go`. Add unit tests in `internal/adapter/http/auth_sso_handler_test.go`. Register routes and handlers in `internal/adapter/http/module.go` under the `http-adapter` module.
 
+**Phase 9 (TSK-SSO-009)**: Implement an integration test for the full SSO Identity Federation flow in `test/integration/sso_flow_test.go` using containerized PostgreSQL and Redis via `testcontainers`. Execute the `/initiate` request to capture the Redis state, mock an IdP callback response using the generated state, and verify database session updates and JWT access token issuance. Verify that a callback with an unregistered email returns a 401 error.
+
 ## Technical Context
 
 **Language/Version**: Go 1.23+
@@ -99,6 +101,7 @@ migrations/
 └── 000005_add_sso_to_admin_users.down.sql # SQL migration down script
 test/
 └── integration/
+    ├── sso_flow_test.go            # Full-flow SSO integration test using testcontainers
     └── sso_migration_test.go       # Integration test for the database migration
 ```
 
