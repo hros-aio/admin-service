@@ -27,7 +27,7 @@ func NewJWTTokenProvider(privateKey *rsa.PrivateKey, issuer string) *JWTTokenPro
 }
 
 // GenerateAccessToken generates an RS256 JWT access token.
-func (p *JWTTokenProvider) GenerateAccessToken(ctx context.Context, user *domain.AdminUser, expiry time.Duration) (string, error) {
+func (p *JWTTokenProvider) GenerateAccessToken(_ context.Context, user *domain.AdminUser, expiry time.Duration) (string, error) {
 	now := time.Now()
 	claims := jwt.MapClaims{
 		"jti":   domain.NewUUID(),
@@ -44,7 +44,7 @@ func (p *JWTTokenProvider) GenerateAccessToken(ctx context.Context, user *domain
 }
 
 // GenerateRefreshToken generates a secure random refresh token.
-func (p *JWTTokenProvider) GenerateRefreshToken(ctx context.Context) (string, error) {
+func (p *JWTTokenProvider) GenerateRefreshToken(_ context.Context) (string, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
 		return "", fmt.Errorf("failed to generate random bytes: %w", err)

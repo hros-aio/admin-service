@@ -16,6 +16,9 @@ test-cover:
 lint:
 	golangci-lint run ./...
 
+format:
+	go run mvdan.cc/gofumpt@latest -w -l .
+
 docker-up:
 	docker compose up -d
 

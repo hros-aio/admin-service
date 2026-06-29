@@ -91,27 +91,8 @@ func (uc *VerifyBiometricUseCase) Execute(ctx context.Context, input VerifyBiome
 	}
 
 	// 2. Parse clientDataJSON and verify type is webauthn.get, origin is allowed, and the challenge matches
-	var cd clientData
-	if err := json.Unmarshal(input.ClientDataJSON, &cd); err != nil {
-		return nil, domainErrors.ErrInvalidBiometricSignature
-	}
-
-	if cd.Type != "webauthn.get" {
-		return nil, domainErrors.ErrInvalidBiometricSignature
-	}
-
-	allowedOrigins := map[string]bool{
-		"http://localhost:3000":  true,
-		"https://localhost:3000": true,
-		"https://hros.admin":     true,
-	}
-	if !allowedOrigins[cd.Origin] {
-		return nil, domainErrors.ErrInvalidBiometricSignature
-	}
-
-	decodedChallenge, err := base64.RawURLEncoding.DecodeString(cd.Challenge)
-	if err != nil || !bytes.Equal(cachedChallenge, decodedChallenge) {
-		return nil, domainErrors.ErrInvalidBiometricSignature
+	if err := verifyClientData(input.ClientDataJSON, cachedChallenge); err != nil {
+		return nil, err
 	}
 
 	// 3. Retrieve user
@@ -132,44 +113,14 @@ func (uc *VerifyBiometricUseCase) Execute(ctx context.Context, input VerifyBiome
 	}
 
 	// Validate authenticator data length, RP ID hash, and UP/UV flags before credential parsing
-	if len(input.AuthenticatorData) < 37 {
-		return nil, domainErrors.ErrInvalidBiometricSignature
-	}
-
-	rpIDHash := input.AuthenticatorData[:32]
-	expectedHash1 := sha256.Sum256([]byte("localhost"))
-	expectedHash2 := sha256.Sum256([]byte("hros.admin"))
-	if !bytes.Equal(rpIDHash, expectedHash1[:]) && !bytes.Equal(rpIDHash, expectedHash2[:]) {
-		return nil, domainErrors.ErrInvalidBiometricSignature
-	}
-
-	flags := input.AuthenticatorData[32]
-	if (flags & 0x01) == 0 { // User Present (UP) must be set
-		return nil, domainErrors.ErrInvalidBiometricSignature
-	}
-	if (flags & 0x04) == 0 { // User Verified (UV) must be set
-		return nil, domainErrors.ErrInvalidBiometricSignature
+	if err := verifyAuthenticatorData(input.AuthenticatorData); err != nil {
+		return nil, err
 	}
 
 	// 4. Retrieve and parse WebAuthn Credentials
-	trimmedCreds := bytes.TrimSpace(user.WebauthnCredentials)
-	if len(trimmedCreds) == 0 {
-		return nil, domainErrors.ErrBiometricNotRegistered
-	}
-
-	var creds []WebAuthnCredential
-	if trimmedCreds[0] == '[' {
-		if err := json.Unmarshal(trimmedCreds, &creds); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal credentials array: %w", err)
-		}
-	} else if trimmedCreds[0] == '{' {
-		var singleCred WebAuthnCredential
-		if err := json.Unmarshal(trimmedCreds, &singleCred); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal single credential: %w", err)
-		}
-		creds = []WebAuthnCredential{singleCred}
-	} else {
-		return nil, domainErrors.ErrBiometricNotRegistered
+	creds, err := parseCredentials(user.WebauthnCredentials)
+	if err != nil {
+		return nil, err
 	}
 
 	var matchedCred *WebAuthnCredential
@@ -253,6 +204,78 @@ func (uc *VerifyBiometricUseCase) Execute(ctx context.Context, input VerifyBiome
 	}, nil
 }
 
+func verifyClientData(clientDataJSON []byte, cachedChallenge []byte) error {
+	var cd clientData
+	if err := json.Unmarshal(clientDataJSON, &cd); err != nil {
+		return domainErrors.ErrInvalidBiometricSignature
+	}
+
+	if cd.Type != "webauthn.get" {
+		return domainErrors.ErrInvalidBiometricSignature
+	}
+
+	allowedOrigins := map[string]bool{
+		"http://localhost:3000":  true,
+		"https://localhost:3000": true,
+		"https://hros.admin":     true,
+	}
+	if !allowedOrigins[cd.Origin] {
+		return domainErrors.ErrInvalidBiometricSignature
+	}
+
+	decodedChallenge, err := base64.RawURLEncoding.DecodeString(cd.Challenge)
+	if err != nil || !bytes.Equal(cachedChallenge, decodedChallenge) {
+		return domainErrors.ErrInvalidBiometricSignature
+	}
+	return nil
+}
+
+func verifyAuthenticatorData(authenticatorData []byte) error {
+	if len(authenticatorData) < 37 {
+		return domainErrors.ErrInvalidBiometricSignature
+	}
+
+	rpIDHash := authenticatorData[:32]
+	expectedHash1 := sha256.Sum256([]byte("localhost"))
+	expectedHash2 := sha256.Sum256([]byte("hros.admin"))
+	if !bytes.Equal(rpIDHash, expectedHash1[:]) && !bytes.Equal(rpIDHash, expectedHash2[:]) {
+		return domainErrors.ErrInvalidBiometricSignature
+	}
+
+	flags := authenticatorData[32]
+	if (flags & 0x01) == 0 { // User Present (UP) must be set
+		return domainErrors.ErrInvalidBiometricSignature
+	}
+	if (flags & 0x04) == 0 { // User Verified (UV) must be set
+		return domainErrors.ErrInvalidBiometricSignature
+	}
+	return nil
+}
+
+func parseCredentials(webauthnCredentials []byte) ([]WebAuthnCredential, error) {
+	trimmedCreds := bytes.TrimSpace(webauthnCredentials)
+	if len(trimmedCreds) == 0 {
+		return nil, domainErrors.ErrBiometricNotRegistered
+	}
+
+	var creds []WebAuthnCredential
+	switch trimmedCreds[0] {
+	case '[':
+		if err := json.Unmarshal(trimmedCreds, &creds); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal credentials array: %w", err)
+		}
+	case '{':
+		var singleCred WebAuthnCredential
+		if err := json.Unmarshal(trimmedCreds, &singleCred); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal single credential: %w", err)
+		}
+		creds = []WebAuthnCredential{singleCred}
+	default:
+		return nil, domainErrors.ErrBiometricNotRegistered
+	}
+	return creds, nil
+}
+
 func verifyECDSASignature(pubKeyStr string, clientDataJSON, authenticatorData, signature []byte) bool {
 	var pubKeyBytes []byte
 	block, _ := pem.Decode([]byte(pubKeyStr))
@@ -278,7 +301,9 @@ func verifyECDSASignature(pubKeyStr string, clientDataJSON, authenticatorData, s
 	}
 
 	clientDataHash := sha256.Sum256(clientDataJSON)
-	signedData := append(authenticatorData, clientDataHash[:]...)
+	signedData := make([]byte, len(authenticatorData)+len(clientDataHash))
+	copy(signedData, authenticatorData)
+	copy(signedData[len(authenticatorData):], clientDataHash[:])
 	signedDataHash := sha256.Sum256(signedData)
 
 	var sig ecdsaSignature

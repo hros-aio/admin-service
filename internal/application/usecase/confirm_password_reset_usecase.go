@@ -120,11 +120,12 @@ func validatePasswordComplexity(password string) bool {
 	}
 	var hasUpper, hasDigit, hasSpecial bool
 	for _, r := range password {
-		if unicode.IsUpper(r) {
+		switch {
+		case unicode.IsUpper(r):
 			hasUpper = true
-		} else if unicode.IsDigit(r) {
+		case unicode.IsDigit(r):
 			hasDigit = true
-		} else if !unicode.IsLetter(r) && !unicode.IsSpace(r) {
+		case !unicode.IsLetter(r) && !unicode.IsSpace(r):
 			hasSpecial = true
 		}
 	}

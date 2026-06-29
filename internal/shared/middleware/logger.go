@@ -24,7 +24,8 @@ func Logger(log *slog.Logger) echo.MiddlewareFunc {
 			req := c.Request()
 			res := c.Response()
 
-			log.InfoContext(req.Context(), "request",
+			log.InfoContext(
+				req.Context(), "request",
 				slog.String("remote_ip", c.RealIP()),
 				slog.String("host", req.Host),
 				slog.String("method", req.Method),

@@ -86,7 +86,8 @@ func (uc *LoginUseCase) Execute(ctx context.Context, input LoginInput) (*LoginOu
 	// Fail-open: if the cache is unavailable, allow the request to proceed.
 	locked, _, cacheErr := uc.bruteForce.IsLocked(ctx, email)
 	if cacheErr != nil {
-		uc.logger.WarnContext(ctx, "brute force cache unavailable during IsLocked; failing open",
+		uc.logger.WarnContext(
+			ctx, "brute force cache unavailable during IsLocked; failing open",
 			slog.String("error", cacheErr.Error()),
 		)
 	}
@@ -129,7 +130,8 @@ func (uc *LoginUseCase) Execute(ctx context.Context, input LoginInput) (*LoginOu
 
 	// ── Step 3: Successful login — reset the failure counter ──────────────────
 	if resetErr := uc.bruteForce.Reset(ctx, email); resetErr != nil {
-		uc.logger.WarnContext(ctx, "brute force cache unavailable during Reset; proceeding",
+		uc.logger.WarnContext(
+			ctx, "brute force cache unavailable during Reset; proceeding",
 			slog.String("error", resetErr.Error()),
 		)
 	}
@@ -147,7 +149,8 @@ func (uc *LoginUseCase) Execute(ctx context.Context, input LoginInput) (*LoginOu
 		mfaToken := hex.EncodeToString(tokenBytes)
 
 		if err := uc.mfaCache.StoreToken(ctx, mfaToken, user.ID); err != nil {
-			uc.logger.ErrorContext(ctx, "failed to cache MFA token for Super Admin",
+			uc.logger.ErrorContext(
+				ctx, "failed to cache MFA token for Super Admin",
 				slog.String("event", "login_usecase.cache_mfa_token_failed"),
 				slog.String("user_id", user.ID),
 				slog.Any("error", err),
@@ -155,7 +158,8 @@ func (uc *LoginUseCase) Execute(ctx context.Context, input LoginInput) (*LoginOu
 			return nil, fmt.Errorf("store mfa token: %w", err)
 		}
 
-		uc.logger.InfoContext(ctx, "Super Admin login intercepted; MFA token generated",
+		uc.logger.InfoContext(
+			ctx, "Super Admin login intercepted; MFA token generated",
 			slog.String("event", "login_usecase.mfa_token_generated"),
 			slog.String("user_id", user.ID),
 			slog.String("key", "auth:mfa_token:[REDACTED]"),
@@ -229,7 +233,8 @@ func (uc *LoginUseCase) Execute(ctx context.Context, input LoginInput) (*LoginOu
 func (uc *LoginUseCase) handleFailedAttempt(ctx context.Context, email string, user *domain.AdminUser) {
 	count, incrErr := uc.bruteForce.IncrementFailedAttempts(ctx, email, failureWindow)
 	if incrErr != nil {
-		uc.logger.WarnContext(ctx, "brute force cache unavailable during IncrementFailedAttempts; failing open",
+		uc.logger.WarnContext(
+			ctx, "brute force cache unavailable during IncrementFailedAttempts; failing open",
 			slog.String("error", incrErr.Error()),
 		)
 		return
@@ -241,7 +246,8 @@ func (uc *LoginUseCase) handleFailedAttempt(ctx context.Context, email string, u
 
 	// Threshold reached — apply lockout.
 	if lockErr := uc.bruteForce.SetLockout(ctx, email, lockoutDuration); lockErr != nil {
-		uc.logger.WarnContext(ctx, "brute force cache unavailable during SetLockout",
+		uc.logger.WarnContext(
+			ctx, "brute force cache unavailable during SetLockout",
 			slog.String("error", lockErr.Error()),
 		)
 	}
@@ -262,7 +268,8 @@ func (uc *LoginUseCase) handleFailedAttempt(ctx context.Context, email string, u
 	}
 
 	if pubErr := uc.lockoutNotify.PublishLockoutEmail(ctx, emailEvent); pubErr != nil {
-		uc.logger.ErrorContext(ctx, "failed to publish lockout email notification",
+		uc.logger.ErrorContext(
+			ctx, "failed to publish lockout email notification",
 			slog.String("error", pubErr.Error()),
 		)
 	}

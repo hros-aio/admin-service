@@ -52,7 +52,8 @@ func (r *RedisWebAuthnChallengeCache) StoreChallenge(ctx context.Context, email 
 	redisKey := webauthnKeyPrefix + opaqueID
 	err := r.client.Set(ctx, redisKey, challenge, ttl).Err()
 	if err != nil {
-		r.logger.ErrorContext(ctx, "failed to store WebAuthn challenge in Redis",
+		r.logger.ErrorContext(
+			ctx, "failed to store WebAuthn challenge in Redis",
 			slog.String("event", "webauthn_challenge_cache_redis.store_failed"),
 			slog.String("key", "auth:webauthn_challenge:[REDACTED]"),
 			slog.Any("error", err),
@@ -60,7 +61,8 @@ func (r *RedisWebAuthnChallengeCache) StoreChallenge(ctx context.Context, email 
 		return fmt.Errorf("redis set: %w", err)
 	}
 
-	r.logger.InfoContext(ctx, "successfully stored WebAuthn challenge in Redis",
+	r.logger.InfoContext(
+		ctx, "successfully stored WebAuthn challenge in Redis",
 		slog.String("event", "webauthn_challenge_cache_redis.store_success"),
 		slog.String("key", "auth:webauthn_challenge:[REDACTED]"),
 		slog.Duration("ttl", ttl),
@@ -76,13 +78,15 @@ func (r *RedisWebAuthnChallengeCache) GetChallenge(ctx context.Context, email st
 	val, err := r.client.Get(ctx, redisKey).Bytes()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
-			r.logger.WarnContext(ctx, "WebAuthn challenge not found or expired in Redis",
+			r.logger.WarnContext(
+				ctx, "WebAuthn challenge not found or expired in Redis",
 				slog.String("event", "webauthn_challenge_cache_redis.get_expired"),
 				slog.String("key", "auth:webauthn_challenge:[REDACTED]"),
 			)
 			return nil, domainErrors.ErrChallengeNotFoundOrExpired
 		}
-		r.logger.ErrorContext(ctx, "failed to retrieve WebAuthn challenge from Redis",
+		r.logger.ErrorContext(
+			ctx, "failed to retrieve WebAuthn challenge from Redis",
 			slog.String("event", "webauthn_challenge_cache_redis.get_failed"),
 			slog.String("key", "auth:webauthn_challenge:[REDACTED]"),
 			slog.Any("error", err),
@@ -90,7 +94,8 @@ func (r *RedisWebAuthnChallengeCache) GetChallenge(ctx context.Context, email st
 		return nil, fmt.Errorf("redis get: %w", err)
 	}
 
-	r.logger.InfoContext(ctx, "successfully retrieved WebAuthn challenge from Redis",
+	r.logger.InfoContext(
+		ctx, "successfully retrieved WebAuthn challenge from Redis",
 		slog.String("event", "webauthn_challenge_cache_redis.get_success"),
 		slog.String("key", "auth:webauthn_challenge:[REDACTED]"),
 	)
@@ -103,7 +108,8 @@ func (r *RedisWebAuthnChallengeCache) DeleteChallenge(ctx context.Context, email
 	redisKey := webauthnKeyPrefix + opaqueID
 	err := r.client.Del(ctx, redisKey).Err()
 	if err != nil {
-		r.logger.ErrorContext(ctx, "failed to delete WebAuthn challenge from Redis",
+		r.logger.ErrorContext(
+			ctx, "failed to delete WebAuthn challenge from Redis",
 			slog.String("event", "webauthn_challenge_cache_redis.delete_failed"),
 			slog.String("key", "auth:webauthn_challenge:[REDACTED]"),
 			slog.Any("error", err),
@@ -111,7 +117,8 @@ func (r *RedisWebAuthnChallengeCache) DeleteChallenge(ctx context.Context, email
 		return fmt.Errorf("redis del: %w", err)
 	}
 
-	r.logger.InfoContext(ctx, "successfully deleted WebAuthn challenge from Redis",
+	r.logger.InfoContext(
+		ctx, "successfully deleted WebAuthn challenge from Redis",
 		slog.String("event", "webauthn_challenge_cache_redis.delete_success"),
 		slog.String("key", "auth:webauthn_challenge:[REDACTED]"),
 	)
@@ -126,13 +133,15 @@ func (r *RedisWebAuthnChallengeCache) VerifyAndConsumeChallenge(ctx context.Cont
 	res, err := r.client.Eval(ctx, consumeChallengeScript, []string{redisKey}).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
-			r.logger.WarnContext(ctx, "WebAuthn challenge not found or expired in Redis during consume",
+			r.logger.WarnContext(
+				ctx, "WebAuthn challenge not found or expired in Redis during consume",
 				slog.String("event", "webauthn_challenge_cache_redis.consume_expired"),
 				slog.String("key", "auth:webauthn_challenge:[REDACTED]"),
 			)
 			return nil, domainErrors.ErrChallengeNotFoundOrExpired
 		}
-		r.logger.ErrorContext(ctx, "failed to consume WebAuthn challenge from Redis",
+		r.logger.ErrorContext(
+			ctx, "failed to consume WebAuthn challenge from Redis",
 			slog.String("event", "webauthn_challenge_cache_redis.consume_failed"),
 			slog.String("key", "auth:webauthn_challenge:[REDACTED]"),
 			slog.Any("error", err),
@@ -143,7 +152,8 @@ func (r *RedisWebAuthnChallengeCache) VerifyAndConsumeChallenge(ctx context.Cont
 	valStr, ok := res.(string)
 	if !ok {
 		if res == nil {
-			r.logger.WarnContext(ctx, "WebAuthn challenge not found or expired in Redis during consume (nil result)",
+			r.logger.WarnContext(
+				ctx, "WebAuthn challenge not found or expired in Redis during consume (nil result)",
 				slog.String("event", "webauthn_challenge_cache_redis.consume_expired"),
 				slog.String("key", "auth:webauthn_challenge:[REDACTED]"),
 			)
@@ -152,7 +162,8 @@ func (r *RedisWebAuthnChallengeCache) VerifyAndConsumeChallenge(ctx context.Cont
 		return nil, fmt.Errorf("unexpected Redis response type: %T", res)
 	}
 
-	r.logger.InfoContext(ctx, "successfully consumed WebAuthn challenge from Redis",
+	r.logger.InfoContext(
+		ctx, "successfully consumed WebAuthn challenge from Redis",
 		slog.String("event", "webauthn_challenge_cache_redis.consume_success"),
 		slog.String("key", "auth:webauthn_challenge:[REDACTED]"),
 	)

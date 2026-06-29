@@ -4,18 +4,17 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"log/slog"
 
 	"github.com/hros/admin-service/internal/application/auth"
 	"github.com/hros/admin-service/internal/application/usecase"
 	"github.com/hros/admin-service/internal/config"
-	authDomain "github.com/hros/admin-service/internal/domain/auth"
 	"github.com/hros/admin-service/internal/infrastructure/cache"
 	"go.uber.org/fx"
 )
 
 // Module is the Fx module for authentication infrastructure.
-var Module = fx.Module("auth-infra",
+var Module = fx.Module(
+	"auth-infra",
 	fx.Provide(
 		func() auth.PasswordHelper {
 			return NewBcryptPasswordHelper(12)
@@ -34,9 +33,7 @@ var Module = fx.Module("auth-infra",
 			}
 			return NewJWTTokenProvider(key, "hros-admin"), nil
 		},
-		func(log *slog.Logger) authDomain.AuditLogger {
-			return NewSlogAuditLogger(log)
-		},
+		NewSlogAuditLogger,
 		NewDefaultSSOClient,
 		cache.NewRedisSSOStateCache,
 		ProvideSSOProviders,

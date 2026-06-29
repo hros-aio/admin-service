@@ -87,10 +87,12 @@ type mockMFACache struct{ mock.Mock }
 func (m *mockMFACache) StoreToken(ctx context.Context, token string, adminID string) error {
 	return m.Called(ctx, token, adminID).Error(0)
 }
+
 func (m *mockMFACache) GetAdminID(ctx context.Context, token string) (string, error) {
 	args := m.Called(ctx, token)
 	return args.String(0), args.Error(1)
 }
+
 func (m *mockMFACache) DeleteToken(ctx context.Context, token string) error {
 	return m.Called(ctx, token).Error(0)
 }
@@ -256,12 +258,15 @@ type nopBruteForceCache struct{}
 func (n *nopBruteForceCache) IncrementFailedAttempts(_ context.Context, _ string, _ time.Duration) (int, error) {
 	return 0, nil
 }
+
 func (n *nopBruteForceCache) GetFailedAttempts(_ context.Context, _ string) (int, error) {
 	return 0, nil
 }
+
 func (n *nopBruteForceCache) SetLockout(_ context.Context, _ string, _ time.Duration) error {
 	return nil
 }
+
 func (n *nopBruteForceCache) IsLocked(_ context.Context, _ string) (bool, time.Time, error) {
 	return false, time.Time{}, nil
 }
@@ -1126,8 +1131,6 @@ func TestAuthHandler_VerifyMFA(t *testing.T) {
 		bodyBytes, _ := json.Marshal(reqBody)
 		req := httptest.NewRequest(http.MethodPost, "/v1/auth/mfa/verify", bytes.NewBuffer(bodyBytes))
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
 
 		user := &domain.AdminUser{
 			ID:         "admin-id-123",
@@ -1148,8 +1151,8 @@ func TestAuthHandler_VerifyMFA(t *testing.T) {
 		bodyBytes, _ = json.Marshal(reqBody)
 		req = httptest.NewRequest(http.MethodPost, "/v1/auth/mfa/verify", bytes.NewBuffer(bodyBytes))
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-		rec = httptest.NewRecorder()
-		c = e.NewContext(req, rec)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
 
 		mockAuditLogger.On("LogMFASuccess", mock.Anything, "admin-id-123", "admin@hros.com").Return().Once()
 		mockTokenProvider.On("GenerateAccessToken", mock.Anything, user, 15*time.Minute).Return("access-token-xyz", nil).Once()

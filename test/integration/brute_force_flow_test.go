@@ -47,7 +47,8 @@ func TestBruteForceFlow(t *testing.T) {
 	ctx := context.Background()
 
 	// 1. Setup testcontainers PostgreSQL instance
-	postgresContainer, err := postgres.Run(ctx,
+	postgresContainer, err := postgres.Run(
+		ctx,
 		"postgres:16-alpine",
 		postgres.WithDatabase("hros_admin"),
 		postgres.WithUsername("postgres"),

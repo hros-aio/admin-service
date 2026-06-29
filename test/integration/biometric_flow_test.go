@@ -123,7 +123,9 @@ func buildClientDataJSON(challengeB64url string) []byte {
 func signWebAuthnAssertion(t *testing.T, privKey *ecdsa.PrivateKey, clientDataJSON, authData []byte) []byte {
 	t.Helper()
 	clientDataHash := sha256.Sum256(clientDataJSON)
-	signedData := append(authData, clientDataHash[:]...)
+	signedData := make([]byte, len(authData), len(authData)+len(clientDataHash))
+	copy(signedData, authData)
+	signedData = append(signedData, clientDataHash[:]...)
 	signedDataHash := sha256.Sum256(signedData)
 
 	r, s, err := ecdsa.Sign(rand.Reader, privKey, signedDataHash[:])
@@ -158,7 +160,8 @@ func TestBiometricFlow(t *testing.T) {
 	// -------------------------------------------------------------------------
 	// T007: PostgreSQL testcontainer + miniredis setup
 	// -------------------------------------------------------------------------
-	postgresContainer, err := postgres.Run(ctx,
+	postgresContainer, err := postgres.Run(
+		ctx,
 		"postgres:16-alpine",
 		postgres.WithDatabase("hros_admin"),
 		postgres.WithUsername("postgres"),
@@ -166,7 +169,8 @@ func TestBiometricFlow(t *testing.T) {
 		testcontainers.WithWaitStrategy(
 			wait.ForLog("database system is ready to accept connections").
 				WithOccurrence(2).
-				WithStartupTimeout(15*time.Second)),
+				WithStartupTimeout(15*time.Second),
+		),
 	)
 	require.NoError(t, err)
 	defer func() {

@@ -143,7 +143,8 @@ func (uc *VerifyMFAUseCase) Execute(ctx context.Context, input VerifyMFAInput) (
 	// 7. Delete MFA token from cache
 	if err := uc.mfaCache.DeleteToken(ctx, input.MFAToken); err != nil {
 		// Log error but do not fail the request since authentication succeeded
-		uc.logger.WarnContext(ctx, "failed to delete MFA token from cache after success",
+		uc.logger.WarnContext(
+			ctx, "failed to delete MFA token from cache after success",
 			slog.String("event", "verify_mfa_usecase.delete_mfa_token_failed"),
 			slog.Any("error", err),
 		)

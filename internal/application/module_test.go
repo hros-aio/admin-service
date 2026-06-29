@@ -13,11 +13,13 @@ import (
 	"go.uber.org/fx"
 )
 
-type dummyUserRepo struct{ domain.AdminUserRepository }
-type dummySessionRepo struct{ domain.SessionTokenRepository }
-type dummyTokenProvider struct{ auth.TokenProvider }
-type dummyAuditLogger struct{ authDomain.AuditLogger }
-type dummyMFACache struct{ interfaces.MFACache }
+type (
+	dummyUserRepo      struct{ domain.AdminUserRepository }
+	dummySessionRepo   struct{ domain.SessionTokenRepository }
+	dummyTokenProvider struct{ auth.TokenProvider }
+	dummyAuditLogger   struct{ authDomain.AuditLogger }
+	dummyMFACache      struct{ interfaces.MFACache }
+)
 
 func TestModule_VerifyMFAUseCaseWiring(t *testing.T) {
 	var verifiedUsecase *usecase.VerifyMFAUseCase
@@ -30,7 +32,7 @@ func TestModule_VerifyMFAUseCaseWiring(t *testing.T) {
 			func() auth.TokenProvider { return &dummyTokenProvider{} },
 			func() authDomain.AuditLogger { return &dummyAuditLogger{} },
 			func() interfaces.MFACache { return &dummyMFACache{} },
-			func() *slog.Logger { return slog.Default() },
+			slog.Default,
 		),
 		fx.Populate(&verifiedUsecase),
 	)

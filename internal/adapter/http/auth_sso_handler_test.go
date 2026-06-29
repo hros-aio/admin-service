@@ -45,6 +45,7 @@ func (m *mockSSOClient) ExchangeCode(ctx context.Context, provider string, code 
 	}
 	return args.Get(0).(*interfaces.SSOUserProfile), args.Error(1)
 }
+
 func TestAuthSSOHandler_Initiate(t *testing.T) {
 	e := echo.New()
 

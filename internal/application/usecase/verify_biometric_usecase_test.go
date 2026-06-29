@@ -40,7 +40,9 @@ func generateTestKeyPair(t *testing.T) (*ecdsa.PrivateKey, string) {
 
 func signTestAssertion(priv *ecdsa.PrivateKey, clientDataJSON, authenticatorData []byte) []byte {
 	clientDataHash := sha256.Sum256(clientDataJSON)
-	signedData := append(authenticatorData, clientDataHash[:]...)
+	signedData := make([]byte, len(authenticatorData)+len(clientDataHash))
+	copy(signedData, authenticatorData)
+	copy(signedData[len(authenticatorData):], clientDataHash[:])
 	signedDataHash := sha256.Sum256(signedData)
 
 	r, s, err := ecdsa.Sign(rand.Reader, priv, signedDataHash[:])

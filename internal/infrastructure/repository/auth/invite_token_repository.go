@@ -80,7 +80,6 @@ func (r *GormInviteTokenRepository) Consume(ctx context.Context, token string) (
 
 		return nil
 	})
-
 	if err != nil {
 		return nil, err
 	}

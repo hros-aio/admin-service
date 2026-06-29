@@ -55,9 +55,11 @@ type mockConsumerGroup struct{}
 func (m *mockConsumerGroup) Consume(_ context.Context, _ []string, _ sarama.ConsumerGroupHandler) error {
 	return nil
 }
+
 func (m *mockConsumerGroup) Errors() <-chan error {
 	return make(chan error)
 }
+
 func (m *mockConsumerGroup) Close() error {
 	return nil
 }
@@ -129,7 +131,8 @@ func TestAuthFlow(t *testing.T) {
 	ctx := context.Background()
 
 	// 1. Setup testcontainers PostgreSQL instance
-	postgresContainer, err := postgres.Run(ctx,
+	postgresContainer, err := postgres.Run(
+		ctx,
 		"postgres:16-alpine",
 		postgres.WithDatabase("hros_admin"),
 		postgres.WithUsername("postgres"),
@@ -137,7 +140,8 @@ func TestAuthFlow(t *testing.T) {
 		testcontainers.WithWaitStrategy(
 			wait.ForLog("database system is ready to accept connections").
 				WithOccurrence(2).
-				WithStartupTimeout(15*time.Second)),
+				WithStartupTimeout(15*time.Second),
+		),
 	)
 	require.NoError(t, err)
 	defer func() {

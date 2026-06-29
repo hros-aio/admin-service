@@ -15,7 +15,8 @@ type AcceptInviteParams struct {
 }
 
 // Module is the Fx module for HTTP adapters.
-var Module = fx.Module("http-adapter",
+var Module = fx.Module(
+	"http-adapter",
 	fx.Provide(
 		NewAuthHandler,
 		NewAuthSSOHandler,

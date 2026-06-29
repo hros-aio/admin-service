@@ -46,7 +46,8 @@ func (r *RedisSSOStateCache) StoreState(ctx context.Context, state string, nonce
 	key := ssoStateKeyPrefix + state
 	err := r.client.Set(ctx, key, nonce, ttl).Err()
 	if err != nil {
-		r.logger.ErrorContext(ctx, "failed to store SSO state in Redis",
+		r.logger.ErrorContext(
+			ctx, "failed to store SSO state in Redis",
 			slog.String("event", "sso_state_cache_redis.store_failed"),
 			slog.String("key", "auth:sso_state:[REDACTED]"),
 			slog.Any("error", err),
@@ -54,7 +55,8 @@ func (r *RedisSSOStateCache) StoreState(ctx context.Context, state string, nonce
 		return fmt.Errorf("redis set: %w", err)
 	}
 
-	r.logger.InfoContext(ctx, "successfully stored SSO state in Redis",
+	r.logger.InfoContext(
+		ctx, "successfully stored SSO state in Redis",
 		slog.String("event", "sso_state_cache_redis.store_success"),
 		slog.String("key", "auth:sso_state:[REDACTED]"),
 		slog.Duration("ttl", ttl),
@@ -68,13 +70,15 @@ func (r *RedisSSOStateCache) VerifyAndConsumeState(ctx context.Context, state st
 	res, err := r.client.Eval(ctx, consumeStateScript, []string{key}).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
-			r.logger.WarnContext(ctx, "SSO state not found or expired in Redis",
+			r.logger.WarnContext(
+				ctx, "SSO state not found or expired in Redis",
 				slog.String("event", "sso_state_cache_redis.consume_expired"),
 				slog.String("key", "auth:sso_state:[REDACTED]"),
 			)
 			return "", domainErrors.ErrInvalidSSOState
 		}
-		r.logger.ErrorContext(ctx, "failed to consume SSO state from Redis",
+		r.logger.ErrorContext(
+			ctx, "failed to consume SSO state from Redis",
 			slog.String("event", "sso_state_cache_redis.consume_failed"),
 			slog.String("key", "auth:sso_state:[REDACTED]"),
 			slog.Any("error", err),
@@ -85,7 +89,8 @@ func (r *RedisSSOStateCache) VerifyAndConsumeState(ctx context.Context, state st
 	nonce, ok := res.(string)
 	if !ok {
 		if res == nil {
-			r.logger.WarnContext(ctx, "SSO state not found or expired in Redis (nil result)",
+			r.logger.WarnContext(
+				ctx, "SSO state not found or expired in Redis (nil result)",
 				slog.String("event", "sso_state_cache_redis.consume_expired"),
 				slog.String("key", "auth:sso_state:[REDACTED]"),
 			)
@@ -94,7 +99,8 @@ func (r *RedisSSOStateCache) VerifyAndConsumeState(ctx context.Context, state st
 		return "", fmt.Errorf("unexpected Redis response type: %T", res)
 	}
 
-	r.logger.InfoContext(ctx, "successfully consumed SSO state from Redis",
+	r.logger.InfoContext(
+		ctx, "successfully consumed SSO state from Redis",
 		slog.String("event", "sso_state_cache_redis.consume_success"),
 		slog.String("key", "auth:sso_state:[REDACTED]"),
 	)
