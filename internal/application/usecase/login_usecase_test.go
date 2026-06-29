@@ -21,9 +21,11 @@ type mockUserRepo struct{ mock.Mock }
 func (m *mockUserRepo) Save(ctx context.Context, u *domain.AdminUser) error {
 	return m.Called(ctx, u).Error(0)
 }
+
 func (m *mockUserRepo) Update(ctx context.Context, u *domain.AdminUser) error {
 	return m.Called(ctx, u).Error(0)
 }
+
 func (m *mockUserRepo) FindByID(ctx context.Context, id string) (*domain.AdminUser, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
@@ -31,6 +33,7 @@ func (m *mockUserRepo) FindByID(ctx context.Context, id string) (*domain.AdminUs
 	}
 	return args.Get(0).(*domain.AdminUser), args.Error(1)
 }
+
 func (m *mockUserRepo) FindByEmail(ctx context.Context, email string) (*domain.AdminUser, error) {
 	args := m.Called(ctx, email)
 	if args.Get(0) == nil {
@@ -38,19 +41,24 @@ func (m *mockUserRepo) FindByEmail(ctx context.Context, email string) (*domain.A
 	}
 	return args.Get(0).(*domain.AdminUser), args.Error(1)
 }
+
 func (m *mockUserRepo) Delete(ctx context.Context, id string) error {
 	return m.Called(ctx, id).Error(0)
 }
+
 func (m *mockUserRepo) GetRoleCodeByID(ctx context.Context, roleID string) (string, error) {
 	args := m.Called(ctx, roleID)
 	return args.String(0), args.Error(1)
 }
+
 func (m *mockUserRepo) UpdatePassword(ctx context.Context, id string, newHash string) error {
 	return m.Called(ctx, id, newHash).Error(0)
 }
+
 func (m *mockUserRepo) ActivateAccount(ctx context.Context, adminID string, newHash string) error {
 	return m.Called(ctx, adminID, newHash).Error(0)
 }
+
 func (m *mockUserRepo) FindByEmailOrSSO(ctx context.Context, email string, ssoProvider string, ssoID string) (*domain.AdminUser, error) {
 	args := m.Called(ctx, email, ssoProvider, ssoID)
 	if args.Get(0) == nil {
@@ -58,6 +66,7 @@ func (m *mockUserRepo) FindByEmailOrSSO(ctx context.Context, email string, ssoPr
 	}
 	return args.Get(0).(*domain.AdminUser), args.Error(1)
 }
+
 func (m *mockUserRepo) UpdateWebAuthnSignCount(ctx context.Context, adminID string, credentialID string, newCount uint32) error {
 	return m.Called(ctx, adminID, credentialID, newCount).Error(0)
 }
@@ -67,10 +76,12 @@ type mockMFACache struct{ mock.Mock }
 func (m *mockMFACache) StoreToken(ctx context.Context, token string, adminID string) error {
 	return m.Called(ctx, token, adminID).Error(0)
 }
+
 func (m *mockMFACache) GetAdminID(ctx context.Context, token string) (string, error) {
 	args := m.Called(ctx, token)
 	return args.String(0), args.Error(1)
 }
+
 func (m *mockMFACache) DeleteToken(ctx context.Context, token string) error {
 	return m.Called(ctx, token).Error(0)
 }
@@ -80,6 +91,7 @@ type mockSessionRepo struct{ mock.Mock }
 func (m *mockSessionRepo) Save(ctx context.Context, t *domain.SessionToken) error {
 	return m.Called(ctx, t).Error(0)
 }
+
 func (m *mockSessionRepo) FindByToken(ctx context.Context, t string) (*domain.SessionToken, error) {
 	args := m.Called(ctx, t)
 	if args.Get(0) == nil {
@@ -87,18 +99,23 @@ func (m *mockSessionRepo) FindByToken(ctx context.Context, t string) (*domain.Se
 	}
 	return args.Get(0).(*domain.SessionToken), args.Error(1)
 }
+
 func (m *mockSessionRepo) DeleteByToken(ctx context.Context, t string) error {
 	return m.Called(ctx, t).Error(0)
 }
+
 func (m *mockSessionRepo) DeleteByAdminID(ctx context.Context, id string) error {
 	return m.Called(ctx, id).Error(0)
 }
+
 func (m *mockSessionRepo) DeleteAllByAdminID(ctx context.Context, adminID string) error {
 	return m.Called(ctx, adminID).Error(0)
 }
+
 func (m *mockSessionRepo) Revoke(ctx context.Context, t string, r string) error {
 	return m.Called(ctx, t, r).Error(0)
 }
+
 func (m *mockSessionRepo) UpdateToken(ctx context.Context, session *domain.SessionToken) error {
 	return m.Called(ctx, session).Error(0)
 }
@@ -115,6 +132,7 @@ func (m *mockTokenProvider) GenerateAccessToken(ctx context.Context, u *domain.A
 	args := m.Called(ctx, u, e)
 	return args.String(0), args.Error(1)
 }
+
 func (m *mockTokenProvider) GenerateRefreshToken(ctx context.Context) (string, error) {
 	args := m.Called(ctx)
 	return args.String(0), args.Error(1)
@@ -125,43 +143,57 @@ type mockAuditLogger struct{ mock.Mock }
 func (m *mockAuditLogger) LogLoginSuccess(ctx context.Context, id, email string) {
 	m.Called(ctx, id, email)
 }
+
 func (m *mockAuditLogger) LogLoginFailed(ctx context.Context, email, reason string) {
 	m.Called(ctx, email, reason)
 }
+
 func (m *mockAuditLogger) LogLogoutSuccess(ctx context.Context, token string) { m.Called(ctx, token) }
+
 func (m *mockAuditLogger) LogSessionRefreshed(ctx context.Context, userID string) {
 	m.Called(ctx, userID)
 }
+
 func (m *mockAuditLogger) LogAccountLocked(ctx context.Context, email string) {
 	m.Called(ctx, email)
 }
+
 func (m *mockAuditLogger) LogMFAChallengeIssued(ctx context.Context, userID string, email string) {
 	m.Called(ctx, userID, email)
 }
+
 func (m *mockAuditLogger) LogMFASuccess(ctx context.Context, userID string, email string) {
 	m.Called(ctx, userID, email)
 }
+
 func (m *mockAuditLogger) LogMFAFailed(ctx context.Context, email string, reason string) {
 	m.Called(ctx, email, reason)
 }
+
 func (m *mockAuditLogger) LogPasswordResetRequested(ctx context.Context, event events.PasswordResetRequestedEvent) {
 	m.Called(ctx, event)
 }
+
 func (m *mockAuditLogger) LogPasswordResetCompleted(ctx context.Context, event events.PasswordResetCompletedEvent) {
 	m.Called(ctx, event)
 }
+
 func (m *mockAuditLogger) LogInviteAccepted(ctx context.Context, event events.InviteAcceptedEvent) {
 	m.Called(ctx, event)
 }
+
 func (m *mockAuditLogger) LogAdminActivated(ctx context.Context, event events.AdminActivatedEvent) {
 	m.Called(ctx, event)
 }
+
 func (m *mockAuditLogger) LogSSOSuccess(ctx context.Context, event events.SSOSuccessEvent) {
 	m.Called(ctx, event)
 }
+
 func (m *mockAuditLogger) LogSSOFailed(ctx context.Context, event events.SSOFailedEvent) {
 	m.Called(ctx, event)
 }
+
 func (m *mockAuditLogger) LogBiometricSuccess(ctx context.Context, event events.BiometricSuccessEvent) {
 	m.Called(ctx, event)
 }
@@ -172,17 +204,21 @@ func (m *mockBruteForceCache) IncrementFailedAttempts(ctx context.Context, email
 	args := m.Called(ctx, email, window)
 	return args.Int(0), args.Error(1)
 }
+
 func (m *mockBruteForceCache) GetFailedAttempts(ctx context.Context, email string) (int, error) {
 	args := m.Called(ctx, email)
 	return args.Int(0), args.Error(1)
 }
+
 func (m *mockBruteForceCache) SetLockout(ctx context.Context, email string, duration time.Duration) error {
 	return m.Called(ctx, email, duration).Error(0)
 }
+
 func (m *mockBruteForceCache) IsLocked(ctx context.Context, email string) (bool, time.Time, error) {
 	args := m.Called(ctx, email)
 	return args.Bool(0), args.Get(1).(time.Time), args.Error(2)
 }
+
 func (m *mockBruteForceCache) Reset(ctx context.Context, email string) error {
 	return m.Called(ctx, email).Error(0)
 }

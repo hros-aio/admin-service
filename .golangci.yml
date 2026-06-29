@@ -26,3 +26,14 @@ issues:
   exclude-use-default: false
   max-issues-per-linter: 0
   max-same-issues: 0
+  exclude-rules:
+    - path: (_test\.go|test/)
+      linters:
+        - dupl
+        - goconst
+        - unparam
+        - errcheck
+    - text: "unused-parameter"
+      path: _test\.go
+      linters:
+        - revive

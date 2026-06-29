@@ -19,7 +19,8 @@ func TestNewServer(t *testing.T) {
 	}
 	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	app := fxtest.New(t,
+	app := fxtest.New(
+		t,
 		fx.Provide(func() *config.Config { return cfg }),
 		fx.Provide(func() *slog.Logger { return log }),
 		fx.Provide(func() *HealthHandler { return &HealthHandler{} }),

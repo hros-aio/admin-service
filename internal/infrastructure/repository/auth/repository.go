@@ -203,19 +203,20 @@ func (r *GormAdminUserRepository) UpdateWebAuthnSignCount(ctx context.Context, a
 			return domainErrors.ErrBiometricNotRegistered
 		}
 
-		var creds []repoWebAuthnCredential
 		isArray := trimmedCreds[0] == '['
-		if isArray {
+		var creds []repoWebAuthnCredential
+		switch trimmedCreds[0] {
+		case '[':
 			if err := json.Unmarshal(trimmedCreds, &creds); err != nil {
 				return err
 			}
-		} else if trimmedCreds[0] == '{' {
+		case '{':
 			var singleCred repoWebAuthnCredential
 			if err := json.Unmarshal(trimmedCreds, &singleCred); err != nil {
 				return err
 			}
 			creds = []repoWebAuthnCredential{singleCred}
-		} else {
+		default:
 			return domainErrors.ErrBiometricNotRegistered
 		}
 

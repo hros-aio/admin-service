@@ -16,7 +16,7 @@ func NewDefaultSSOClient() interfaces.SSOClient {
 }
 
 // ExchangeCode implements the interfaces.SSOClient interface.
-func (c *DefaultSSOClient) ExchangeCode(ctx context.Context, provider string, code string) (*interfaces.SSOUserProfile, error) {
+func (c *DefaultSSOClient) ExchangeCode(_ context.Context, provider string, code string) (*interfaces.SSOUserProfile, error) {
 	if provider == "" {
 		return nil, errors.New("provider cannot be empty")
 	}

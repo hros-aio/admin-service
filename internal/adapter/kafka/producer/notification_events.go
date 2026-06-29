@@ -78,7 +78,8 @@ func (p *NotificationKafkaProducer) PublishInviteAcceptedNotification(ctx contex
 		return fmt.Errorf("publish invite accepted notification: %w", err)
 	}
 
-	p.logger.InfoContext(ctx, "invite accepted notification event published to Kafka",
+	p.logger.InfoContext(
+		ctx, "invite accepted notification event published to Kafka",
 		slog.String("event", "kafka.notification_send.published"),
 		slog.String("topic", notificationSendTopic),
 		slog.String("recipient_id", event.RecipientID),

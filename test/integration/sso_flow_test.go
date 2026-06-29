@@ -69,7 +69,8 @@ func TestSSOFlow(t *testing.T) {
 	ctx := context.Background()
 
 	// 1. Setup testcontainers PostgreSQL instance
-	postgresContainer, err := postgres.Run(ctx,
+	postgresContainer, err := postgres.Run(
+		ctx,
 		"postgres:16-alpine",
 		postgres.WithDatabase("hros_admin"),
 		postgres.WithUsername("postgres"),
@@ -77,7 +78,8 @@ func TestSSOFlow(t *testing.T) {
 		testcontainers.WithWaitStrategy(
 			wait.ForLog("database system is ready to accept connections").
 				WithOccurrence(2).
-				WithStartupTimeout(15*time.Second)),
+				WithStartupTimeout(15*time.Second),
+		),
 	)
 	require.NoError(t, err)
 	defer func() {

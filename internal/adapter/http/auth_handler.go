@@ -106,17 +106,12 @@ func (h *AuthHandler) Login(c echo.Context) error {
 	if err != nil {
 		traceID := c.Response().Header().Get(echo.HeaderXRequestID)
 
+		if handled, errResp := h.handleCommonAuthErrors(c, err, traceID); handled {
+			return errResp
+		}
 		if errors.Is(err, domainErrors.ErrInvalidCredentials) {
 			resp := sharedErrors.NewErrorResponse("unauthorized", "Invalid email or password", nil, traceID)
 			return c.JSON(http.StatusUnauthorized, resp)
-		}
-		if errors.Is(err, domainErrors.ErrUserInactive) {
-			resp := sharedErrors.NewErrorResponse("forbidden", "Account is deactivated", nil, traceID)
-			return c.JSON(http.StatusForbidden, resp)
-		}
-		if errors.Is(err, domainErrors.ErrUserLocked) {
-			resp := sharedErrors.NewErrorResponse("forbidden", "Account is locked", nil, traceID)
-			return c.JSON(http.StatusForbidden, resp)
 		}
 		if errors.Is(err, domainErrors.ErrAccountLocked) {
 			resp := sharedErrors.NewErrorResponse("ACCOUNT_LOCKED", "Account is temporarily locked", nil, traceID)
@@ -263,6 +258,9 @@ func (h *AuthHandler) VerifyMFA(c echo.Context) error {
 	if err != nil {
 		traceID := c.Response().Header().Get(echo.HeaderXRequestID)
 
+		if handled, errResp := h.handleCommonAuthErrors(c, err, traceID); handled {
+			return errResp
+		}
 		if errors.Is(err, domainErrors.ErrMFAInvalid) {
 			resp := sharedErrors.NewErrorResponse("MFA_INVALID", "Invalid MFA verification code", nil, traceID)
 			return c.JSON(http.StatusUnauthorized, resp)
@@ -270,14 +268,6 @@ func (h *AuthHandler) VerifyMFA(c echo.Context) error {
 		if errors.Is(err, domainErrors.ErrMFATokenExpired) {
 			resp := sharedErrors.NewErrorResponse("MFA_TOKEN_EXPIRED", "MFA token has expired", nil, traceID)
 			return c.JSON(http.StatusUnauthorized, resp)
-		}
-		if errors.Is(err, domainErrors.ErrUserInactive) {
-			resp := sharedErrors.NewErrorResponse("forbidden", "Account is deactivated", nil, traceID)
-			return c.JSON(http.StatusForbidden, resp)
-		}
-		if errors.Is(err, domainErrors.ErrUserLocked) {
-			resp := sharedErrors.NewErrorResponse("forbidden", "Account is locked", nil, traceID)
-			return c.JSON(http.StatusForbidden, resp)
 		}
 
 		resp := sharedErrors.NewErrorResponse("internal_error", "Internal server error", nil, traceID)
@@ -415,4 +405,16 @@ func (h *AuthHandler) AcceptInvite(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, echo.Map{"message": "Account activated successfully."})
+}
+
+func (h *AuthHandler) handleCommonAuthErrors(c echo.Context, err error, traceID string) (bool, error) {
+	if errors.Is(err, domainErrors.ErrUserInactive) {
+		resp := sharedErrors.NewErrorResponse("forbidden", "Account is deactivated", nil, traceID)
+		return true, c.JSON(http.StatusForbidden, resp)
+	}
+	if errors.Is(err, domainErrors.ErrUserLocked) {
+		resp := sharedErrors.NewErrorResponse("forbidden", "Account is locked", nil, traceID)
+		return true, c.JSON(http.StatusForbidden, resp)
+	}
+	return false, nil
 }

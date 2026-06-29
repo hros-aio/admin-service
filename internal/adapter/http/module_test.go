@@ -15,9 +15,7 @@ func TestHTTPModuleWiring(t *testing.T) {
 	app := fx.New(
 		Module,
 		fx.Provide(
-			func() *echo.Echo {
-				return echo.New()
-			},
+			echo.New,
 			func() *usecase.LoginUseCase {
 				return nil
 			},

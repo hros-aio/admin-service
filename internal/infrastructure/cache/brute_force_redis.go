@@ -60,7 +60,8 @@ func (r *RedisBruteForceCache) IncrementFailedAttempts(ctx context.Context, emai
 	key := failedAttemptsKeyPrefix + email
 	val, err := r.client.Incr(ctx, key).Result()
 	if err != nil {
-		r.logger.ErrorContext(ctx, "failed to increment failed attempts in Redis, degrading gracefully (fail-open)",
+		r.logger.ErrorContext(
+			ctx, "failed to increment failed attempts in Redis, degrading gracefully (fail-open)",
 			slog.String("event", "brute_force_redis.increment_failed"),
 			slog.String("email", maskEmail(email)),
 			slog.Any("error", err),
@@ -71,7 +72,8 @@ func (r *RedisBruteForceCache) IncrementFailedAttempts(ctx context.Context, emai
 	if val == 1 {
 		err = r.client.Expire(ctx, key, window).Err()
 		if err != nil {
-			r.logger.WarnContext(ctx, "failed to set TTL for failed attempts key, deleting key to fail-open",
+			r.logger.WarnContext(
+				ctx, "failed to set TTL for failed attempts key, deleting key to fail-open",
 				slog.String("event", "brute_force_redis.expire_failed"),
 				slog.String("key", maskKey(key)),
 				slog.Any("error", err),
@@ -80,7 +82,8 @@ func (r *RedisBruteForceCache) IncrementFailedAttempts(ctx context.Context, emai
 		}
 	}
 
-	r.logger.InfoContext(ctx, "successfully incremented failed attempts",
+	r.logger.InfoContext(
+		ctx, "successfully incremented failed attempts",
 		slog.String("event", "brute_force_redis.increment_success"),
 		slog.String("email", maskEmail(email)),
 		slog.Int("attempts", int(val)),
@@ -97,7 +100,8 @@ func (r *RedisBruteForceCache) GetFailedAttempts(ctx context.Context, email stri
 		if err == redis.Nil {
 			return 0, nil
 		}
-		r.logger.ErrorContext(ctx, "failed to retrieve failed attempts from Redis, degrading gracefully",
+		r.logger.ErrorContext(
+			ctx, "failed to retrieve failed attempts from Redis, degrading gracefully",
 			slog.String("event", "brute_force_redis.get_failed"),
 			slog.String("email", maskEmail(email)),
 			slog.Any("error", err),
@@ -114,7 +118,8 @@ func (r *RedisBruteForceCache) SetLockout(ctx context.Context, email string, dur
 	expiryTime := time.Now().Add(duration)
 	err := r.client.Set(ctx, key, expiryTime.Format(time.RFC3339), duration).Err()
 	if err != nil {
-		r.logger.ErrorContext(ctx, "failed to set lockout in Redis, degrading gracefully",
+		r.logger.ErrorContext(
+			ctx, "failed to set lockout in Redis, degrading gracefully",
 			slog.String("event", "brute_force_redis.set_lockout_failed"),
 			slog.String("email", maskEmail(email)),
 			slog.Any("error", err),
@@ -122,7 +127,8 @@ func (r *RedisBruteForceCache) SetLockout(ctx context.Context, email string, dur
 		return nil
 	}
 
-	r.logger.InfoContext(ctx, "successfully locked account",
+	r.logger.InfoContext(
+		ctx, "successfully locked account",
 		slog.String("event", "brute_force_redis.set_lockout_success"),
 		slog.String("email", maskEmail(email)),
 		slog.Time("expiry", expiryTime),
@@ -140,7 +146,8 @@ func (r *RedisBruteForceCache) IsLocked(ctx context.Context, email string) (bool
 		if err == redis.Nil {
 			return false, time.Time{}, nil
 		}
-		r.logger.ErrorContext(ctx, "failed to query lockout status in Redis, degrading gracefully (fail-open)",
+		r.logger.ErrorContext(
+			ctx, "failed to query lockout status in Redis, degrading gracefully (fail-open)",
 			slog.String("event", "brute_force_redis.is_locked_failed"),
 			slog.String("email", maskEmail(email)),
 			slog.Any("error", err),
@@ -150,7 +157,8 @@ func (r *RedisBruteForceCache) IsLocked(ctx context.Context, email string) (bool
 
 	parsedTime, err := time.Parse(time.RFC3339, val)
 	if err != nil {
-		r.logger.WarnContext(ctx, "failed to parse lockout expiration time from Redis, calculating from TTL",
+		r.logger.WarnContext(
+			ctx, "failed to parse lockout expiration time from Redis, calculating from TTL",
 			slog.String("event", "brute_force_redis.parse_expiry_failed"),
 			slog.String("email", maskEmail(email)),
 			slog.Any("error", err),
@@ -174,7 +182,8 @@ func (r *RedisBruteForceCache) Reset(ctx context.Context, email string) error {
 
 	err := r.client.Del(ctx, keyAttempts, keyLockout).Err()
 	if err != nil {
-		r.logger.ErrorContext(ctx, "failed to reset brute force state in Redis, degrading gracefully",
+		r.logger.ErrorContext(
+			ctx, "failed to reset brute force state in Redis, degrading gracefully",
 			slog.String("event", "brute_force_redis.reset_failed"),
 			slog.String("email", maskEmail(email)),
 			slog.Any("error", err),
@@ -182,7 +191,8 @@ func (r *RedisBruteForceCache) Reset(ctx context.Context, email string) error {
 		return nil
 	}
 
-	r.logger.InfoContext(ctx, "successfully reset brute force attempts and lockout state",
+	r.logger.InfoContext(
+		ctx, "successfully reset brute force attempts and lockout state",
 		slog.String("event", "brute_force_redis.reset_success"),
 		slog.String("email", maskEmail(email)),
 	)

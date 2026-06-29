@@ -18,7 +18,8 @@ func TestNewRedisClient(t *testing.T) {
 	}
 	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	fxtest.New(t,
+	fxtest.New(
+		t,
 		fx.Provide(func() *config.Config { return cfg }),
 		fx.Provide(func() *slog.Logger { return log }),
 		fx.Provide(NewRedisClient),

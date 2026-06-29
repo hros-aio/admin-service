@@ -1,3 +1,4 @@
+// Package auth defines authentication helper interfaces and utilities.
 package auth
 
 // PasswordHelper defines the interface for password hashing and verification.

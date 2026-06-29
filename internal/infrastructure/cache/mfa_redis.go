@@ -37,7 +37,8 @@ func (r *RedisMFACache) StoreToken(ctx context.Context, mfaToken string, adminID
 	key := mfaKeyPrefix + mfaToken
 	err := r.client.Set(ctx, key, adminID, tokenTTL).Err()
 	if err != nil {
-		r.logger.ErrorContext(ctx, "failed to store MFA token in Redis",
+		r.logger.ErrorContext(
+			ctx, "failed to store MFA token in Redis",
 			slog.String("event", "mfa_cache_redis.store_failed"),
 			slog.String("key", "auth:mfa_token:[REDACTED]"),
 			slog.Any("error", err),
@@ -45,7 +46,8 @@ func (r *RedisMFACache) StoreToken(ctx context.Context, mfaToken string, adminID
 		return fmt.Errorf("redis set: %w", err)
 	}
 
-	r.logger.InfoContext(ctx, "successfully stored MFA token in Redis",
+	r.logger.InfoContext(
+		ctx, "successfully stored MFA token in Redis",
 		slog.String("event", "mfa_cache_redis.store_success"),
 		slog.String("key", "auth:mfa_token:[REDACTED]"),
 		slog.Duration("ttl", tokenTTL),
@@ -60,13 +62,15 @@ func (r *RedisMFACache) GetAdminID(ctx context.Context, mfaToken string) (string
 	adminID, err := r.client.Get(ctx, key).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
-			r.logger.WarnContext(ctx, "MFA token not found or expired in Redis",
+			r.logger.WarnContext(
+				ctx, "MFA token not found or expired in Redis",
 				slog.String("event", "mfa_cache_redis.get_expired"),
 				slog.String("key", "auth:mfa_token:[REDACTED]"),
 			)
 			return "", domainErrors.ErrMFATokenExpired
 		}
-		r.logger.ErrorContext(ctx, "failed to retrieve MFA token from Redis",
+		r.logger.ErrorContext(
+			ctx, "failed to retrieve MFA token from Redis",
 			slog.String("event", "mfa_cache_redis.get_failed"),
 			slog.String("key", "auth:mfa_token:[REDACTED]"),
 			slog.Any("error", err),
@@ -74,7 +78,8 @@ func (r *RedisMFACache) GetAdminID(ctx context.Context, mfaToken string) (string
 		return "", fmt.Errorf("redis get: %w", err)
 	}
 
-	r.logger.InfoContext(ctx, "successfully retrieved MFA token from Redis",
+	r.logger.InfoContext(
+		ctx, "successfully retrieved MFA token from Redis",
 		slog.String("event", "mfa_cache_redis.get_success"),
 		slog.String("key", "auth:mfa_token:[REDACTED]"),
 	)
@@ -86,7 +91,8 @@ func (r *RedisMFACache) DeleteToken(ctx context.Context, mfaToken string) error 
 	key := mfaKeyPrefix + mfaToken
 	err := r.client.Del(ctx, key).Err()
 	if err != nil {
-		r.logger.ErrorContext(ctx, "failed to delete MFA token from Redis",
+		r.logger.ErrorContext(
+			ctx, "failed to delete MFA token from Redis",
 			slog.String("event", "mfa_cache_redis.delete_failed"),
 			slog.String("key", "auth:mfa_token:[REDACTED]"),
 			slog.Any("error", err),
@@ -94,7 +100,8 @@ func (r *RedisMFACache) DeleteToken(ctx context.Context, mfaToken string) error 
 		return fmt.Errorf("redis del: %w", err)
 	}
 
-	r.logger.InfoContext(ctx, "successfully deleted MFA token from Redis",
+	r.logger.InfoContext(
+		ctx, "successfully deleted MFA token from Redis",
 		slog.String("event", "mfa_cache_redis.delete_success"),
 		slog.String("key", "auth:mfa_token:[REDACTED]"),
 	)

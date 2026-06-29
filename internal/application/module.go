@@ -1,3 +1,4 @@
+// Package application provides the use cases and logic wiring for HROS admin service.
 package application
 
 import (
@@ -6,7 +7,8 @@ import (
 )
 
 // Module is the Fx module for application use cases.
-var Module = fx.Module("application",
+var Module = fx.Module(
+	"application",
 	fx.Provide(
 		usecase.NewLoginUseCase,
 		usecase.NewLogoutUseCase,

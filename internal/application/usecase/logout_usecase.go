@@ -66,7 +66,8 @@ func (uc *LogoutUseCase) Execute(ctx context.Context, input LogoutInput) error {
 				ttl := time.Until(expiryTime)
 				if ttl > 0 {
 					if err := uc.blacklist.Add(ctx, jti, ttl); err != nil {
-						slog.WarnContext(ctx, "failed to blacklist access token JTI during logout",
+						slog.WarnContext(
+							ctx, "failed to blacklist access token JTI during logout",
 							slog.String("jti", jti),
 							slog.Any("error", err),
 						)
@@ -74,7 +75,8 @@ func (uc *LogoutUseCase) Execute(ctx context.Context, input LogoutInput) error {
 				}
 			}
 		} else if err != nil {
-			slog.WarnContext(ctx, "failed to parse access token during logout",
+			slog.WarnContext(
+				ctx, "failed to parse access token during logout",
 				slog.Any("error", err),
 			)
 		}

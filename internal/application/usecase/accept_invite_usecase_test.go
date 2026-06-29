@@ -27,6 +27,7 @@ type mockInviteTokenRepository struct{ mock.Mock }
 func (m *mockInviteTokenRepository) Save(ctx context.Context, token *domain.InviteToken) error {
 	return m.Called(ctx, token).Error(0)
 }
+
 func (m *mockInviteTokenRepository) FindByToken(ctx context.Context, token string) (*domain.InviteToken, error) {
 	args := m.Called(ctx, token)
 	if v := args.Get(0); v != nil {
@@ -34,9 +35,11 @@ func (m *mockInviteTokenRepository) FindByToken(ctx context.Context, token strin
 	}
 	return nil, args.Error(1)
 }
+
 func (m *mockInviteTokenRepository) Update(ctx context.Context, token *domain.InviteToken) error {
 	return m.Called(ctx, token).Error(0)
 }
+
 func (m *mockInviteTokenRepository) Consume(ctx context.Context, token string) (*domain.InviteToken, error) {
 	args := m.Called(ctx, token)
 	if v := args.Get(0); v != nil {
@@ -58,6 +61,7 @@ func (m *mockAdminUserRepositoryForAcceptInvite) FindByEmail(ctx context.Context
 	}
 	return nil, args.Error(1)
 }
+
 func (m *mockAdminUserRepositoryForAcceptInvite) FindByID(ctx context.Context, id string) (*domain.AdminUser, error) {
 	args := m.Called(ctx, id)
 	if v := args.Get(0); v != nil {
@@ -65,28 +69,36 @@ func (m *mockAdminUserRepositoryForAcceptInvite) FindByID(ctx context.Context, i
 	}
 	return nil, args.Error(1)
 }
+
 func (m *mockAdminUserRepositoryForAcceptInvite) Save(ctx context.Context, user *domain.AdminUser) error {
 	return m.Called(ctx, user).Error(0)
 }
+
 func (m *mockAdminUserRepositoryForAcceptInvite) Update(ctx context.Context, user *domain.AdminUser) error {
 	return m.Called(ctx, user).Error(0)
 }
+
 func (m *mockAdminUserRepositoryForAcceptInvite) UpdatePassword(ctx context.Context, adminID, hash string) error {
 	return m.Called(ctx, adminID, hash).Error(0)
 }
+
 func (m *mockAdminUserRepositoryForAcceptInvite) UpdateStatus(ctx context.Context, adminID, status string) error {
 	return m.Called(ctx, adminID, status).Error(0)
 }
+
 func (m *mockAdminUserRepositoryForAcceptInvite) Delete(ctx context.Context, id string) error {
 	return m.Called(ctx, id).Error(0)
 }
+
 func (m *mockAdminUserRepositoryForAcceptInvite) GetRoleCodeByID(ctx context.Context, roleID string) (string, error) {
 	args := m.Called(ctx, roleID)
 	return args.String(0), args.Error(1)
 }
+
 func (m *mockAdminUserRepositoryForAcceptInvite) ActivateAccount(ctx context.Context, adminID, newHash string) error {
 	return m.Called(ctx, adminID, newHash).Error(0)
 }
+
 func (m *mockAdminUserRepositoryForAcceptInvite) FindByEmailOrSSO(ctx context.Context, email string, ssoProvider string, ssoID string) (*domain.AdminUser, error) {
 	args := m.Called(ctx, email, ssoProvider, ssoID)
 	if v := args.Get(0); v != nil {
@@ -94,6 +106,7 @@ func (m *mockAdminUserRepositoryForAcceptInvite) FindByEmailOrSSO(ctx context.Co
 	}
 	return nil, args.Error(1)
 }
+
 func (m *mockAdminUserRepositoryForAcceptInvite) UpdateWebAuthnSignCount(ctx context.Context, adminID string, credentialID string, newCount uint32) error {
 	return m.Called(ctx, adminID, credentialID, newCount).Error(0)
 }
@@ -107,42 +120,55 @@ type mockAcceptInviteAuditLogger struct{ mock.Mock }
 func (m *mockAcceptInviteAuditLogger) LogLoginSuccess(ctx context.Context, userID, email string) {
 	m.Called(ctx, userID, email)
 }
+
 func (m *mockAcceptInviteAuditLogger) LogLoginFailed(ctx context.Context, email, reason string) {
 	m.Called(ctx, email, reason)
 }
+
 func (m *mockAcceptInviteAuditLogger) LogLogoutSuccess(ctx context.Context, token string) {
 	m.Called(ctx, token)
 }
+
 func (m *mockAcceptInviteAuditLogger) LogSessionRefreshed(ctx context.Context, userID string) {
 	m.Called(ctx, userID)
 }
+
 func (m *mockAcceptInviteAuditLogger) LogAccountLocked(ctx context.Context, email string) {
 	m.Called(ctx, email)
 }
+
 func (m *mockAcceptInviteAuditLogger) LogMFAChallengeIssued(ctx context.Context, userID, email string) {
 	m.Called(ctx, userID, email)
 }
+
 func (m *mockAcceptInviteAuditLogger) LogMFASuccess(ctx context.Context, userID, email string) {
 	m.Called(ctx, userID, email)
 }
+
 func (m *mockAcceptInviteAuditLogger) LogMFAFailed(ctx context.Context, email, reason string) {
 	m.Called(ctx, email, reason)
 }
+
 func (m *mockAcceptInviteAuditLogger) LogPasswordResetRequested(ctx context.Context, event events.PasswordResetRequestedEvent) {
 	m.Called(ctx, event)
 }
+
 func (m *mockAcceptInviteAuditLogger) LogPasswordResetCompleted(ctx context.Context, event events.PasswordResetCompletedEvent) {
 	m.Called(ctx, event)
 }
+
 func (m *mockAcceptInviteAuditLogger) LogInviteAccepted(ctx context.Context, event events.InviteAcceptedEvent) {
 	m.Called(ctx, event)
 }
+
 func (m *mockAcceptInviteAuditLogger) LogAdminActivated(ctx context.Context, event events.AdminActivatedEvent) {
 	m.Called(ctx, event)
 }
+
 func (m *mockAcceptInviteAuditLogger) LogSSOSuccess(ctx context.Context, event events.SSOSuccessEvent) {
 	m.Called(ctx, event)
 }
+
 func (m *mockAcceptInviteAuditLogger) LogSSOFailed(ctx context.Context, event events.SSOFailedEvent) {
 	m.Called(ctx, event)
 }

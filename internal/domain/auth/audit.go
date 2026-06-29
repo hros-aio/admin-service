@@ -1,3 +1,4 @@
+// Package auth defines domain interfaces and types related to authentication and auditing.
 package auth
 
 import (

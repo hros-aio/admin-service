@@ -84,42 +84,7 @@ func maskEmail(email string) string {
 // Returns a wrapped error if Sarama fails to deliver the message.
 // On success, logs the published event at Info level.
 func (p *EmailKafkaProducer) PublishLockoutEmail(ctx context.Context, event events.EmailSendEvent) error {
-	if strings.TrimSpace(event.To) == "" {
-		return fmt.Errorf("recipient email must not be empty")
-	}
-
-	envelope := EventEnvelope[events.EmailSendEvent]{
-		ID:            newUUID(),
-		Type:          emailSendEventType,
-		Source:        p.source,
-		Version:       envelopeVersion,
-		CorrelationID: correlationIDFromContext(ctx),
-		OccurredAt:    time.Now().UTC(),
-		Data:          event,
-	}
-
-	payload, err := json.Marshal(envelope)
-	if err != nil {
-		return fmt.Errorf("marshal lockout email envelope: %w", err)
-	}
-
-	msg := &sarama.ProducerMessage{
-		Topic: emailSendTopic,
-		Key:   sarama.StringEncoder(event.To),
-		Value: sarama.ByteEncoder(payload),
-	}
-
-	if _, _, err := p.producer.SendMessage(msg); err != nil {
-		return fmt.Errorf("publish lockout email: %w", err)
-	}
-
-	p.logger.InfoContext(ctx, "lockout email event published to Kafka",
-		slog.String("event", "kafka.email_send.published"),
-		slog.String("topic", emailSendTopic),
-		slog.String("key_masked", maskEmail(event.To)),
-	)
-
-	return nil
+	return p.publishEmailEvent(ctx, event, "lockout")
 }
 
 // PublishPasswordResetEmail wraps event in a standard EventEnvelope and publishes it to
@@ -130,6 +95,10 @@ func (p *EmailKafkaProducer) PublishLockoutEmail(ctx context.Context, event even
 // Returns a wrapped error if Sarama fails to deliver the message.
 // On success, logs the published event at Info level.
 func (p *EmailKafkaProducer) PublishPasswordResetEmail(ctx context.Context, event events.EmailSendEvent) error {
+	return p.publishEmailEvent(ctx, event, "password reset")
+}
+
+func (p *EmailKafkaProducer) publishEmailEvent(ctx context.Context, event events.EmailSendEvent, emailType string) error {
 	if strings.TrimSpace(event.To) == "" {
 		return fmt.Errorf("recipient email must not be empty")
 	}
@@ -146,7 +115,7 @@ func (p *EmailKafkaProducer) PublishPasswordResetEmail(ctx context.Context, even
 
 	payload, err := json.Marshal(envelope)
 	if err != nil {
-		return fmt.Errorf("marshal password reset email envelope: %w", err)
+		return fmt.Errorf("marshal %s email envelope: %w", emailType, err)
 	}
 
 	msg := &sarama.ProducerMessage{
@@ -156,10 +125,11 @@ func (p *EmailKafkaProducer) PublishPasswordResetEmail(ctx context.Context, even
 	}
 
 	if _, _, err := p.producer.SendMessage(msg); err != nil {
-		return fmt.Errorf("publish password reset email: %w", err)
+		return fmt.Errorf("publish %s email: %w", emailType, err)
 	}
 
-	p.logger.InfoContext(ctx, "password reset email event published to Kafka",
+	p.logger.InfoContext(
+		ctx, fmt.Sprintf("%s email event published to Kafka", emailType),
 		slog.String("event", "kafka.email_send.published"),
 		slog.String("topic", emailSendTopic),
 		slog.String("key_masked", maskEmail(event.To)),

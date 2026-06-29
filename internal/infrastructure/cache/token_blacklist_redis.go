@@ -39,7 +39,8 @@ func (r *RedisTokenBlacklist) Add(ctx context.Context, token string, ttl time.Du
 	key := blacklistKeyPrefix + token
 	err := r.client.Set(ctx, key, "1", ttl).Err()
 	if err != nil {
-		r.logger.ErrorContext(ctx, "failed to add token to Redis blacklist",
+		r.logger.ErrorContext(
+			ctx, "failed to add token to Redis blacklist",
 			slog.String("event", "token_blacklist_redis.add_failed"),
 			slog.String("key", key),
 			slog.Duration("ttl", ttl),
@@ -48,7 +49,8 @@ func (r *RedisTokenBlacklist) Add(ctx context.Context, token string, ttl time.Du
 		return fmt.Errorf("redis set: %w", err)
 	}
 
-	r.logger.InfoContext(ctx, "successfully blacklisted token",
+	r.logger.InfoContext(
+		ctx, "successfully blacklisted token",
 		slog.String("event", "token_blacklist_redis.add_success"),
 		slog.String("key", key),
 		slog.Duration("ttl", ttl),
@@ -62,7 +64,8 @@ func (r *RedisTokenBlacklist) Exists(ctx context.Context, token string) (bool, e
 	key := blacklistKeyPrefix + token
 	val, err := r.client.Exists(ctx, key).Result()
 	if err != nil {
-		r.logger.ErrorContext(ctx, "failed to query Redis blacklist, degrading gracefully (fail-open)",
+		r.logger.ErrorContext(
+			ctx, "failed to query Redis blacklist, degrading gracefully (fail-open)",
 			slog.String("event", "token_blacklist_redis.exists_failed"),
 			slog.String("key", key),
 			slog.Any("error", err),
@@ -73,7 +76,8 @@ func (r *RedisTokenBlacklist) Exists(ctx context.Context, token string) (bool, e
 
 	isBlacklisted := val > 0
 	if isBlacklisted {
-		r.logger.InfoContext(ctx, "token blacklist check: token is blacklisted",
+		r.logger.InfoContext(
+			ctx, "token blacklist check: token is blacklisted",
 			slog.String("event", "token_blacklist_redis.exists_true"),
 			slog.String("key", key),
 		)

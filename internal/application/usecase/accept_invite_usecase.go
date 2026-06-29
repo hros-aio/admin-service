@@ -121,7 +121,8 @@ func (uc *AcceptInviteUseCase) Execute(ctx context.Context, input AcceptInviteIn
 	if adminUser, lookupErr := uc.userRepo.FindByID(ctx, inviteToken.AdminID); lookupErr == nil {
 		adminEmail = adminUser.Email
 	} else {
-		uc.logger.WarnContext(ctx, "could not resolve admin email for audit log",
+		uc.logger.WarnContext(
+			ctx, "could not resolve admin email for audit log",
 			slog.String("admin_id", inviteToken.AdminID),
 			slog.String("error", lookupErr.Error()),
 		)
@@ -164,7 +165,8 @@ func (uc *AcceptInviteUseCase) Execute(ctx context.Context, input AcceptInviteIn
 		CreatedAt: now,
 	}
 	if err := uc.notificationPub.PublishInviteAcceptedNotification(ctx, notifEvent); err != nil {
-		uc.logger.WarnContext(ctx, "invite accepted notification publish failed; activation succeeded",
+		uc.logger.WarnContext(
+			ctx, "invite accepted notification publish failed; activation succeeded",
 			slog.String("admin_id", inviteToken.AdminID),
 			slog.String("error", err.Error()),
 		)

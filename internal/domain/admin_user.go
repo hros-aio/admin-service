@@ -1,3 +1,4 @@
+// Package domain defines the core domain models and repository interfaces.
 package domain
 
 import (
@@ -8,6 +9,7 @@ import (
 // AdminUserStatus represents the status of an admin user account.
 type AdminUserStatus string
 
+// AdminUserStatus constants define the possible states of an admin user.
 const (
 	AdminUserStatusActive   AdminUserStatus = "active"
 	AdminUserStatusInactive AdminUserStatus = "inactive"
