@@ -12,7 +12,12 @@ import (
 )
 
 // NewKafkaConsumerGroup initializes the Kafka consumer group.
-func NewKafkaConsumerGroup(cfg *config.Config, _ *slog.Logger, lc fx.Lifecycle) (sarama.ConsumerGroup, error) {
+func NewKafkaConsumerGroup(cfg *config.Config, logger *slog.Logger, lc fx.Lifecycle) (sarama.ConsumerGroup, error) {
+	if !cfg.KafkaConsumeEnable {
+		logger.Info("Kafka consumer is disabled (KAFKA_CONSUME_ENABLE is not true), skipping consumer group creation")
+		return nil, nil
+	}
+
 	saramaConfig := sarama.NewConfig()
 	saramaConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
 	saramaConfig.Consumer.Return.Errors = true

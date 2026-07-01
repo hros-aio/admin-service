@@ -30,6 +30,7 @@ func TestLoad(t *testing.T) {
 		_ = os.Unsetenv("KAFKA_BROKERS")
 		_ = os.Unsetenv("JWT_PRIVATE_KEY")
 		_ = os.Unsetenv("LOG_LEVEL")
+		_ = os.Unsetenv("KAFKA_CONSUME_ENABLE")
 	}
 
 	t.Run("success", func(t *testing.T) {
@@ -42,6 +43,17 @@ func TestLoad(t *testing.T) {
 		require.Equal(t, "local", cfg.Env)
 		require.Equal(t, 8080, cfg.Port)
 		require.Equal(t, "info", cfg.LogLevel) // Default value
+		require.False(t, cfg.KafkaConsumeEnable) // Default false
+	})
+
+	t.Run("kafka_consume_enable_true", func(t *testing.T) {
+		setEnv()
+		defer clearEnv()
+		_ = os.Setenv("KAFKA_CONSUME_ENABLE", "true")
+
+		cfg, err := Load()
+		require.NoError(t, err)
+		require.True(t, cfg.KafkaConsumeEnable)
 	})
 
 	t.Run("missing_required", func(t *testing.T) {
