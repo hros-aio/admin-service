@@ -11,7 +11,12 @@ import (
 )
 
 // NewKafkaProducer initializes the Kafka sync producer.
-func NewKafkaProducer(cfg *config.Config, _ *slog.Logger, lc fx.Lifecycle) (sarama.SyncProducer, error) {
+func NewKafkaProducer(cfg *config.Config, logger *slog.Logger, lc fx.Lifecycle) (sarama.SyncProducer, error) {
+	if !cfg.KafkaProduceEnable {
+		logger.Info("Kafka producer is disabled (KAFKA_PRODUCE_ENABLE is not true), skipping producer creation")
+		return nil, nil
+	}
+
 	saramaConfig := sarama.NewConfig()
 	saramaConfig.Producer.RequiredAcks = sarama.WaitForAll
 	saramaConfig.Producer.Retry.Max = 5

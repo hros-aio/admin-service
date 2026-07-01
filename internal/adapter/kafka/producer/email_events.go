@@ -124,6 +124,16 @@ func (p *EmailKafkaProducer) publishEmailEvent(ctx context.Context, event events
 		Value: sarama.ByteEncoder(payload),
 	}
 
+	if p.producer == nil {
+		p.logger.InfoContext(
+			ctx, fmt.Sprintf("Kafka producer is disabled (KAFKA_PRODUCE_ENABLE is not true), skipping publish of %s email event", emailType),
+			slog.String("event", "kafka.email_send.skipped"),
+			slog.String("topic", emailSendTopic),
+			slog.String("key_masked", maskEmail(event.To)),
+		)
+		return nil
+	}
+
 	if _, _, err := p.producer.SendMessage(msg); err != nil {
 		return fmt.Errorf("publish %s email: %w", emailType, err)
 	}

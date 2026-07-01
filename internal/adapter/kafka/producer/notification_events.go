@@ -74,6 +74,17 @@ func (p *NotificationKafkaProducer) PublishInviteAcceptedNotification(ctx contex
 		Value: sarama.ByteEncoder(payload),
 	}
 
+	if p.producer == nil {
+		p.logger.InfoContext(
+			ctx, "Kafka producer is disabled (KAFKA_PRODUCE_ENABLE is not true), skipping publish of invite accepted notification event",
+			slog.String("event", "kafka.notification_send.skipped"),
+			slog.String("topic", notificationSendTopic),
+			slog.String("recipient_id", event.RecipientID),
+			slog.String("type", event.Type),
+		)
+		return nil
+	}
+
 	if _, _, err := p.producer.SendMessage(msg); err != nil {
 		return fmt.Errorf("publish invite accepted notification: %w", err)
 	}

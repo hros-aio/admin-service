@@ -16,6 +16,7 @@ type Config struct {
 	RedisURL             string   `env:"REDIS_URL,required"`
 	KafkaBrokers         []string `env:"KAFKA_BROKERS,required"`
 	KafkaConsumeEnable   bool     `env:"KAFKA_CONSUME_ENABLE" envDefault:"false"`
+	KafkaProduceEnable   bool     `env:"KAFKA_PRODUCE_ENABLE" envDefault:"false"`
 	LogLevel             string   `env:"LOG_LEVEL" envDefault:"info"`
 	JWTPrivateKey        string   `env:"JWT_PRIVATE_KEY,required"`
 	SSOGoogleClientID    string   `env:"SSO_GOOGLE_CLIENT_ID"`
