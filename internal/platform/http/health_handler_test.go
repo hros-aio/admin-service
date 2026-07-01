@@ -68,3 +68,36 @@ func TestHealthHandler_Check(t *testing.T) {
 		assert.Contains(t, rec.Body.String(), `"postgres":"DOWN"`)
 	})
 }
+
+func TestHealthHandler_Check_KafkaDisabled(t *testing.T) {
+	// Setup Postgres Mock
+	db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+	require.NoError(t, err)
+	defer func() { _ = db.Close() }()
+
+	mock.ExpectPing()
+	gormDB, err := gorm.Open(postgres.New(postgres.Config{Conn: db}), &gorm.Config{})
+	require.NoError(t, err)
+
+	// Setup Redis Mock
+	mr, err := miniredis.Run()
+	require.NoError(t, err)
+	defer mr.Close()
+	redisClient := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+
+	// Pass nil for Kafka SyncProducer to simulate disabled state
+	handler := NewHealthHandler(gormDB, redisClient, nil)
+
+	mock.ExpectPing()
+
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	err = handler.Check(c)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `"status":"OK"`)
+	assert.Contains(t, rec.Body.String(), `"kafka":"DISABLED"`)
+}

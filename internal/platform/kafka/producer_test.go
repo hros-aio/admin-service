@@ -26,3 +26,19 @@ func TestNewKafkaProducer(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+
+func TestNewKafkaProducer_Direct(t *testing.T) {
+	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
+
+	t.Run("disabled", func(t *testing.T) {
+		cfg := &config.Config{
+			AppName:            "test-app",
+			KafkaBrokers:       []string{"localhost:9092"},
+			KafkaProduceEnable: false,
+		}
+		// Passing nil for fx.Lifecycle since it shouldn't be touched when disabled.
+		p, err := NewKafkaProducer(cfg, log, nil)
+		assert.NoError(t, err)
+		assert.Nil(t, p)
+	})
+}

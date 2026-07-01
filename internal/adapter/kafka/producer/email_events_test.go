@@ -255,3 +255,19 @@ func TestMaskEmail_Deterministic(t *testing.T) {
 	// Different input must produce different output.
 	assert.NotEqual(t, maskEmail("admin@hros.io"), maskEmail("other@hros.io"))
 }
+
+func TestEmailKafkaProducer_Disabled(t *testing.T) {
+	producer := NewEmailKafkaProducer(nil, newTestLogger())
+
+	t.Run("publish lockout email", func(t *testing.T) {
+		event := newValidEvent()
+		err := producer.PublishLockoutEmail(context.Background(), event)
+		require.NoError(t, err)
+	})
+
+	t.Run("publish password reset email", func(t *testing.T) {
+		event := newValidEvent()
+		err := producer.PublishPasswordResetEmail(context.Background(), event)
+		require.NoError(t, err)
+	})
+}

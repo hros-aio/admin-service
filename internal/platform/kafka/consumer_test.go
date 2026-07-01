@@ -26,3 +26,19 @@ func TestNewKafkaConsumerGroup(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+
+func TestNewKafkaConsumerGroup_Direct(t *testing.T) {
+	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
+
+	t.Run("disabled", func(t *testing.T) {
+		cfg := &config.Config{
+			AppName:            "test-app",
+			KafkaBrokers:       []string{"localhost:9092"},
+			KafkaConsumeEnable: false,
+		}
+		// Passing nil for fx.Lifecycle since it shouldn't be touched when disabled.
+		cg, err := NewKafkaConsumerGroup(cfg, log, nil)
+		assert.NoError(t, err)
+		assert.Nil(t, cg)
+	})
+}

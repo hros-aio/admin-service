@@ -151,3 +151,13 @@ func TestNotificationKafkaProducer_PublishInviteAcceptedNotification_ZeroCreated
 
 	assert.False(t, envelope.Data.CreatedAt.IsZero(), "CreatedAt must be set automatically when zero")
 }
+
+func TestNotificationKafkaProducer_Disabled(t *testing.T) {
+	producer := NewNotificationKafkaProducer(nil, newTestLogger())
+
+	t.Run("publish invite accepted notification", func(t *testing.T) {
+		event := newValidNotificationEvent()
+		err := producer.PublishInviteAcceptedNotification(context.Background(), event)
+		require.NoError(t, err)
+	})
+}

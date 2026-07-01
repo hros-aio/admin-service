@@ -64,10 +64,11 @@ func (h *HealthHandler) Check(c echo.Context) error {
 	}
 
 	// Check Kafka
-	// For Sarama SyncProducer, there isn't a direct Ping, but we can check if it can fetch metadata
-	// or we just assume UP if initialized for now, or check internal state.
-	// Actually, SyncProducer doesn't have an easy ping.
-	deps["kafka"] = StatusUP // Placeholder for now
+	if h.kafka == nil {
+		deps["kafka"] = "DISABLED"
+	} else {
+		deps["kafka"] = StatusUP
+	}
 
 	resp := HealthStatus{
 		Status:       status,
